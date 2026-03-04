@@ -1,49 +1,35 @@
 @import 'variables.css';
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
-/* ─── Global Reset & Base ────────────────────────────────────── */
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    -webkit-tap-highlight-color: transparent;
-}
-
+/* ─── BASE STYLES (نسخة الحاسبة) ────────────────────────────── */
 body {
     font-family: 'Cairo', 'Inter', sans-serif;
     background: var(--background);
     color: var(--text-main);
+    transition: all 0.3s ease;
     line-height: 1.6;
-    min-height: 100vh;
-    transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* ─── Dark Mode Support (إصلاح شاااامل) ───────────────────────── */
+:root {
+    --background: #ffffff; /* ابيض ناصع للحاسبة والموبايل نهاري */
+    --surface: #ffffff;
+    --surface-2: #f3f4f6;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+}
+
 body.dark-theme {
-    --background: #0b0f1a;
-    --surface: #151b2d;
-    --surface-2: #1e2538;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --text-light: #64748b;
+    --background: #080a10;
+    --surface: #111420;
+    --surface-2: #1a1e2e;
+    --text-main: #ffffff;
+    --text-muted: #a0aec0;
     --border: #2d3748;
-    --glass-bg: rgba(21, 27, 45, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.05);
+    --glass-bg: rgba(17, 20, 32, 0.9);
 }
 
-.app-container {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-main#main-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1280px;
-    margin: 0 auto;
-    width: 100%;
-}
+.app-container { min-height: 100vh; display: flex; flex-direction: column; }
+main#main-content { flex: 1; padding: 2rem; max-width: 1280px; margin: 0 auto; width: 100%; }
 
 /* ─── Header ──────────────────────────────────────────────────── */
 .main-header {
@@ -52,186 +38,100 @@ main#main-content {
     align-items: center;
     justify-content: space-between;
     padding: 0 2rem;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
     background: var(--glass-bg);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 1000;
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-weight: 800;
-    font-size: 1.5rem;
-    color: var(--primary);
-}
+.logo { display: flex; align-items: center; gap: 0.75rem; color: var(--primary); font-weight: 800; }
+.logo img { height: 48px; width: auto; }
 
-.logo img { height: 45px; width: auto; }
-
-/* ─── Navigation ──────────────────────────────────────────────── */
-#nav-menu { display: flex; align-items: center; gap: 10px; }
-
-.user-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 50px;
-    font-size: 0.85rem;
-}
-
-.role-pill {
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: white;
-}
-.role-super_admin { background: var(--primary); }
-.role-student { background: var(--success); }
-
-/* ─── Cards & Subjects ───────────────────────────────────────── */
-.subjects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-.subject-card {
-    background: var(--surface);
-    border-radius: 20px;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-    position: relative;
-    cursor: pointer;
-}
-
-.subject-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    border-color: var(--primary);
-}
-
-/* ─── Login Page ──────────────────────────────────────────────── */
-.login-wrapper {
-    display: grid;
-    place-items: center;
-    min-height: 80vh;
-    padding: 1.5rem;
-}
-
-.login-card {
-    width: 100%;
-    max-width: 420px;
-    background: var(--surface);
-    border-radius: 24px;
-    padding: 2.5rem;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
-    text-align: center;
-}
-
-.brand-name { font-size: 2.5rem; font-weight: 900; color: var(--primary); }
-
+/* ─── Dev Team (الأسماء) ───────────────────────────────────────── */
 .dev-team {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     margin-top: 15px;
-    flex-wrap: nowrap; /* إجبارهم على سطر واحد */
 }
-
 .dev-team span {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--primary);
     background: var(--primary-light);
-    padding: 4px 12px;
+    color: var(--primary);
+    padding: 5px 15px;
     border-radius: 50px;
-    white-space: nowrap;
-}
-
-/* ─── Buttons ────────────────────────────────────────────────── */
-.btn {
-    padding: 10px 20px;
-    border-radius: 12px;
     font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: 0.2s;
+    font-size: 0.9rem;
 }
 
-.btn-primary { background: var(--primary); color: white; }
-.btn-ghost { color: var(--text-muted); border: 1px solid var(--border); }
-.icon-btn { font-size: 1.2rem; color: var(--text-main); padding: 8px; }
-
-/* ─── MOBILE PREMIUM FIX (التعديل الخرافي للموبايل) ─────────────── */
+/* ─── MOBILE PROFESSIONAL UI (تجربة الموبايل الاحترافية) ────────── */
 @media (max-width: 768px) {
-    main#main-content { padding: 1.25rem; padding-bottom: 90px; }
-
-    .main-header { padding: 0 1rem; height: 64px; }
-    .logo img { height: 35px; }
+    .main-header { padding: 0 1rem; height: 60px; }
     .logo span { font-size: 1.2rem !important; }
+    .logo img { height: 35px; }
 
-    /* إخفاء معلومات المستخدم بالموبايل للترتيب */
-    .user-badge { display: none !important; }
-
-    /* القائمة السفلية العائمة (Floating Bottom Nav) */
+    /* 1. القائمة الجانبية (Drawer Menu) */
     #nav-menu {
         position: fixed;
-        bottom: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 92%;
-        background: var(--glass-bg);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--glass-border);
-        border-radius: 25px;
-        padding: 5px 15px;
-        justify-content: space-around;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        top: 0;
+        right: -100%; /* مخفية */
+        width: 280px;
+        height: 100vh;
+        background: var(--surface);
+        flex-direction: column;
+        padding: 80px 20px 20px;
+        transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -10px 0 30px rgba(0,0,0,0.2);
         z-index: 9999;
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
     }
+    #nav-menu.active { right: 0; }
 
     #nav-menu .btn {
-        flex-direction: column;
-        gap: 2px;
-        font-size: 9px;
-        padding: 8px;
-        min-width: 55px;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
+        width: 100%;
+        justify-content: flex-start;
+        padding: 14px;
+        background: var(--surface-2);
+        border-radius: 12px;
+        font-size: 14px;
     }
-    #nav-menu .btn i { font-size: 1.5rem; }
-    #nav-menu .btn span { display: block; }
-    #nav-menu .btn:hover { color: var(--primary); }
 
-    /* الأسماء بجانب بعض دائماً ومع تصغير للحجم */
+    /* 2. زر المنيو الجديد (Hamburger) */
+    .menu-toggle {
+        display: block !important;
+        font-size: 1.6rem;
+        order: 3;
+    }
+
+    /* 3. شريط الأسماء المتحرك (الحل النهائي) */
     .dev-team {
-        gap: 4px;
+        display: flex !important;
         overflow-x: auto;
-        padding-bottom: 5px;
+        white-space: nowrap;
+        width: 100%;
+        padding: 10px 0;
+        gap: 8px;
+        justify-content: flex-start !important;
+        -webkit-overflow-scrolling: touch;
     }
-    .dev-team span { font-size: 0.65rem; padding: 3px 8px; }
+    .dev-team::-webkit-scrollbar { display: none; }
+    .dev-team span {
+        flex: 0 0 auto;
+        font-size: 11px;
+        padding: 6px 14px;
+        background: var(--surface-2);
+    }
 
-    .subjects-grid { grid-template-columns: 1fr; }
+    /* 4. تحسينات عامة */
+    main#main-content { padding: 1rem; }
+    .subjects-grid { grid-template-columns: 1fr !important; }
     
-    .login-card { padding: 1.5rem; border: none; box-shadow: none; background: transparent; }
+    /* مظهر الأيقونات فوق */
+    .icon-btn {
+        width: 40px; height: 40px;
+        background: var(--surface-2);
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
 }
-
-/* ─── Animations ─────────────────────────────────────────────── */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-main#main-content { animation: fadeIn 0.4s ease-out; }
