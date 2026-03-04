@@ -9,9 +9,7 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
@@ -45,8 +43,7 @@
                     <div id="notif-drawer" class="card notif-drawer" style="display: none;">
                         <div class="drawer-header">
                             <h4>الإشعارات</h4>
-                            <button id="mark-all-read" style="font-size: 11px; color: var(--blue);">تحديد ككل
-                                مقروء</button>
+                            <button id="mark-all-read" style="font-size: 11px; color: var(--blue);">تحديد ككل مقروء</button>
                         </div>
                         <div id="notif-list" class="drawer-body">
                             <p class="empty-msg">لا توجد إشعارات جديدة</p>
@@ -54,6 +51,10 @@
                     </div>
                 </div>
                 <nav id="nav-menu"></nav>
+                <!-- الزر الجديد للموبايل -->
+                <button id="mobile-menu-toggle" class="icon-btn menu-toggle" style="display: none;">
+                    <i class="ph ph-list"></i>
+                </button>
             </div>
         </header>
 
@@ -67,15 +68,6 @@
     </div>
 
     <script type="module" src="/static/js/main.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW Registered', reg))
-                    .catch(err => console.log('SW Registration failed', err));
-            });
-        }
-    </script>
 </body>
 
 </html>
