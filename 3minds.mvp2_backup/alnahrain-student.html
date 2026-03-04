@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al-Nahrain Edu | لوحة الطالب</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Poppins:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --blue: #1e40af;
+            --blue-light: #3b82f6;
+            --blue-bg: #eff6ff;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --gray-bg: #f1f5f9;
+            --card: #fff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #64748b;
+            --radius: 12px;
+            --shadow: 0 2px 12px rgba(0, 0, 0, .08);
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--gray-bg);
+            color: var(--text);
+            min-height: 100vh
+        }
+
+        .num {
+            font-family: 'Poppins', sans-serif
+        }
+
+        /* ── BOTTOM NAV ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, .08)
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0 14px;
+            gap: 4px;
+            cursor: pointer;
+            color: var(--muted);
+            transition: .2s;
+            font-size: 11px;
+            font-weight: 500
+        }
+
+        .nav-item.active {
+            color: var(--blue)
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px
+        }
+
+        .nav-badge {
+            position: relative
+        }
+
+        .badge-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background: var(--red);
+            border-radius: 50%;
+            border: 2px solid #fff
+        }
+
+        /* ── SCREENS ── */
+        .screen {
+            display: none;
+            padding: 0 0 90px;
+            min-height: 100vh
+        }
+
+        .screen.active {
+            display: block
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 60%, #2563eb 100%);
+            padding: 20px 20px 30px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            left: -40px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, .06);
+            border-radius: 50%
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -60px;
+            right: -20px;
+            width: 160px;
+            height: 160px;
+            background: rgba(255, 255, 255, .04);
+            border-radius: 50%
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1
+        }
+
+        .header-date {
+            font-size: 12px;
+            color: rgba(255, 255, 255, .7);
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1
+        }
+
+        .avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(255, 255, 255, .4);
+            font-size: 18px;
+            cursor: pointer
+        }
+
+        .notif-btn {
+            position: relative;
+            background: rgba(255, 255, 255, .15);
+            border: none;
+            border-radius: 10px;
+            padding: 9px;
+            cursor: pointer;
+            color: #fff
+        }
+
+        .notif-btn .n-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--red);
+            color: #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+            border: 2px solid var(--blue)
+        }
+
+        .welcome {
+            color: #fff;
+            position: relative;
+            z-index: 1
+        }
+
+        .welcome h2 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 4px
+        }
+
+        .welcome p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, .8)
+        }
+
+        /* ── STATS CARD ── */
+        .stats-float {
+            margin: 0 16px;
+            margin-top: -20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            position: relative;
+            z-index: 10
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0
+        }
+
+        .stat-icon.blue {
+            background: var(--blue-bg)
+        }
+
+        .stat-icon.green {
+            background: #ecfdf5
+        }
+
+        .stat-icon.yellow {
+            background: #fffbeb
+        }
+
+        .stat-num {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text)
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 1px
+        }
+
+        /* ── SECTION ── */
+        .section {
+            padding: 20px 16px 0
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text)
+        }
+
+        .see-all {
+            font-size: 12px;
+            color: var(--blue);
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        /* ── COURSE CARD ── */
+        .course-card {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            border-right: 4px solid var(--blue-light);
+            transition: .2s
+        }
+
+        .course-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .12)
+        }
+
+        .course-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px
+        }
+
+        .course-name {
+            font-size: 15px;
+            font-weight: 700
+        }
+
+        .course-code {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: 'Poppins', sans-serif;
+            margin-top: 2px
+        }
+
+        .course-badge {
+            background: var(--blue-bg);
+            color: var(--blue);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600
+        }
+
+        .course-badge.live {
+            background: #ecfdf5;
+            color: var(--green);
+            animation: pulse-badge 2s infinite
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .7
+            }
+        }
+
+        .prof-name {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .progress-wrap {
+            margin-bottom: 10px
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 20px;
+            overflow: hidden
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 20px;
+            transition: width 1s ease
+        }
+
+        .course-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid var(--border)
+        }
+
+        .last-attend {
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .scan-btn {
+            background: var(--green);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-size: 12px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: .2s
+        }
+
+        .scan-btn:hover {
+            background: #059669
+        }
+
+        /* ── FAB ── */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--green);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 28px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, .4);
+            z-index: 50;
+            transition: .3s
+        }
+
+        .fab:hover {
+            transform: translateX(-50%) translateY(-3px);
+            box-shadow: 0 12px 32px rgba(16, 185, 129, .5)
+        }
+
+        .fab-pulse {
+            animation: fab-anim 2s infinite
+        }
+
+        @keyframes fab-anim {
+
+            0%,
+            100% {
+                box-shadow: 0 8px 24px rgba(16, 185, 129, .4)
+            }
+
+            50% {
+                box-shadow: 0 8px 32px rgba(16, 185, 129, .7), 0 0 0 8px rgba(16, 185, 129, .15)
+            }
+        }
+
+        /* ── SCANNER OVERLAY ── */
+        .scanner-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 20px 50px
+        }
+
+        .scanner-overlay.open {
+            display: flex
+        }
+
+        .scanner-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff
+        }
+
+        .scanner-header h3 {
+            font-size: 18px;
+            font-weight: 700
+        }
+
+        .scanner-close {
+            background: rgba(255, 255, 255, .15);
+            border: none;
+            color: #fff;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer
+        }
+
+        .viewfinder {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #111
+        }
+
+        .vf-corners {
+            position: absolute;
+            inset: 0;
+            z-index: 2
+        }
+
+        .vf-corners::before,
+        .vf-corners::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-color: #10b981;
+            border-style: solid
+        }
+
+        .vf-corners::before {
+            top: 0;
+            right: 0;
+            border-width: 3px 3px 0 0;
+            border-radius: 0 8px 0 0
+        }
+
+        .vf-corners::after {
+            top: 0;
+            left: 0;
+            border-width: 3px 0 0 3px;
+            border-radius: 8px 0 0 0
+        }
+
+        .vf-corners2 {
+            position: absolute;
+            inset: 0;
+            z-index: 2
+        }
+
+        .vf-corners2::before,
+        .vf-corners2::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-color: #10b981;
+            border-style: solid
+        }
+
+        .vf-corners2::before {
+            bottom: 0;
+            right: 0;
+            border-width: 0 3px 3px 0;
+            border-radius: 0 0 8px 0
+        }
+
+        .vf-corners2::after {
+            bottom: 0;
+            left: 0;
+            border-width: 0 0 3px 3px;
+            border-radius: 0 0 0 8px
+        }
+
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #10b981, transparent);
+            z-index: 3;
+            animation: scan 2s linear infinite
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0
+            }
+
+            100% {
+                top: 100%
+            }
+        }
+
+        .vf-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(16, 185, 129, .1) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, .1) 1px, transparent 1px);
+            background-size: 40px 40px
+        }
+
+        .scanner-hint {
+            color: rgba(255, 255, 255, .8);
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.8
+        }
+
+        .scanner-hint strong {
+            color: #10b981;
+            display: block;
+            font-size: 16px;
+            margin-bottom: 6px
+        }
+
+        .scanner-actions {
+            display: flex;
+            gap: 20px
+        }
+
+        .scanner-action-btn {
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px 22px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        /* ── SUCCESS SCREEN ── */
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px
+        }
+
+        .success-overlay.open {
+            display: flex
+        }
+
+        .confetti-wrap {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            animation: confetti-fall 3s ease-in forwards
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-20px) rotate(0deg);
+                opacity: 1
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0
+            }
+        }
+
+        .success-check {
+            width: 100px;
+            height: 100px;
+            background: #ecfdf5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            animation: pop-in .5s cubic-bezier(.36, 1.56, .64, 1)
+        }
+
+        @keyframes pop-in {
+            0% {
+                transform: scale(0)
+            }
+
+            100% {
+                transform: scale(1)
+            }
+        }
+
+        .success-check svg {
+            width: 56px;
+            height: 56px;
+            color: var(--green)
+        }
+
+        .success-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 10px
+        }
+
+        .success-sub {
+            color: var(--muted);
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.8;
+            margin-bottom: 6px
+        }
+
+        .success-time {
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            color: var(--blue);
+            font-weight: 600;
+            margin-bottom: 32px
+        }
+
+        .success-back-btn {
+            background: var(--blue);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 15px 40px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            transition: .2s
+        }
+
+        .success-back-btn:hover {
+            background: #1d4ed8
+        }
+
+        /* ── HISTORY ── */
+        .tabs {
+            display: flex;
+            background: var(--border);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 16px
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 9px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--muted);
+            transition: .2s
+        }
+
+        .tab.active {
+            background: #fff;
+            color: var(--blue);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1)
+        }
+
+        .history-item {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: var(--shadow)
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .status-dot.present {
+            background: var(--green)
+        }
+
+        .status-dot.absent {
+            background: var(--red)
+        }
+
+        .status-dot.late {
+            background: var(--yellow)
+        }
+
+        .history-info {
+            flex: 1
+        }
+
+        .history-course {
+            font-size: 14px;
+            font-weight: 700
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+            font-family: 'Poppins', sans-serif
+        }
+
+        .history-status {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px
+        }
+
+        .history-status.present {
+            background: #ecfdf5;
+            color: var(--green)
+        }
+
+        .history-status.absent {
+            background: #fef2f2;
+            color: var(--red)
+        }
+
+        .history-status.late {
+            background: #fffbeb;
+            color: var(--yellow)
+        }
+
+        /* ── NOTIFICATIONS ── */
+        .notif-item {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+            box-shadow: var(--shadow);
+            border-right: 3px solid transparent;
+            transition: .2s
+        }
+
+        .notif-item.unread {
+            border-right-color: var(--blue);
+            background: var(--blue-bg)
+        }
+
+        .notif-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0
+        }
+
+        .notif-icon.blue {
+            background: var(--blue-bg)
+        }
+
+        .notif-icon.green {
+            background: #ecfdf5
+        }
+
+        .notif-icon.yellow {
+            background: #fffbeb
+        }
+
+        .notif-text {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.6;
+            flex: 1
+        }
+
+        .notif-time {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-family: 'Poppins', sans-serif
+        }
+
+        /* ── SEARCH BAR ── */
+        .search-bar {
+            background: #fff;
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+            border: 1.5px solid transparent;
+            transition: .2s
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--blue-light)
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 14px;
+            flex: 1;
+            background: none;
+            color: var(--text)
+        }
+
+        .search-bar input::placeholder {
+            color: var(--muted)
+        }
+
+        /* ── EXPORT BTN ── */
+        .export-btn {
+            background: var(--blue-bg);
+            color: var(--blue);
+            border: 1.5px solid var(--blue-light);
+            border-radius: 10px;
+            padding: 10px 18px;
+            font-family: 'Tajawal', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            margin-top: 16px;
+            transition: .2s
+        }
+
+        .export-btn:hover {
+            background: var(--blue);
+            color: #fff
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ════════════════ SCREEN 1: HOME ════════════════ -->
+    <div class="screen active" id="screen-home">
+
+        <!-- Header -->
+        <div class="header">
+            <div class="header-date" id="live-date">الأحد، 22 فبراير 2026 — 08:37 م</div>
+            <div class="header-top">
+                <div class="welcome">
+                    <h2>مرحباً، الحكم عنمر 👋</h2>
+                    <p>طالب | هندسة الحاسوب | السنة الثالثة</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="notif-btn" onclick="showScreen('screen-notif')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span class="n-badge">3</span>
+                    </button>
+                    <div class="avatar">👤</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-float">
+            <div class="stat-card">
+                <div class="stat-icon blue">📊</div>
+                <div>
+                    <div class="stat-num num">85%</div>
+                    <div class="stat-label">نسبة حضوري</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">✅</div>
+                <div>
+                    <div class="stat-num num">34</div>
+                    <div class="stat-label">محاضرة حضرتها</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses -->
+        <div class="section" style="margin-top:20px">
+            <div class="section-header">
+                <span class="section-title">موادي الدراسية</span>
+                <span class="see-all">عرض الكل</span>
+            </div>
+
+            <!-- Course 1 - LIVE -->
+            <div class="course-card" style="border-right-color:#10b981">
+                <div class="course-top">
+                    <div>
+                        <div class="course-name">الرياضيات — حساب التفاضل والتكامل</div>
+                        <div class="course-code num">MATH301</div>
+                    </div>
+                    <span class="course-badge live">🔴 مباشر</span>
+                </div>
+                <div class="prof-name">👨‍🏫 أ.د. محمد الشمري</div>
+                <div class="progress-wrap">
+                    <div class="progress-header">
+                        <span style="color:var(--muted);font-size:12px">الحضور</span>
+                        <span style="color:var(--green);font-weight:700;font-family:'Poppins',sans-serif">90%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:90%;background:var(--green)"></div>
+                    </div>
+                </div>
+                <div class="course-footer">
+                    <span class="last-attend">آخر حضور: اليوم 08:00 ص</span>
+                    <button class="scan-btn" onclick="openScanner()">📷 مسح QR</button>
+                </div>
+            </div>
+
+            <!-- Course 2 -->
+            <div class="course-card">
+                <div class="course-top">
+                    <div>
+                        <div class="course-name">الفيزياء العامة</div>
+                        <div class="course-code num">PHYS201</div>
+                    </div>
+                    <span class="course-badge">4 أسابيع</span>
+                </div>
+                <div class="prof-name">👨‍🏫 د. أحمد البغدادي</div>
+                <div class="progress-wrap">
+                    <div class="progress-header">
+                        <span style="color:var(--muted);font-size:12px">الحضور</span>
+                        <span style="color:var(--blue);font-weight:700;font-family:'Poppins',sans-serif">75%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:75%;background:var(--blue-light)"></div>
+                    </div>
+                </div>
+                <div class="course-footer">
+                    <span class="last-attend">آخر حضور: أمس</span>
+                </div>
+            </div>
+
+            <!-- Course 3 -->
+            <div class="course-card" style="border-right-color:var(--red)">
+                <div class="course-top">
+                    <div>
+                        <div class="course-name">البرمجة الكائنية</div>
+                        <div class="course-code num">CS302</div>
+                    </div>
+                    <span class="course-badge" style="background:#fef2f2;color:var(--red)">⚠️ منخفض</span>
+                </div>
+                <div class="prof-name">👩‍🏫 د. سارة العراقي</div>
+                <div class="progress-wrap">
+                    <div class="progress-header">
+                        <span style="color:var(--muted);font-size:12px">الحضور</span>
+                        <span style="color:var(--red);font-weight:700;font-family:'Poppins',sans-serif">58%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:58%;background:var(--red)"></div>
+                    </div>
+                </div>
+                <div class="course-footer">
+                    <span class="last-attend">آخر حضور: منذ 5 أيام</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAB -->
+        <button class="fab fab-pulse" onclick="openScanner()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="2" y="2" width="7" height="7" />
+                <rect x="15" y="2" width="7" height="7" />
+                <rect x="2" y="15" width="7" height="7" />
+                <path d="M15 15h7v7h-7z" stroke-dasharray="2" />
+                <rect x="17" y="17" width="3" height="3" />
+            </svg>
+            مسح رمز QR
+        </button>
+    </div>
+
+    <!-- ════════════════ SCREEN 2: HISTORY ════════════════ -->
+    <div class="screen" id="screen-history">
+        <div class="header" style="padding:20px">
+            <h2 style="color:#fff;font-size:20px;font-weight:800">سجل الحضور</h2>
+            <p style="color:rgba(255,255,255,.75);font-size:13px;margin-top:4px">جميع محاضراتك مؤرشفة هنا</p>
+        </div>
+        <div class="section" style="margin-top:16px">
+            <div class="search-bar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                </svg>
+                <input placeholder="ابحث عن مادة..." />
+            </div>
+            <div class="tabs">
+                <div class="tab active">هذا الأسبوع</div>
+                <div class="tab">كل التاريخ</div>
+            </div>
+
+            <div class="history-item">
+                <div class="status-dot present"></div>
+                <div class="history-info">
+                    <div class="history-course">الرياضيات</div>
+                    <div class="history-date">22/02/2026 — 08:05 ص</div>
+                </div>
+                <span class="history-status present">حاضر</span>
+            </div>
+            <div class="history-item">
+                <div class="status-dot present"></div>
+                <div class="history-info">
+                    <div class="history-course">الفيزياء العامة</div>
+                    <div class="history-date">21/02/2026 — 10:12 ص</div>
+                </div>
+                <span class="history-status present">حاضر</span>
+            </div>
+            <div class="history-item">
+                <div class="status-dot absent"></div>
+                <div class="history-info">
+                    <div class="history-course">البرمجة الكائنية</div>
+                    <div class="history-date">20/02/2026 — 12:00 م</div>
+                </div>
+                <span class="history-status absent">غائب</span>
+            </div>
+            <div class="history-item">
+                <div class="status-dot late"></div>
+                <div class="history-info">
+                    <div class="history-course">الرياضيات</div>
+                    <div class="history-date">19/02/2026 — 08:18 ص</div>
+                </div>
+                <span class="history-status late">متأخر</span>
+            </div>
+            <div class="history-item">
+                <div class="status-dot present"></div>
+                <div class="history-info">
+                    <div class="history-course">الفيزياء العامة</div>
+                    <div class="history-date">18/02/2026 — 10:02 ص</div>
+                </div>
+                <span class="history-status present">حاضر</span>
+            </div>
+            <button class="export-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                تصدير كـ PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- ════════════════ SCREEN 3: NOTIFICATIONS ════════════════ -->
+    <div class="screen" id="screen-notif">
+        <div class="header" style="padding:20px">
+            <h2 style="color:#fff;font-size:20px;font-weight:800">الإشعارات</h2>
+            <p style="color:rgba(255,255,255,.75);font-size:13px;margin-top:4px">3 إشعارات جديدة</p>
+        </div>
+        <div class="section" style="margin-top:16px">
+            <div class="notif-item unread">
+                <div class="notif-icon green">🔔</div>
+                <div>
+                    <div class="notif-text">بدأ <strong>د. محمد الشمري</strong> تسجيل الحضور لمادة
+                        <strong>الرياضيات</strong> — المحاضرة الآن نشطة!
+                    </div>
+                    <div class="notif-time">منذ 5 دقائق</div>
+                </div>
+            </div>
+            <div class="notif-item unread">
+                <div class="notif-icon yellow">⚠️</div>
+                <div>
+                    <div class="notif-text">تحذير: نسبة غيابك في مادة <strong>البرمجة الكائنية</strong> وصلت
+                        <strong>42%</strong>. الحد المسموح 25%
+                    </div>
+                    <div class="notif-time">منذ ساعتين</div>
+                </div>
+            </div>
+            <div class="notif-item unread">
+                <div class="notif-icon blue">📅</div>
+                <div>
+                    <div class="notif-text">تذكير: محاضرة <strong>الفيزياء العامة</strong> بعد ساعة في قاعة A203</div>
+                    <div class="notif-time">منذ 30 دقيقة</div>
+                </div>
+            </div>
+            <div class="notif-item">
+                <div class="notif-icon blue">📋</div>
+                <div>
+                    <div class="notif-text">تم تحديث جدول الغيابات للفصل الدراسي الثاني 2025-2026.</div>
+                    <div class="notif-time">أمس، 04:00 م</div>
+                </div>
+            </div>
+            <div class="notif-item">
+                <div class="notif-icon green">✅</div>
+                <div>
+                    <div class="notif-text">تم تسجيل حضورك بنجاح في محاضرة <strong>الرياضيات</strong>.</div>
+                    <div class="notif-time">أمس، 08:07 ص</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════ BOTTOM NAV ════════════════ -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-home" onclick="showScreen('screen-home');setNav('nav-home')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            الرئيسية
+        </div>
+        <div class="nav-item" id="nav-history" onclick="showScreen('screen-history');setNav('nav-history')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+            </svg>
+            السجل
+        </div>
+        <div class="nav-item nav-badge" id="nav-notif" onclick="showScreen('screen-notif');setNav('nav-notif')">
+            <div style="position:relative;display:inline-flex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                <span class="badge-dot"></span>
+            </div>
+            الإشعارات
+        </div>
+        <div class="nav-item" id="nav-profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+            حسابي
+        </div>
+    </nav>
+
+    <!-- ════════════════ QR SCANNER OVERLAY ════════════════ -->
+    <div class="scanner-overlay" id="scanner">
+        <div class="scanner-header">
+            <h3>مسح رمز QR</h3>
+            <button class="scanner-close" onclick="closeScanner()">✕</button>
+        </div>
+
+        <div style="text-align:center">
+            <div class="viewfinder">
+                <div class="vf-corners"></div>
+                <div class="vf-corners2"></div>
+                <div class="vf-grid"></div>
+                <div class="scan-line"></div>
+            </div>
+        </div>
+
+        <div class="scanner-hint">
+            <strong>ضع رمز QR داخل الإطار للمسح</strong>
+            أبقِ الهاتف ثابتاً ومضيئاً<br>سيتم المسح تلقائياً
+        </div>
+
+        <div class="scanner-actions">
+            <button class="scanner-action-btn">⚡ فلاش</button>
+            <button class="scanner-action-btn" onclick="simulateScan()">🧪 محاكاة المسح</button>
+            <button class="scanner-action-btn">🖼️ معرض</button>
+        </div>
+    </div>
+
+    <!-- ════════════════ SUCCESS OVERLAY ════════════════ -->
+    <div class="success-overlay" id="success-screen">
+        <div class="confetti-wrap" id="confetti"></div>
+        <div class="success-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="20 6 9 17 4 12" />
+            </svg>
+        </div>
+        <div class="success-title">تم تسجيل حضورك! 🎉</div>
+        <div class="success-sub">
+            تم تسجيل حضورك لمادة<br>
+            <strong style="color:var(--blue);font-size:16px">الرياضيات — حساب التفاضل والتكامل</strong><br>
+            بنجاح ✅
+        </div>
+        <div class="success-time">22/02/2026 — 08:07:33 ص</div>
+        <button class="success-back-btn" onclick="closeSuccess()">العودة للرئيسية</button>
+    </div>
+
+    <script>
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            let h = now.getHours(), m = now.getMinutes(), ampm = h >= 12 ? 'م' : 'ص';
+            h = h % 12 || 12;
+            const el = document.getElementById('live-date');
+            if (el) el.textContent = `${days[now.getDay()]}، ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} — ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+        }
+        updateClock(); setInterval(updateClock, 30000);
+
+        // Screen switching
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id)?.classList.add('active');
+            window.scrollTo(0, 0);
+        }
+        function setNav(id) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id)?.classList.add('active');
+        }
+
+        // Scanner
+        function openScanner() { document.getElementById('scanner').classList.add('open'); }
+        function closeScanner() { document.getElementById('scanner').classList.remove('open'); }
+
+        // Simulate scan → show success
+        function simulateScan() {
+            closeScanner();
+            spawnConfetti();
+            document.getElementById('success-screen').classList.add('open');
+        }
+
+        // Confetti
+        function spawnConfetti() {
+            const c = document.getElementById('confetti');
+            c.innerHTML = '';
+            const cols = ['#1e40af', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+            for (let i = 0; i < 40; i++) {
+                const p = document.createElement('div');
+                p.className = 'confetti-piece';
+                const left = Math.random() * 100;
+                const delay = Math.random() * 2;
+                const size = 6 + Math.random() * 8;
+                p.style.cssText = `left:${left}%;top:-20px;width:${size}px;height:${size}px;background:${cols[Math.floor(Math.random() * cols.length)]};animation-delay:${delay}s;border-radius:${Math.random() > 0.5 ? '50%' : '2px'}`;
+                c.appendChild(p);
+            }
+        }
+
+        function closeSuccess() {
+            document.getElementById('success-screen').classList.remove('open');
+            showScreen('screen-home');
+            setNav('nav-home');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach((t, i, all) => {
+            t.onclick = () => { all.forEach(x => x.classList.remove('active')); t.classList.add('active'); }
+        });
+
+        // Animate progress bars on load
+        setTimeout(() => {
+            document.querySelectorAll('.progress-fill').forEach(el => {
+                const w = el.style.width; el.style.width = '0';
+                requestAnimationFrame(() => { setTimeout(() => { el.style.width = w; }, 100); });
+            });
+        }, 300);
+    </script>
+
+    <!-- ════ DEVELOPER CREDITS FOOTER ════ -->
+    <style>
+        .dev-footer {
+            margin: 0 16px 100px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+            direction: ltr;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dev-footer::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: -30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, .05);
+            border-radius: 50%;
+        }
+
+        .dev-footer::after {
+            content: '';
+            position: absolute;
+            bottom: -40px;
+            right: -20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, .04);
+            border-radius: 50%;
+        }
+
+        .dev-footer-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, .5);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .dev-names {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            direction: ltr;
+        }
+
+        .dev-name-chip {
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dev-name-chip::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #60a5fa;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dev-footer-copy {
+            font-size: 10px;
+            color: rgba(255, 255, 255, .35);
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+
+    <div class="dev-footer">
+        <div class="dev-footer-label"
+            style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:1px;text-transform:none;margin-bottom:3px;">
+            Department of Cybersecurity</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:10px;">Under the Supervision of: <strong
+                style="color:rgba(255,255,255,0.8);">Dr. Muhaned Qasim</strong></div>
+        <div class="dev-footer-label">✦ Developed by ✦</div>
+        <div class="dev-names" style="flex-direction: row;">
+            <div class="dev-name-chip">Alhakam Anmar</div>
+            <div class="dev-name-chip">Mena Sabri</div>
+            <div class="dev-name-chip">Danya Majed</div>
+        </div>
+        <div class="dev-footer-copy">3Minds Academic © 2026 — Al-Nahrain University</div>
+    </div>
+
+</body>
+
+</html>

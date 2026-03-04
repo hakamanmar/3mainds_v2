@@ -1,0 +1,7 @@
+Flask
+google-generativeai
+PyPDF2
+fpdf2
+Werkzeug
+gunicorn
+flask-limiter
