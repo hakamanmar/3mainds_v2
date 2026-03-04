@@ -49,18 +49,4 @@
     --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #0f172a;
-        --surface: #1e293b;
-        --surface-2: #162032;
-        --text-main: #f1f5f9;
-        --text-muted: #94a3b8;
-        --text-light: #64748b;
-        --border: #334155;
-        --glass-bg: rgba(30, 41, 59, 0.85);
-        --glass-border: rgba(255, 255, 255, 0.08);
-        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    }
-}
+/* Theme variables are controlled manually via the theme toggle button in main.js */
