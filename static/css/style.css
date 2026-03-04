@@ -1622,18 +1622,48 @@ body.dark-theme {
         width: 280px;
         height: 100vh;
         background: var(--surface);
-        flex-direction: column;
-        padding: 100px 20px 20px;
+        padding: 40px 20px;
         transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: -15px 0 45px rgba(0, 0, 0, 0.4);
         z-index: 9999;
-        display: flex !important;
-        align-items: flex-start !important;
-        gap: 15px;
+        display: block !important;
+        overflow-y: auto;
     }
 
     #nav-menu.active {
         right: 0 !important;
+    }
+
+    .nav-content-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 40px;
+    }
+
+    .nav-header-mobile {
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: var(--primary);
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .user-badge-mobile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: var(--surface-2);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .nav-links-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
 
     .menu-toggle {
@@ -1645,12 +1675,20 @@ body.dark-theme {
     #nav-menu .btn {
         width: 100%;
         justify-content: flex-start;
-        padding: 15px;
+        padding: 14px 18px;
         background: var(--surface-2);
         border-radius: 12px;
-        font-size: 15px;
+        font-size: 14px;
+        font-weight: 600;
         color: var(--text-main);
         border: 1px solid var(--border);
+    }
+
+    #nav-menu .logout-btn {
+        margin-top: 20px;
+        background: var(--danger-light);
+        color: var(--danger);
+        border-color: rgba(239, 68, 68, 0.2);
     }
 
     /* Fixed: Team Names Row */
@@ -1658,7 +1696,6 @@ body.dark-theme {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        /* This stops Dania from being below */
         overflow-x: auto !important;
         white-space: nowrap !important;
         gap: 8px !important;
