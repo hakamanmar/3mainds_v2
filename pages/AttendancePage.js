@@ -253,15 +253,18 @@ export default async function AttendancePage(params) {
             }
         }, 1000);
 
-        container.querySelector('#regenerate-btn')?.addEventListener('click', async () => {
-            const data = await api.getAttendanceQR(activeSession.session_id, true);
-            activeSession.token = data.token;
-            remaining = data.interval;
-            if (timerEl) timerEl.textContent = remaining;
-            qrGenerator.clear();
-            qrGenerator.makeCode(data.token);
-            UI.toast(i18n.t('qr_refreshed') || 'تم تجديد الرمز بنجاح');
-        });
+        const regenBtn = container.querySelector('#regenerate-btn');
+        if (regenBtn) {
+            regenBtn.addEventListener('click', async () => {
+                const data = await api.getAttendanceQR(activeSession.session_id, true);
+                activeSession.token = data.token;
+                remaining = data.interval;
+                if (timerEl) timerEl.textContent = remaining;
+                qrGenerator.clear();
+                qrGenerator.makeCode(data.token);
+                UI.toast(i18n.t('qr_refreshed') || 'تم تجديد الرمز بنجاح');
+            });
+        }
     }
 
     function startLiveTracker() {
