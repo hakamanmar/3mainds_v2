@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v2'; // Increment version to trigger update
+const CACHE_NAME = '3minds-v3'; // Increment version to trigger update
 const ASSETS = [
     '/',
     '/static/css/style.css',
