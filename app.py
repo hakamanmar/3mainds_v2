@@ -58,7 +58,7 @@ def add_security_headers(response):
     # Updated CSP to allow trusted CDNs for Icons, Charts, and QR Codes
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; "
         "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; "
         "img-src 'self' data: blob: https:; "
