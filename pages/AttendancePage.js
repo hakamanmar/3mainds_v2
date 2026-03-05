@@ -20,7 +20,8 @@ export default async function AttendancePage(params) {
     let subjects = [];
     let sections = [];
     let history = [];
-    let selectedSectionId = user.section_id || localStorage.getItem('selected_section');
+    let selectedSectionId = user.section_id;
+    try { selectedSectionId = selectedSectionId || localStorage.getItem('selected_section'); } catch (e) { }
 
     async function init() {
         sections = await api.getSections();
