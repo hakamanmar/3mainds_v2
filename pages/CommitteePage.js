@@ -46,25 +46,33 @@ export default async function CommitteePage(params) {
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--blue-bg); color: var(--blue);"><i class="ph ph-users"></i></div>
-                    <div class="stat-value">${stats.total_students}</div>
-                    <div class="stat-label">${i18n.t('total_students') || 'إجمالي الطلاب'}</div>
+                <div class="stat-card stat-indigo">
+                    <i class="ph ph-users"></i>
+                    <div>
+                        <span class="stat-num">${stats.total_students}</span>
+                        <span class="stat-label">${i18n.t('total_students')}</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #ecfdf5; color: #10b981;"><i class="ph ph-check-circle"></i></div>
-                    <div class="stat-value">${stats.avg_rate}%</div>
-                    <div class="stat-label">${i18n.t('avg_attendance_rate') || 'متوسط الحضور العام'}</div>
+                <div class="stat-card stat-green">
+                    <i class="ph ph-check-circle"></i>
+                    <div>
+                        <span class="stat-num">${stats.avg_rate}%</span>
+                        <span class="stat-label">${i18n.t('avg_attendance_rate')}</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;"><i class="ph ph-calendar"></i></div>
-                    <div class="stat-value">${stats.today_sessions}</div>
-                    <div class="stat-label">${i18n.t('lectures_today') || 'محاضرات اليوم'}</div>
+                <div class="stat-card stat-amber">
+                    <i class="ph ph-calendar"></i>
+                    <div>
+                        <span class="stat-num">${stats.today_sessions}</span>
+                        <span class="stat-label">${i18n.t('lectures_today')}</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: #fef2f2; color: #ef4444;"><i class="ph ph-warning-circle"></i></div>
-                    <div class="stat-value">${alerts.length}</div>
-                    <div class="stat-label">${i18n.t('active_warnings') || 'طلاب في منطقة الخطر'}</div>
+                <div class="stat-card stat-red">
+                    <i class="ph ph-warning-circle"></i>
+                    <div>
+                        <span class="stat-num">${alerts.length}</span>
+                        <span class="stat-label">${i18n.t('active_warnings')}</span>
+                    </div>
                 </div>
             </div>
 
@@ -108,7 +116,8 @@ export default async function CommitteePage(params) {
     }
 
     function initCharts() {
-        const ctx = container.querySelector('#trendsChart')?.getContext('2d');
+        const chartEl = container.querySelector('#trendsChart');
+        const ctx = chartEl ? chartEl.getContext('2d') : null;
         if (!ctx) return;
 
         new Chart(ctx, {
