@@ -53,17 +53,20 @@ const LoginPage = async () => {
 };
 
 LoginPage.init = () => {
-    document.getElementById('toggle-pw-btn')?.addEventListener('click', () => {
-        const input = document.getElementById('password');
-        const icon = document.getElementById('pw-eye-icon');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'ph ph-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'ph ph-eye';
-        }
-    });
+    const toggleBtn = document.getElementById('toggle-pw-btn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('pw-eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'ph ph-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'ph ph-eye';
+            }
+        });
+    }
 
     const form = document.getElementById('login-form');
     if (!form) return;
