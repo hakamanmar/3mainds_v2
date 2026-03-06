@@ -1,0 +1,48 @@
+{"timestamp": "2026-03-01T21:41:06.868477Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T21:41:06.869991Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T21:42:55.013662Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-01T21:59:36.832316Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-01T22:02:23.729050Z", "ip": "127.0.0.1", "user_role": "super_admin", "section_id": "B_EVENING", "action": "UNAUTHORIZED_ACCESS_ATTEMPT", "risk_score": "HIGH", "payload": {"target": "subject_2", "user_id": null}}
+{"timestamp": "2026-03-01T22:02:25.705025Z", "ip": "127.0.0.1", "user_role": "super_admin", "section_id": "B_EVENING", "action": "UNAUTHORIZED_ACCESS_ATTEMPT", "risk_score": "HIGH", "payload": {"target": "subject_2", "user_id": null}}
+{"timestamp": "2026-03-01T22:02:25.886289Z", "ip": "127.0.0.1", "user_role": "super_admin", "section_id": "B_EVENING", "action": "UNAUTHORIZED_ACCESS_ATTEMPT", "risk_score": "HIGH", "payload": {"target": "subject_2", "user_id": null}}
+{"timestamp": "2026-03-01T22:02:26.122063Z", "ip": "127.0.0.1", "user_role": "super_admin", "section_id": "B_EVENING", "action": "UNAUTHORIZED_ACCESS_ATTEMPT", "risk_score": "HIGH", "payload": {"target": "subject_2", "user_id": null}}
+{"timestamp": "2026-03-01T22:02:27.831978Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T22:02:27.837010Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T22:02:33.068359Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-01T22:15:24.475651Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T22:15:24.477242Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-01T22:15:29.157437Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-04T18:21:02.930898Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:21:02.933405Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:22:29.121395Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-04T18:54:02.649020Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:54:02.653189Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:54:08.591026Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-04T18:57:30.884969Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:57:30.893984Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:57:30.905603Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T18:58:50.299121Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-04T19:00:47.363837Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T19:08:05.826077Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-04T19:18:23.193139Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T19:18:23.199453Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-04T19:18:28.441608Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "B_EVENING", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-05T22:58:36.483334Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T22:58:36.484096Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T22:58:51.356198Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@uni.edu"}}
+{"timestamp": "2026-03-05T22:58:51.365103Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T22:58:56.768703Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@uni.edu"}}
+{"timestamp": "2026-03-05T22:58:56.775600Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T22:59:00.444279Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "A_EVENING", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@uni.edu"}}
+{"timestamp": "2026-03-05T22:59:00.449076Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:01:57.742880Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@3minds.edu"}}
+{"timestamp": "2026-03-05T23:01:57.761692Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:11:15.527030Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "A_EVENING", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@uni.edu"}}
+{"timestamp": "2026-03-05T23:11:15.538081Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:11:24.995369Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "A_EVENING", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "admin@uni.edu"}}
+{"timestamp": "2026-03-05T23:11:25.004066Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:19:46.115989Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_FAILED", "risk_score": "MEDIUM", "payload": {"email": "super@3mainds.edu"}}
+{"timestamp": "2026-03-05T23:19:46.139233Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:21:06.027178Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
+{"timestamp": "2026-03-05T23:27:18.565632Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGOUT_SUCCESS", "risk_score": "LOW", "payload": {}}
+{"timestamp": "2026-03-05T23:27:43.596247Z", "ip": "127.0.0.1", "user_role": "guest", "section_id": "unknown", "action": "LOGIN_SUCCESS", "risk_score": "LOW", "payload": {"user_id": 1, "email": "super@3minds.edu", "role": "super_admin"}}
