@@ -81,7 +81,25 @@ export const translations = {
         add_announcement: 'إضافة إعلان جديد',
         announcements: 'الإعلانات الحالية',
         export_ministry_report: 'تصدير تقرير الوزارة (PDF)',
-        all_sections: 'كل الأقسام'
+        all_sections: 'كل الأقسام',
+        no_announcements_yet: 'لا توجد إعلانات بعد',
+        no_subjects: 'لا توجد مواد دراسية بعد',
+        user_management: 'إدارة المستخدمين',
+        create_account: 'إنشاء حساب جديد',
+        no_users: 'لا يوجد مستخدمون حالياً',
+        student: 'طالب',
+        teacher: 'مدرس',
+        committee: 'لجنة',
+        section_admin: 'مدير قسم',
+        super_admin: 'مدير عام',
+        linked_devices: 'الأجهزة المرتبطة',
+        select_section: 'اختر القسم',
+        content: 'المحتوى',
+        event_date: 'تاريخ الحدث',
+        no_section: 'بدون قسم',
+        role: 'الصلاحية',
+        no_announcements: 'لا توجد إعلانات',
+        linked_devices_count: 'الأجهزة'
     },
     en: {
         dir: 'ltr',
@@ -165,7 +183,25 @@ export const translations = {
         add_announcement: 'Add New Announcement',
         announcements: 'Current Announcements',
         export_ministry_report: 'Export Ministry Report (PDF)',
-        all_sections: 'All Sections'
+        all_sections: 'All Sections',
+        no_announcements_yet: 'No announcements yet',
+        no_subjects: 'No subjects yet',
+        user_management: 'User Management',
+        create_account: 'Create New Account',
+        no_users: 'No users yet',
+        student: 'Student',
+        teacher: 'Teacher',
+        committee: 'Committee',
+        section_admin: 'Section Admin',
+        super_admin: 'Super Admin',
+        linked_devices: 'Linked Devices',
+        select_section: 'Select Section',
+        content: 'Content',
+        event_date: 'Event Date',
+        no_section: 'No Section',
+        role: 'Role',
+        no_announcements: 'No Announcements',
+        linked_devices_count: 'Devices'
     }
 };
 
