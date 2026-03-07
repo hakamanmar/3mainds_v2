@@ -4,11 +4,12 @@ import { i18n } from '/static/js/i18n.js';
 import { UI } from '/static/js/ui.js';
 
 const AdminPage = async () => {
+    const selectedSectionId = api.getSelectedSection();
     let subjects = [], users = [], announcements = [], stats = {};
     try {
         [subjects, users, announcements, stats] = await Promise.all([
-            api.getSubjects(),
-            api.getUsers(),
+            api.getSubjects(selectedSectionId),
+            api.getUsers(selectedSectionId),
             api.getAnnouncements(),
             api.getStats()
         ]);
@@ -18,7 +19,6 @@ const AdminPage = async () => {
 
     const user = auth.getUser();
     const sections = await api.getSections();
-    const selectedSectionId = api.getSelectedSection();
 
     // Stats filtering logic (api already filters based on headers, but we might want to group by section for super admin)
     const teachers = users.filter(u => u.role === 'teacher');
