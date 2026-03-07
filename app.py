@@ -497,16 +497,17 @@ def get_subjects():
     ctx = get_user_context()
     conn = get_db()
     
-    # Priority: query param section_id (for Super Admin selector)
+    # Priority: query param section_id (for Super Admin/Committee selector)
     sid = request.args.get('section_id') or ctx['section_id']
     
-    if ctx['role'] == 'super_admin':
+    if ctx['role'] in ['super_admin', 'committee']:
         if sid:
             subjects = conn.execute('SELECT * FROM subjects WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
         else:
+            # Global roles see everything if no section selected
             subjects = conn.execute('SELECT * FROM subjects ORDER BY created_at DESC').fetchall()
     else:
-        # Non-super admins are always restricted to their section (forced here)
+        # Teachers, Section Admins, and Students are restricted to their section
         sid = ctx['section_id']
         subjects = conn.execute('SELECT * FROM subjects WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
     
@@ -676,7 +677,7 @@ def get_announcements():
     ctx = get_user_context()
     sid = ctx['section_id']
     conn = get_db()
-    if ctx['role'] == 'super_admin':
+    if ctx['role'] in ['super_admin', 'committee']:
         if sid:
             ann = conn.execute('SELECT * FROM announcements WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
         else:
@@ -741,22 +742,28 @@ def get_users():
     conn = get_db()
     if ctx['role'] == 'super_admin':
         if sid:
+            # Show users of the section PLUS global roles (they are relevant everywhere)
             users = conn.execute('''
                 SELECT u.id, u.email, u.role, u.section_id, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
-                FROM users u WHERE u.section_id = ?
+                FROM users u 
+                WHERE u.section_id = ? OR u.role IN ('super_admin', 'committee')
+                ORDER BY u.role DESC, u.email ASC
             ''', (sid,)).fetchall()
         else:
             users = conn.execute('''
                 SELECT u.id, u.email, u.role, u.section_id, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
                 FROM users u
+                ORDER BY u.role DESC, u.email ASC
             ''').fetchall()
     else:
+        # Section Admin only sees users of their section (they don't need to see other global admins)
         users = conn.execute('''
             SELECT u.id, u.email, u.role, u.section_id, u.created_at,
             (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
             FROM users u WHERE u.section_id = ?
+            ORDER BY u.role DESC, u.email ASC
         ''', (sid,)).fetchall()
     conn.close()
     return jsonify([dict(u) for u in users])
@@ -798,10 +805,20 @@ def add_user():
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
     role = data.get('role', 'student')
-    section_id = data.get('section_id') or ctx['section_id']
+    section_id = data.get('section_id')
+    if section_id == "": # Clean up empty strings from frontend
+        section_id = None
+        
+    # If still None, fall back to creator's section (for teachers/students by section admins)
+    if not section_id:
+        section_id = ctx['section_id']
 
     if not email or not password or not role:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
+
+    # Global roles (super_admin, committee) never have a section_id
+    if role in ['super_admin', 'committee']:
+        section_id = None
 
     # Permission Checks
     if ctx['role'] == 'section_admin':
@@ -814,9 +831,9 @@ def add_user():
         if role == 'super_admin' and ctx['email'] != 'super@3minds.edu':
              return jsonify({'error': 'ليس لديك صلاحية لإنشاء حساب مشرف عام جديد. هذا من صلاحيات المشرف الرئيسي فقط.'}), 403
              
-        # Super Admin can create anything else but needs a section for non-globals
-        if role != 'super_admin' and not section_id:
-             return jsonify({'error': 'يجب تحديد القسم'}), 400
+        # Roles that MUST have a section
+        if role in ['student', 'teacher', 'section_admin'] and not section_id:
+             return jsonify({'error': 'يجب تحديد القسم لهذا النوع من الحسابات'}), 400
 
     conn = get_db()
     try:
