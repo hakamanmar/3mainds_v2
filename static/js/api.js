@@ -150,8 +150,10 @@ export const api = {
     },
 
     // ── Users / Students ──────────────────────────────────────
-    async getUsers() {
-        return this._fetch(`${API_BASE}/users`);
+    async getUsers(sectionId = null) {
+        let url = `${API_BASE}/users`;
+        if (sectionId) url += `?section_id=${sectionId}`;
+        return this._fetch(url);
     },
     async deleteUser(id) {
         return this._fetch(`${API_BASE}/users?id=${id}`, { method: 'DELETE' });
