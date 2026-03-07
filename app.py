@@ -738,7 +738,7 @@ def delete_announcement():
 @require_role('section_admin', 'super_admin')
 def get_users():
     ctx = get_user_context()
-    sid = ctx['section_id']
+    sid = request.args.get('section_id') or ctx['section_id']
     conn = get_db()
     if ctx['role'] == 'super_admin':
         if sid:
