@@ -363,12 +363,15 @@ AdminPage.init = () => {
             });
             if (result) location.reload();
 
-            // UI logic to hide section for super admin role
+            // UI logic to hide section for global roles (super admin and committee)
             const roleSel = document.getElementById('u-role');
             const sidWrapper = document.getElementById('section-select-wrapper');
-            if (roleSel) {
+            if (roleSel && sidWrapper) {
+                // Initial check
+                sidWrapper.style.display = (roleSel.value === 'super_admin' || roleSel.value === 'committee') ? 'none' : 'block';
+
                 roleSel.addEventListener('change', () => {
-                    sidWrapper.style.display = roleSel.value === 'super_admin' ? 'none' : 'block';
+                    sidWrapper.style.display = (roleSel.value === 'super_admin' || roleSel.value === 'committee') ? 'none' : 'block';
                 });
             }
         });
