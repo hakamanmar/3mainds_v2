@@ -238,20 +238,13 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # --- Migration Helper ---
-    # Check if migration is needed (if section_id is missing from subjects)
+    # --- Migration Helper: Check schema compatibility ---
     try:
         c.execute('SELECT section_id FROM subjects LIMIT 1')
-    except sqlite3.OperationalError:
-        # Tables exist but don't have new schema - drop them for a clean reset
-        c.execute('DROP TABLE IF EXISTS subjects')
-        c.execute('DROP TABLE IF EXISTS users')
-        c.execute('DROP TABLE IF EXISTS lessons')
-        c.execute('DROP TABLE IF EXISTS announcements')
-        c.execute('DROP TABLE IF EXISTS attendance_records')
-        c.execute('DROP TABLE IF EXISTS enrollments')
-        c.execute('DROP TABLE IF EXISTS assignments')
-        c.execute('DROP TABLE IF EXISTS submissions')
+    except Exception:
+        # Tables exist but schema is old - drop for clean reset
+        for tbl in ['subjects','users','lessons','announcements','attendance_records','enrollments','assignments','submissions']:
+            c.execute(f'DROP TABLE IF EXISTS {tbl}')
 
     # 1. Sections Table
     c.execute('''
@@ -326,11 +319,12 @@ def init_db():
         )
     ''')
     
-    # Add target_date column if it doesn't exist
-    try:
-        c.execute('SELECT target_date FROM announcements LIMIT 1')
-    except sqlite3.OperationalError:
-        c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
+    # Add target_date column if it doesn't exist (SQLite only)
+    if not USE_TURSO:
+        try:
+            c.execute('SELECT target_date FROM announcements LIMIT 1')
+        except Exception:
+            c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
 
     # 6. Attendance Sessions (Linked to subject)
     c.execute('''
@@ -400,7 +394,9 @@ def init_db():
 
     # Seed Sections
     c.execute('SELECT count(*) FROM sections')
-    if c.fetchone()[0] == 0:
+    row = c.fetchone()
+    count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
+    if count == 0:
         sections = [
             ('A_MORNING', 'أ صباحي (A Morning)'),
             ('B_MORNING', 'ب صباحي (B Morning)'),
@@ -411,13 +407,17 @@ def init_db():
 
     # Seed Super Admin
     c.execute('SELECT count(*) FROM users WHERE role="super_admin"')
-    if c.fetchone()[0] == 0:
+    row = c.fetchone()
+    count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
+    if count == 0:
         c.execute('INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
                   ('super@3minds.edu', generate_password_hash('super123'), 'super_admin'))
 
     # Seed Demo Data for A_MORNING
     c.execute('SELECT count(*) FROM subjects WHERE section_id="A_MORNING"')
-    if c.fetchone()[0] == 0:
+    row = c.fetchone()
+    count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
+    if count == 0:
         subjects = [
             ('تطبيقات الويب (A)', 'شعبة أ صباحي', 'WEB-A', '#4F46E5', 'A_MORNING'),
             ('هياكل البيانات', 'شعبة أ صباحي', 'DS-101', '#10B981', 'A_MORNING')
