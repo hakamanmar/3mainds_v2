@@ -68,38 +68,47 @@ export default async function SectionSelectionPage() {
 
             <div style="flex: 1; min-height: 4rem;"></div>
 
-            <!-- Developer Credits - Professional Bottom Bar -->
+            <!-- Developer Credits - Framed Container -->
             <footer style="
                 width: 100%;
-                max-width: 900px;
+                max-width: 800px;
                 padding: 2rem 1.5rem;
                 margin-top: auto;
             ">
-                <div style="height: 1px; width: 60px; background: var(--primary); margin: 0 auto 2rem; opacity: 0.3;"></div>
-                
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-muted); font-size: 0.8rem; direction: ltr; opacity: 0.8;">
-                        <span style="font-weight: 800; letter-spacing: 0.5px; color: var(--text-main);">DEPARTMENT OF CYBERSECURITY</span>
-                        <span style="width: 4px; height: 4px; background: var(--border); border-radius: 50%;"></span>
-                        <span>Supervised by: <strong style="color: var(--text-main);">Dr. Muhaned Qasim</strong></span>
+                <div style="
+                    background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(49, 46, 129, 0.8) 100%);
+                    border: 1px solid rgba(96, 165, 250, 0.3);
+                    border-radius: 20px;
+                    padding: 1.5rem;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 1.25rem;
+                ">
+                    <div style="display: flex; align-items: center; gap: 1rem; color: #cbd5e1; font-size: 0.8rem; direction: ltr; opacity: 0.9;">
+                        <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
+                        <span style="width: 4px; height: 4px; background: rgba(96, 165, 250, 0.5); border-radius: 50%;"></span>
+                        <span>Supervised by: <strong style="color: #60a5fa;">Dr. Muhaned Qasim</strong></span>
                     </div>
                     
                     <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; direction: ltr;">
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: var(--primary);">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem;"></i>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
                             Alhakam Anmar
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: var(--primary);">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem;"></i>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
                             Mena Sabri
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: var(--primary);">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem;"></i>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
                             Danya Majed
                         </div>
                     </div>
 
-                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; opacity: 0.6; letter-spacing: 0.3px;">
+                    <p style="font-size: 0.7rem; color: rgba(203, 213, 225, 0.5); margin-top: 0.5rem; letter-spacing: 0.3px;">
                         3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
                     </p>
                 </div>
