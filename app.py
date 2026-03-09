@@ -88,20 +88,24 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
 # ─── Turso Cloud DB Support ──────────────────────────────────────────
-# When TURSO_DATABASE_URL is set (Vercel production), use Turso for persistent storage.
-# Otherwise, fall back to local SQLite (development).
 TURSO_DATABASE_URL = os.environ.get('TURSO_DATABASE_URL', '')
 TURSO_AUTH_TOKEN = os.environ.get('TURSO_AUTH_TOKEN', '')
 USE_TURSO = bool(TURSO_DATABASE_URL)
 
+# Try to import libsql_experimental (needed only for Turso)
+_libsql = None
+if USE_TURSO:
+    try:
+        import libsql_experimental as _libsql
+        print("[DB] libsql_experimental loaded — using Turso cloud database ✅")
+    except ImportError:
+        print("[DB] WARNING: libsql_experimental not found, falling back to local SQLite")
+        USE_TURSO = False
+
 class TursoConnectionWrapper:
-    """
-    A thin sqlite3-compatible wrapper around libsql_experimental (Turso).
-    Supports: execute, executemany, fetchone, fetchall, commit, close, cursor(), row_factory.
-    """
+    """sqlite3-compatible wrapper for libsql_experimental (Turso)."""
     def __init__(self, url, auth_token):
-        import libsql_experimental as libsql
-        self._conn = libsql.connect(url, auth_token=auth_token)
+        self._conn = _libsql.connect(url, auth_token=auth_token)
         self.row_factory = None
 
     def cursor(self):
@@ -117,22 +121,30 @@ class TursoConnectionWrapper:
         return cur
 
     def commit(self):
-        self._conn.commit()
+        try:
+            self._conn.commit()
+        except Exception:
+            pass
 
     def close(self):
-        self._conn.close()
+        try:
+            self._conn.close()
+        except Exception:
+            pass
 
 class TursoCursorWrapper:
     def __init__(self, conn, wrapper):
         self._conn = conn
         self._wrapper = wrapper
         self._cursor = conn.cursor()
-        self._rows = []
         self.lastrowid = None
 
     def _exec(self, sql, params=()):
         self._cursor.execute(sql, params)
-        self.lastrowid = self._cursor.lastrowid
+        try:
+            self.lastrowid = self._cursor.lastrowid
+        except Exception:
+            self.lastrowid = None
         return self
 
     def execute(self, sql, params=()):
@@ -172,23 +184,27 @@ class TursoCursorWrapper:
         pass
 
 def get_db():
-    if USE_TURSO:
+    if USE_TURSO and _libsql is not None:
         # ✅ Vercel + Turso: persistent cloud SQLite
-        conn = TursoConnectionWrapper(TURSO_DATABASE_URL, TURSO_AUTH_TOKEN)
-        conn.row_factory = sqlite3.Row
-        return conn
-    else:
-        # ✅ Local development: regular SQLite file
-        if IS_VERCEL and not os.path.exists(DB_PATH):
-            if os.path.exists('academic.db'):
-                import shutil
-                shutil.copy('academic.db', DB_PATH)
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        conn.execute('PRAGMA journal_mode=WAL;')
-        conn.execute('PRAGMA synchronous=NORMAL;')
-        conn.execute('PRAGMA foreign_keys=ON;')
-        return conn
+        try:
+            conn = TursoConnectionWrapper(TURSO_DATABASE_URL, TURSO_AUTH_TOKEN)
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e:
+            print(f"[DB] Turso connection failed: {e}, falling back to local SQLite")
+
+    # ✅ Fallback: local SQLite
+    if IS_VERCEL and not os.path.exists(DB_PATH):
+        if os.path.exists('academic.db'):
+            import shutil
+            shutil.copy('academic.db', DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL;')
+    conn.execute('PRAGMA synchronous=NORMAL;')
+    conn.execute('PRAGMA foreign_keys=ON;')
+    return conn
+
 
 
 def init_db():
