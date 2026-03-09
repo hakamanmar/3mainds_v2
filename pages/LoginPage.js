@@ -39,12 +39,38 @@ const LoginPage = async () => {
                     </button>
                 </form>
 
-                <div class="login-footer">
-                    <p>${i18n.t('developed_by')}</p>
-                    <div class="dev-team">
-                        <span>Alhakam Anmar</span>
-                        <span>Mena Sabri</span>
-                        <span>Danya Majed</span>
+                <!-- Professional Developer Credits -->
+                <div class="login-footer" style="
+                    margin-top: 3rem;
+                    padding-top: 2rem;
+                    border-top: 1px solid var(--border);
+                    text-align: center;
+                ">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.8rem; direction: ltr; opacity: 0.8;">
+                            <span style="font-weight: 700;">Department of Cybersecurity</span>
+                            <span style="width: 4px; height: 4px; background: var(--border); border-radius: 50%;"></span>
+                            <span>Supervised by: <strong>Dr. Muhaned Qasim</strong></span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; direction: ltr;">
+                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
+                                Alhakam Anmar
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
+                                Mena Sabri
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
+                                Danya Majed
+                            </span>
+                        </div>
+                        
+                        <p style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6; margin-top: 0.5rem; letter-spacing: 0.5px;">
+                            3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
+                        </p>
                     </div>
                 </div>
             </div>
