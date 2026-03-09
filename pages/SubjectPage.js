@@ -214,6 +214,7 @@ const SubjectPage = async (params) => {
 
 SubjectPage.init = (params) => {
     const subjectId = params.id;
+    const user = auth.getUser();
 
     // Edit Subject (Super Admin)
     const editSubBtn = document.getElementById('edit-subject-btn');
@@ -321,7 +322,6 @@ SubjectPage.init = (params) => {
                 formData.append('file', file);
 
                 await new Promise((resolve, reject) => {
-                    const user = auth.getUser();
                     const xhr = new XMLHttpRequest();
                     xhr.open('POST', '/api/admin/add-lesson');
                     // Zero Trust: The 'auth_token' cookie is sent automatically by the browser.
@@ -368,7 +368,6 @@ SubjectPage.init = (params) => {
     const attBtn = document.getElementById('student-attendance-btn');
     if (attBtn) {
         attBtn.onclick = async () => {
-            const user = auth.getUser();
             const html = `
                 <div style="text-align: center; padding: 10px;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;"><i class="ph ph-qr-code"></i></div>
