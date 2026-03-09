@@ -67,9 +67,9 @@ export default async function AttendancePage(params) {
                 
                 ${showSectionSelect ? `
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="font-weight: 700; display: block; margin-bottom: 0.5rem; color: var(--blue);">${i18n.t('select_section') || 'اختر القسم الدراسي'}</label>
+                    <label style="font-weight: 700; display: block; margin-bottom: 0.5rem; color: var(--blue);">${i18n.t('select_section') || 'اختر الشعبة الدراسية'}</label>
                     <select id="section-select" class="form-control" style="border: 2px solid var(--blue-light);">
-                        <option value="">-- ${i18n.t('choose_section') || 'اختر القسم'} --</option>
+                        <option value="">-- ${i18n.t('choose_section') || 'اختر الشعبة'} --</option>
                         ${sections.map(s => `<option value="${s.id}" ${s.id === selectedSectionId ? 'selected' : ''}>${s.name}</option>`).join('')}
                     </select>
                 </div>
@@ -78,7 +78,7 @@ export default async function AttendancePage(params) {
                 <div class="form-group">
                     <label>${i18n.t('select_subject') || 'اختر المادة'}</label>
                     <select id="subject-select" class="form-control" ${subjects.length === 0 ? 'disabled' : ''}>
-                        <option value="">-- ${subjects.length === 0 ? (i18n.t('no_subjects_found') || 'لا توجد مواد لهذا القسم') : (i18n.t('choose_subject') || 'اختر المادة الدراسية')} --</option>
+                        <option value="">-- ${subjects.length === 0 ? (i18n.t('no_subjects_found') || 'لا توجد مواد لهذه الشعبة') : (i18n.t('choose_subject') || 'اختر المادة الدراسية')} --</option>
                         ${subjects.map(s => `<option value="${s.id}">${s.title} (${s.code})</option>`).join('')}
                     </select>
                 </div>
@@ -308,7 +308,7 @@ export default async function AttendancePage(params) {
         if (e.target.id === 'section-select') {
             selectedSectionId = e.target.value;
             if (selectedSectionId) {
-                UI.toast(i18n.t('loading_subjects') || 'جاري تحميل مواد القسم...');
+                UI.toast(i18n.t('loading_subjects') || 'جاري تحميل مواد الشعبة...');
                 subjects = await api.getSubjects(selectedSectionId);
             } else {
                 subjects = [];
