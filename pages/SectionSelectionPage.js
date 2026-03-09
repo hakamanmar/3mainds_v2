@@ -8,7 +8,7 @@ export default async function SectionSelectionPage() {
     const sections = await api.getSections();
 
     container.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center;">
+        <div style="display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 2rem 1rem; text-align: center;">
             <div class="cyber-logo">
                 <img src="/logo.png?v=2.5" alt="Logo" style="height: 180px; margin-bottom: 1.5rem;">
             </div>
@@ -66,33 +66,36 @@ export default async function SectionSelectionPage() {
                 </button>
             </div>
 
-            <!-- Developer Credits -->
-            <div style="
-                margin-top: 3.5rem;
+            <div style="flex: 1;"></div> <!-- Spacer to push footer down -->
+
+            <!-- Developer Credits - Stable Footer -->
+            <footer style="
+                margin-top: 4rem;
                 background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
-                border-radius: 16px;
+                border-radius: 20px;
                 padding: 1.5rem;
                 text-align: center;
                 direction: ltr;
                 width: 100%;
-                max-width: 600px;
+                max-width: 700px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             ">
-                <div style="font-size:0.7rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:1px;margin-bottom:0.3rem;">
+                <div style="font-size:0.75rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:1px;margin-bottom:0.3rem;">
                     Department of Cybersecurity
                 </div>
-                <div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-bottom:0.85rem;">
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-bottom:1rem;">
                     Under the Supervision of: <span style="color:rgba(255,255,255,0.8);font-weight:700;">Dr. Muhaned Qasim</span>
                 </div>
-                <div style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:0.75rem;">✦ Developed by ✦</div>
-                <div style="display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; flex-direction: row; direction: ltr;">
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Alhakam Anmar</span>
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Mena Sabri</span>
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Danya Majed</span>
+                <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:1rem;">✦ Developed by ✦</div>
+                <div style="display:flex; justify-content:center; gap:0.6rem; flex-wrap:wrap; flex-direction: row; direction: ltr;">
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1.2rem;font-size:0.85rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;"><span style="width:7px;height:7px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Alhakam Anmar</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1.2rem;font-size:0.85rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;"><span style="width:7px;height:7px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Mena Sabri</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1.2rem;font-size:0.85rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;"><span style="width:7px;height:7px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Danya Majed</span>
                 </div>
-                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.75rem;">
+                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:1rem;">
                     3Minds Academic © 2026 — Al-Nahrain University
                 </div>
-            </div>
+            </footer>
         </div>
 
         <style>
