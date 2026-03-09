@@ -553,7 +553,7 @@ def add_subject():
     return jsonify({'success': True})
 
 @app.route('/api/subjects/<int:id>', methods=['PUT'])
-@require_role('section_admin', 'super_admin')
+@require_role('super_admin')
 def update_subject(id):
     ctx = get_user_context()
     data = request.json
@@ -571,7 +571,7 @@ def update_subject(id):
     return jsonify({'success': True})
 
 @app.route('/api/subjects/<int:id>', methods=['DELETE'])
-@require_role('section_admin', 'super_admin')
+@require_role('super_admin')
 def delete_subject(id):
     ctx = get_user_context()
     conn = get_db()
