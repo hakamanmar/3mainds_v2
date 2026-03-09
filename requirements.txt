@@ -5,4 +5,3 @@ fpdf2
 Werkzeug
 gunicorn
 flask-limiter
-libsql-experimental
