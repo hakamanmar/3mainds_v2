@@ -68,49 +68,65 @@ export default async function SectionSelectionPage() {
 
             <div style="flex: 1; min-height: 4rem;"></div>
 
-            <!-- Developer Credits - Framed Container -->
+            <!-- Developer Credits - Perfectly Matched Frame -->
             <footer style="
                 width: 100%;
                 max-width: 800px;
                 padding: 2rem 1.5rem;
                 margin-top: auto;
             ">
-                <div style="
-                    background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(49, 46, 129, 0.8) 100%);
-                    border: 1px solid rgba(96, 165, 250, 0.3);
-                    border-radius: 20px;
-                    padding: 1.5rem;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                <div class="card credits-card" style="
+                    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+                    border: 1px solid var(--border);
+                    border-radius: 24px;
+                    padding: 2rem;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 10px 40px rgba(49, 46, 129, 0.3);
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     gap: 1.25rem;
                 ">
-                    <div style="display: flex; align-items: center; gap: 1rem; color: #cbd5e1; font-size: 0.8rem; direction: ltr; opacity: 0.9;">
-                        <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
-                        <span style="width: 4px; height: 4px; background: rgba(96, 165, 250, 0.5); border-radius: 50%;"></span>
-                        <span>Supervised by: <strong style="color: #60a5fa;">Dr. Muhaned Qasim</strong></span>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; direction: ltr;">
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
-                            Alhakam Anmar
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
-                            Mena Sabri
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
-                            Danya Majed
-                        </div>
-                    </div>
+                    <!-- Background image overlay (Exact same as dept-card) -->
+                    <div style="
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800');
+                        background-size: cover;
+                        background-position: center;
+                        opacity: 0.2;
+                        mix-blend-mode: overlay;
+                        z-index: 1;
+                    "></div>
 
-                    <p style="font-size: 0.7rem; color: rgba(203, 213, 225, 0.5); margin-top: 0.5rem; letter-spacing: 0.3px;">
-                        3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
-                    </p>
+                    <!-- Content (Higher Z-index) -->
+                    <div style="position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; color: #cbd5e1; font-size: 0.85rem; direction: ltr; opacity: 0.9;">
+                            <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
+                            <span style="width: 4px; height: 4px; background: #60a5fa; border-radius: 50%;"></span>
+                            <span>Supervision: <strong style="color: #60a5fa;">Dr. Muhaned Qasim</strong></span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; direction: ltr;">
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                Alhakam Anmar
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                Mena Sabri
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                Danya Majed
+                            </div>
+                        </div>
+
+                        <p style="font-size: 0.7rem; color: rgba(203, 213, 225, 0.4); margin-top: 0.5rem; letter-spacing: 0.3px;">
+                            3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
+                        </p>
+                    </div>
                 </div>
             </footer>
         </div>
