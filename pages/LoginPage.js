@@ -42,9 +42,9 @@ const LoginPage = async () => {
                 <div class="login-footer">
                     <p>${i18n.t('developed_by')}</p>
                     <div class="dev-team">
-                        <span>Danya Majed</span>
-                        <span>Mena Sabri</span>
                         <span>Alhakam Anmar</span>
+                        <span>Mena Sabri</span>
+                        <span>Danya Majed</span>
                     </div>
                 </div>
             </div>
