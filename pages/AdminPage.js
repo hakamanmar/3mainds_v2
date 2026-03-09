@@ -127,9 +127,16 @@ const AdminPage = async () => {
                                     <span class="code-tag">${s.code}</span>
                                 </div>
                                 <div class="list-item-actions">
-                                    <button class="icon-btn del-sub-btn" data-id="${s.id}" data-title="${s.title}">
-                                        <i class="ph ph-trash"></i>
-                                    </button>
+                                    ${user.role === 'super_admin' ? `
+                                        <button class="icon-btn edit-sub-btn" data-id="${s.id}" 
+                                                data-title="${s.title}" data-code="${s.code || ''}" 
+                                                data-desc="${s.description || ''}" data-color="${s.color || '#4f46e5'}">
+                                            <i class="ph ph-pencil-simple"></i>
+                                        </button>
+                                        <button class="icon-btn del-sub-btn" data-id="${s.id}" data-title="${s.title}">
+                                            <i class="ph ph-trash"></i>
+                                        </button>
+                                    ` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -316,6 +323,40 @@ AdminPage.init = () => {
         btn.addEventListener('click', async () => {
             const ok = await UI.confirm(`${i18n.t('confirm_delete')} (${btn.dataset.title})`);
             if (ok) { await api.deleteSubject(btn.dataset.id); location.reload(); }
+        });
+    });
+
+    document.querySelectorAll('.edit-sub-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const res = await UI.modal(i18n.lang === 'ar' ? 'تعديل المادة' : 'Edit Subject', `
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('title')}</label>
+                    <input id="edit-s-title" value="${btn.dataset.title}" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('code')}</label>
+                    <input id="edit-s-code" value="${btn.dataset.code}" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('description')}</label>
+                    <textarea id="edit-s-desc">${btn.dataset.desc}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.lang === 'ar' ? 'لون المادة' : 'Subject Color'}</label>
+                    <input type="color" id="edit-s-color" value="${btn.dataset.color}" style="height:45px;" />
+                </div>
+            `, async () => {
+                const title = document.getElementById('edit-s-title').value.trim();
+                const code = document.getElementById('edit-s-code').value.trim();
+                const description = document.getElementById('edit-s-desc').value.trim();
+                const color = document.getElementById('edit-s-color').value;
+
+                if (!title) return false;
+                await api.updateSubject(id, { title, code, description, color });
+                return true;
+            });
+            if (res) location.reload();
         });
     });
 
