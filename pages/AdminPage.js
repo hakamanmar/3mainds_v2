@@ -185,33 +185,61 @@ const AdminPage = async () => {
 
             </div>
 
-            <!-- Developer Credits -->
-            <div style="
-                margin-top: 2.5rem;
-                background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
-                border-radius: 16px;
+        <!-- Developer Credits - Perfectly Matched Frame -->
+        <footer style="
+            width: 100%;
+            margin-top: 3rem;
+            padding: 1rem 0;
+        ">
+            <div class="card credits-card" style="
+                background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 20px;
                 padding: 1.5rem;
-                text-align: center;
-                direction: ltr;
                 position: relative;
                 overflow: hidden;
+                box-shadow: 0 10px 40px rgba(49, 46, 129, 0.3);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
             ">
-                <div style="font-size:0.7rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:1px;margin-bottom:0.3rem;">
-                    Department of Cybersecurity
-                </div>
-                <div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-bottom:0.85rem;">
-                    Under the Supervision of: <span style="color:rgba(255,255,255,0.8);font-weight:700;">Dr. Muhaned Qasim</span>
-                </div>
-                <div style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:0.75rem;">✦ Developed by ✦</div>
-                <div style="display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; flex-direction: row; direction: ltr;">
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Alhakam Anmar</span>
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Mena Sabri</span>
-                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Danya Majed</span>
-                </div>
-                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.75rem;">
-                    3Minds Academic © 2026 — Al-Nahrain University
+                <!-- Background image overlay -->
+                <div style="
+                    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                    background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=600');
+                    background-size: cover; background-position: center; opacity: 0.15; mix-blend-mode: overlay; z-index: 1;
+                "></div>
+
+                <!-- Content -->
+                <div style="position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; color: #cbd5e1; font-size: 0.8rem; direction: ltr; opacity: 0.9;">
+                        <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
+                        <span style="width: 3px; height: 3px; background: #4f46e5; border-radius: 50%;"></span>
+                        <span>Supervision: <strong style="color: #4f46e5;">Dr. Muhaned Qasim</strong></span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; direction: ltr;">
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                            Alhakam Anmar
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                            Mena Sabri
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                            Danya Majed
+                        </div>
+                    </div>
+
+                    <p style="font-size: 0.65rem; color: rgba(203, 213, 225, 0.3); letter-spacing: 0.3px;">
+                        3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
+                    </p>
                 </div>
             </div>
+        </footer>
 
         </div>
     `;
