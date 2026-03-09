@@ -257,11 +257,14 @@ def init_db():
 
     # --- Migration Helper: Check schema compatibility ---
     try:
-        c.execute('SELECT section_id FROM subjects LIMIT 1')
+        # Check for user_devices table - if it's missing, we need a clean start for the new device system
+        c.execute('SELECT id FROM user_devices LIMIT 1')
     except Exception:
-        # Tables exist but schema is old - drop for clean reset
-        for tbl in ['subjects','users','lessons','announcements','attendance_records','enrollments','assignments','submissions']:
-            c.execute(f'DROP TABLE IF EXISTS {tbl}')
+        print("[DB] user_devices table missing - Performing clean schema reset for migration...")
+        for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections']:
+            try:
+                c.execute(f'DROP TABLE IF EXISTS {tbl}')
+            except: pass
 
     # 1. Sections Table
     c.execute('''
@@ -410,7 +413,7 @@ def init_db():
     ''')
 
     # Seed Sections
-    c.execute('SELECT count(*) FROM sections')
+    c.execute('SELECT count(*) as total FROM sections')
     row = c.fetchone()
     count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
     if count == 0:
@@ -421,17 +424,19 @@ def init_db():
             ('B_EVENING', 'ب مسائي (B Evening)')
         ]
         c.executemany('INSERT INTO sections (id, name) VALUES (?, ?)', sections)
+        print("[DB] SECTIONS SEEDED")
 
     # Seed Super Admin
-    c.execute('SELECT count(*) FROM users WHERE role="super_admin"')
+    c.execute('SELECT count(*) as total FROM users WHERE email = ?', ('super@3minds.edu',))
     row = c.fetchone()
     count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
     if count == 0:
-        c.execute('INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
-                  ('super@3minds.edu', generate_password_hash('super123'), 'super_admin'))
+        c.execute('INSERT INTO users (email, password, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?)',
+                  ('super@3minds.edu', generate_password_hash('super123'), 'super_admin', None, 0))
+        print("[DB] GLOBAL ADMIN CREATED: super@3minds.edu") # IMPORTANT LOG
 
     # Seed Demo Data for A_MORNING
-    c.execute('SELECT count(*) FROM subjects WHERE section_id="A_MORNING"')
+    c.execute('SELECT count(*) as total FROM subjects WHERE section_id="A_MORNING"')
     row = c.fetchone()
     count = int(list(row.values())[0]) if isinstance(row, dict) else int(row[0])
     if count == 0:
@@ -440,6 +445,7 @@ def init_db():
             ('هياكل البيانات', 'شعبة أ صباحي', 'DS-101', '#10B981', 'A_MORNING')
         ]
         c.executemany('INSERT INTO subjects (title, description, code, color, section_id) VALUES (?, ?, ?, ?, ?)', subjects)
+        print("[DB] DEMO SUBJECTS SEEDED")
 
     conn.commit()
     conn.close()
