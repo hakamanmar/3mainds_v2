@@ -33,6 +33,12 @@ app.config['DEVICE_BINDING_SECRET'] = secrets.token_hex(16) # For hashing device
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max upload
 
 # Setup Rate Limiting
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'mp3', 'mp4', 'mov', 'avi', 'zip', 'rar', 'webm', 'ogg', 'aac', 'm4a', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 if Limiter:
     limiter = Limiter(
         get_remote_address,
@@ -653,7 +659,20 @@ def add_lesson():
 @app.route('/api/lessons/<int:id>', methods=['DELETE'])
 @require_role('teacher', 'section_admin', 'super_admin')
 def delete_lesson(id):
+    ctx = get_user_context()
     conn = get_db()
+    
+    lesson = conn.execute('''
+        SELECT s.section_id 
+        FROM lessons l
+        JOIN subjects s ON l.subject_id = s.id
+        WHERE l.id = ?
+    ''', (id,)).fetchone()
+    
+    if not lesson or (ctx['role'] != 'super_admin' and lesson['section_id'] != ctx['section_id']):
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+        
     conn.execute('DELETE FROM lessons WHERE id = ?', (id,))
     conn.commit()
     conn.close()
@@ -663,7 +682,20 @@ def delete_lesson(id):
 @require_role('teacher', 'section_admin', 'super_admin')
 def update_lesson(id):
     data = request.json
+    ctx = get_user_context()
     conn = get_db()
+
+    lesson = conn.execute('''
+        SELECT s.section_id 
+        FROM lessons l
+        JOIN subjects s ON l.subject_id = s.id
+        WHERE l.id = ?
+    ''', (id,)).fetchone()
+    
+    if not lesson or (ctx['role'] != 'super_admin' and lesson['section_id'] != ctx['section_id']):
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+
     conn.execute('UPDATE lessons SET title = ?, url = ?, type = ? WHERE id = ?',
                  (data.get('title'), data.get('url'), data.get('type', 'PDF'), id))
     conn.commit()
@@ -1576,6 +1608,85 @@ def attendance_active(subject_id):
         return jsonify({'active': True, 'session': session})
     return jsonify({'active': False})
 
+
+# ── Assignments & Submissions ──────────────────────────────────────
+@app.route('/api/upload', methods=['POST'])
+@limiter.limit("50 per hour")
+def upload_file():
+    ctx = get_user_context()
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        return jsonify({'error': 'الملف مطلوب'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'نوع الملف غير مسموح.'}), 403
+        
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    secure_name = f"{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
+    return jsonify({'url': f"/uploads/{secure_name}"})
+
+@app.route('/api/assignments', methods=['GET'])
+def get_assignments():
+    subject_id = request.args.get('subject_id')
+    conn = get_db()
+    res = conn.execute('SELECT * FROM assignments WHERE subject_id = ? ORDER BY created_at DESC', (subject_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in res])
+
+@app.route('/api/assignments', methods=['POST'])
+@require_role('teacher', 'section_admin', 'super_admin')
+def add_assignment():
+    data = request.json
+    subject_id = data.get('subject_id')
+    teacher_id = data.get('teacher_id')
+    title = data.get('title')
+    
+    if not subject_id or not title:
+        return jsonify({'error': 'Required fields missing'}), 400
+        
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO assignments (subject_id, teacher_id, title, description, file_url, due_date, allowed_formats)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (subject_id, teacher_id, title, data.get('description',''), data.get('file_url',''), data.get('due_date'), data.get('allowed_formats','*')))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/submissions', methods=['POST'])
+@require_role('student', 'super_admin')
+def submit_homework():
+    data = request.json
+    conn = get_db()
+    try:
+        conn.execute('''
+            INSERT INTO submissions (assignment_id, student_id, file_url)
+            VALUES (?, ?, ?)
+        ''', (data.get('assignment_id'), data.get('student_id'), data.get('file_url')))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        # Update existing submission
+        conn.execute('''
+            UPDATE submissions SET file_url = ?, submitted_at = CURRENT_TIMESTAMP
+            WHERE assignment_id = ? AND student_id = ?
+        ''', (data.get('file_url'), data.get('assignment_id'), data.get('student_id')))
+        conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/assignments/<int:id>/submissions', methods=['GET'])
+@require_role('teacher', 'section_admin', 'super_admin')
+def get_submissions(id):
+    conn = get_db()
+    res = conn.execute('''
+        SELECT s.*, u.email as student_email 
+        FROM submissions s
+        JOIN users u ON s.student_id = u.id
+        WHERE s.assignment_id = ?
+        ORDER BY s.submitted_at DESC
+    ''', (id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in res])
 
 if __name__ == '__main__':
     init_db()
