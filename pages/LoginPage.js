@@ -39,37 +39,49 @@ const LoginPage = async () => {
                     </button>
                 </form>
 
-                <!-- Professional Developer Credits -->
-                <div class="login-footer" style="
-                    margin-top: 3rem;
-                    padding-top: 2rem;
-                    border-top: 1px solid var(--border);
+                <!-- Professional Developer Credits - Framed -->
+                <div class="credits-frame" style="
+                    margin-top: 2rem;
+                    padding: 1.5rem 1rem;
+                    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+                    border: 1px solid rgba(96, 165, 250, 0.2);
+                    border-radius: 20px;
+                    color: white;
                     text-align: center;
+                    position: relative;
+                    overflow: hidden;
                 ">
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.8rem; direction: ltr; opacity: 0.8;">
-                            <span style="font-weight: 700;">Department of Cybersecurity</span>
-                            <span style="width: 4px; height: 4px; background: var(--border); border-radius: 50%;"></span>
-                            <span>Supervised by: <strong>Dr. Muhaned Qasim</strong></span>
+                    <!-- Background overlay -->
+                    <div style="
+                        position: absolute; top:0; left:0; right:0; bottom:0;
+                        background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=400');
+                        background-size: cover; opacity: 0.1; mix-blend-mode: overlay;
+                    "></div>
+
+                    <div style="position: relative; z-index: 2;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #cbd5e1; font-size: 0.75rem; direction: ltr; margin-bottom: 1rem; opacity: 0.9;">
+                            <span style="font-weight: 800; color: #fff;">CYBERSECURITY DEPT</span>
+                            <span style="width: 3px; height: 3px; background: #60a5fa; border-radius: 50%;"></span>
+                            <span>Supervised by: <strong style="color: #60a5fa;">Dr. Muhaned</strong></span>
                         </div>
                         
-                        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; direction: ltr;">
-                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
-                                Alhakam Anmar
+                        <div style="display: flex; justify-content: center; gap: 0.75rem; flex-direction: row; direction: ltr; font-size: 0.8rem; white-space: nowrap;">
+                            <span style="display: flex; align-items: center; gap: 4px; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
+                                Alhakam
                             </span>
-                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
+                            <span style="display: flex; align-items: center; gap: 4px; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
                                 Mena Sabri
                             </span>
-                            <span style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 700; color: var(--primary);">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem;"></i>
+                            <span style="display: flex; align-items: center; gap: 4px; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
                                 Danya Majed
                             </span>
                         </div>
                         
-                        <p style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6; margin-top: 0.5rem; letter-spacing: 0.5px;">
-                            3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
+                        <p style="font-size: 0.6rem; color: rgba(203, 213, 225, 0.4); margin-top: 0.8rem; letter-spacing: 0.5px;">
+                            3MINDS ACADEMIC © 2026
                         </p>
                     </div>
                 </div>
