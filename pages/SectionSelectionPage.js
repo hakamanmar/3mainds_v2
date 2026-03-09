@@ -42,7 +42,7 @@ export default async function SectionSelectionPage() {
                     "></div>
                     <!-- Content -->
                     <div style="position: relative; z-index: 2;">
-                        <div style="font-size: 3.5rem; margin-bottom: 1.5rem; color: #60a5fa; filter: drop-shadow(0 0 10px rgba(96,165,250,0.5));">
+                        <div style="font-size: 3.5rem; margin-bottom: 1.5rem; color: #4f46e5; filter: drop-shadow(0 0 10px rgba(96,165,250,0.5));">
                             <i class="ph ph-shield-check"></i>
                         </div>
                         <h3 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px;">قسم الأمن السيبراني</h3>
@@ -67,7 +67,7 @@ export default async function SectionSelectionPage() {
                         <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'); opacity: 0.1;"></div>
                         
                         <div style="position: relative; z-index: 2;">
-                            <div style="font-size: 3rem; margin-bottom: 1rem; color: #60a5fa;"><i class="ph ph-users-three"></i></div>
+                            <div style="font-size: 3rem; margin-bottom: 1rem; color: #4f46e5;"><i class="ph ph-users-three"></i></div>
                             <h3 style="font-size: 1.5rem; font-weight: 700;">${i18n.t(s.id)}</h3>
                             <p style="font-size: 0.95rem; color: #cbd5e1; margin-top: 0.5rem;">${i18n.t('click_to_enter')}</p>
                         </div>
@@ -118,21 +118,21 @@ export default async function SectionSelectionPage() {
                     <div style="position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
                         <div style="display: flex; align-items: center; gap: 1rem; color: #cbd5e1; font-size: 0.85rem; direction: ltr; opacity: 0.9;">
                             <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
-                            <span style="width: 4px; height: 4px; background: #60a5fa; border-radius: 50%;"></span>
-                            <span>Supervision: <strong style="color: #60a5fa;">Dr. Muhaned Qasim</strong></span>
+                            <span style="width: 4px; height: 4px; background: #4f46e5; border-radius: 50%;"></span>
+                            <span>Supervision: <strong style="color: #4f46e5;">Dr. Muhaned Qasim</strong></span>
                         </div>
                         
                         <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; direction: ltr;">
                             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #4f46e5;"></i>
                                 Alhakam Anmar
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #4f46e5;"></i>
                                 Mena Sabri
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1.1rem; color: #4f46e5;"></i>
                                 Danya Majed
                             </div>
                         </div>
@@ -152,13 +152,13 @@ export default async function SectionSelectionPage() {
             .dept-card:hover {
                 transform: translateY(-8px) scale(1.02);
                 box-shadow: 0 20px 50px rgba(49, 46, 129, 0.5) !important;
-                border-color: #60a5fa !important;
+                border-color: #4f46e5 !important;
             }
-            .dept-card i { transition: transform 0.5s ease; color: #60a5fa !important; }
+            .dept-card i { transition: transform 0.5s ease; color: #4f46e5 !important; }
             .dept-card:hover i { transform: scale(1.15) rotate(5deg); }
 
             .section-card:hover {
-                border-color: #60a5fa !important;
+                border-color: #4f46e5 !important;
                 transform: translateY(-10px) scale(1.02);
                 box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
             }
