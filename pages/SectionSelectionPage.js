@@ -61,10 +61,37 @@ export default async function SectionSelectionPage() {
                 `).join('')}
             </div>
             
-            <div class="fade-in" style="margin-top: 4rem; animation-delay: 0.3s;">
                 <button class="btn btn-ghost" data-path="/login?role=super_admin">
                     <i class="ph ph-shield-check"></i> ${i18n.t('super_admin_login')}
                 </button>
+            </div>
+
+            <!-- Developer Credits -->
+            <div style="
+                margin-top: 3.5rem;
+                background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);
+                border-radius: 16px;
+                padding: 1.5rem;
+                text-align: center;
+                direction: ltr;
+                width: 100%;
+                max-width: 600px;
+            ">
+                <div style="font-size:0.7rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:1px;margin-bottom:0.3rem;">
+                    Department of Cybersecurity
+                </div>
+                <div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-bottom:0.85rem;">
+                    Under the Supervision of: <span style="color:rgba(255,255,255,0.8);font-weight:700;">Dr. Muhaned Qasim</span>
+                </div>
+                <div style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:0.75rem;">✦ Developed by ✦</div>
+                <div style="display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; flex-direction: row; direction: ltr;">
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Alhakam Anmar</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Mena Sabri</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:0.4rem 1rem;font-size:0.8rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;background:#60a5fa;border-radius:50%;display:inline-block;"></span>Danya Majed</span>
+                </div>
+                <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:0.75rem;">
+                    3Minds Academic © 2026 — Al-Nahrain University
+                </div>
             </div>
         </div>
 
