@@ -553,68 +553,86 @@ def index(path):
 
     return render_template('index.html')
 
-# ─── AUTH ─────────────────────────────────────────────────────
 @app.route('/api/login', methods=['POST'])
-@limiter.limit("10 per minute") # Mitigates Brute-Force & Credential Stuffing
+@limiter.limit("10 per minute")
 def login():
     data = request.json
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
     client_device_id = data.get('device_id', 'unknown')
 
+    print(f"[LOGIN] Attempt for email: {email}") # DEBUG LOG
+
     conn = get_db()
-    user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
-    conn.close()
-
-    if not user or not check_password_hash(user['password'], password):
-        audit_log("LOGIN_FAILED", {"email": email}, risk_score="MEDIUM")
-        return jsonify({'success': False, 'message': 'البريد الإلكتروني أو كلمة المرور غير صحيحة'}), 401
-
-    # Audit successful login
-    audit_log("LOGIN_SUCCESS", {"user_id": user['id'], "email": email, "role": user['role']})
-
-    # Universal Multi-Device Binding (Max 3 Devices for ALL roles)
-    conn = get_db()
-    # Check if this device is already registered for this user
-    device = conn.execute('SELECT id FROM user_devices WHERE user_id = ? AND device_id = ?', 
-                          (user['id'], client_device_id)).fetchone()
-    
-    if not device:
-        # Not registered: Check current count
-        count_res = conn.execute('SELECT COUNT(*) as count FROM user_devices WHERE user_id = ?', (user['id'],)).fetchone()
-        if count_res['count'] >= 3:
-            conn.close()
-            return jsonify({
-                'success': False,
-                'error': 'device_locked',
-                'message': 'لقد وصلت للحد الأقصى من الأجهزة المسجلة (3 أجهزة). يرجى مراجعة المسؤول لإعادة ضبط الأجهزة.'
-            }), 403
+    try:
+        user_row = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         
-        # Register new device
-        conn.execute('INSERT INTO user_devices (user_id, device_id) VALUES (?, ?)', (user['id'], client_device_id))
+        if not user_row:
+            print(f"[LOGIN] User not found: {email}") # DEBUG LOG
+            conn.close()
+            return jsonify({'success': False, 'message': 'البريد الإلكتروني غير مسجل'}), 401
+            
+        user = dict(user_row)
+        print(f"[LOGIN] Found user: {user['email']} with role: {user['role']}") # DEBUG LOG
+        
+        if not check_password_hash(user['password'], password):
+            print(f"[LOGIN] Password mismatch for user: {email}") # DEBUG LOG
+            conn.close()
+            return jsonify({'success': False, 'message': 'كلمة المرور غير صحيحة'}), 401
+
+        # Audit successful login
+        audit_log("LOGIN_SUCCESS", {"user_id": user['id'], "email": email, "role": user['role']})
+
+        # Universal Multi-Device Binding (Max 3 Devices)
+        print(f"[LOGIN] Checking devices for user_id: {user['id']}") # DEBUG LOG
+        
+        # SQL for counting devices
+        count_res = conn.execute('SELECT COUNT(*) as cnt FROM user_devices WHERE user_id = ?', (user['id'],)).fetchone()
+        count = int(list(count_res.values())[0]) if isinstance(count_res, dict) else count_res[0]
+        
+        device = conn.execute('SELECT id FROM user_devices WHERE user_id = ? AND device_id = ?', 
+                              (user['id'], client_device_id)).fetchone()
+        
+        if not device:
+            if count >= 3:
+                print(f"[LOGIN] Device limit reached (3) for {email}") # DEBUG LOG
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'error': 'device_locked',
+                    'message': 'لقد وصلت للحد الأقصى من الأجهزة المسجلة (3 أجهزة).'
+                }), 403
+            
+            conn.execute('INSERT INTO user_devices (user_id, device_id) VALUES (?, ?)', (user['id'], client_device_id))
+            print(f"[LOGIN] Registered new device: {client_device_id}") # DEBUG LOG
+        else:
+            conn.execute('UPDATE user_devices SET last_used = CURRENT_TIMESTAMP WHERE id = ?', (dict(device)['id'],))
+            print(f"[LOGIN] Device already exists, updated last_used") # DEBUG LOG
+            
         conn.commit()
-    else:
-        # Already registered: Update last_used
-        conn.execute('UPDATE user_devices SET last_used = CURRENT_TIMESTAMP WHERE id = ?', (device['id'],))
-        conn.commit()
-    conn.close()
+    except Exception as e:
+        print(f"[LOGIN] EXCEPTION: {str(e)}") # DEBUG LOG
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
 
     # Generate Secure Auth Token
     token_data = {
         'id': user['id'],
         'email': user['email'],
         'role': user['role'],
-        'section_id': user['section_id']
+        'section_id': user.get('section_id')
     }
     auth_token = serializer.dumps(token_data, salt='auth-token')
 
+    print(f"[LOGIN] Login successful, generating token for {email}") # DEBUG LOG
+    
     resp = make_response(jsonify({
         'success': True,
-        'must_reset': bool(user['must_change_pw']),
+        'must_reset': bool(user.get('must_change_pw', 0)),
         'user': token_data
     }))
-    # Secure Cookie Configuration: Prevent XSS (HttpOnly) and CSRF (SameSite)
-    # Set to 365 days (31,536,000 seconds) for permanent "Remember Me" behavior
     resp.set_cookie('auth_token', auth_token, httponly=True, secure=False, samesite='Strict', max_age=31536000)
     return resp
 
