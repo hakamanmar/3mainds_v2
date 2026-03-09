@@ -105,21 +105,21 @@ const LoginPage = async () => {
                     <div style="position: relative; z-index: 2;">
                         <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #cbd5e1; font-size: 0.75rem; direction: ltr; margin-bottom: 1rem; opacity: 0.9;">
                             <span style="font-weight: 800; color: #fff;">CYBERSECURITY DEPT</span>
-                            <span style="width: 3px; height: 3px; background: #60a5fa; border-radius: 50%;"></span>
-                            <span>Supervised by: <strong style="color: #60a5fa;">Dr. Muhaned</strong></span>
+                            <span style="width: 3px; height: 3px; background: #4f46e5; border-radius: 50%;"></span>
+                            <span>Supervised by: <strong style="color: #4f46e5;">Dr. Muhaned</strong></span>
                         </div>
                         
                         <div style="display: flex; justify-content: center; gap: 1rem; flex-direction: row; direction: ltr; font-size: 0.85rem; white-space: nowrap;">
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
                                 Alhakam
                             </span>
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
                                 Mena Sabri
                             </span>
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #60a5fa;"></i>
+                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
                                 Danya Majed
                             </span>
                         </div>
