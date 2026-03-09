@@ -99,19 +99,28 @@ if USE_TURSO:
     print(f"[DB] Turso HTTP API enabled: {_turso_http_url}")
 
 def _turso_execute(statements):
-    """
-    Execute one or more SQL statements via Turso HTTP API.
-    statements = [{"q": "SELECT ...", "params": [...]}, ...]
-    Returns list of result sets.
-    """
     import urllib.request
     import urllib.error
-    body = json.dumps({
-        "requests": [
-            {"type": "execute", "stmt": {"sql": s["q"], "args": [{"type": "text", "value": str(p)} if isinstance(p, str) else {"type": "integer", "value": p} if isinstance(p, int) else {"type": "float", "value": p} if isinstance(p, float) else {"type": "null"} for p in s.get("params", [])]}}
-            for s in statements
-        ] + [{"type": "close"}]
-    }).encode()
+    
+    requests = []
+    for s in statements:
+        sql = s["q"]
+        params = s.get("params", [])
+        args = []
+        for p in params:
+            if p is None:
+                args.append({"type": "null"})
+            elif isinstance(p, int):
+                args.append({"type": "integer", "value": str(p)})
+            elif isinstance(p, float):
+                args.append({"type": "float", "value": p})
+            else:
+                args.append({"type": "text", "value": str(p)})
+        requests.append({"type": "execute", "stmt": {"sql": sql, "args": args}})
+    
+    requests.append({"type": "close"})
+    body = json.dumps({"requests": requests}).encode()
+    
     req = urllib.request.Request(
         _turso_http_url,
         data=body,
@@ -125,11 +134,12 @@ def _turso_execute(statements):
         return json.loads(resp.read())
 
 class TursoRow(dict):
-    """A dict that also supports attribute access (like sqlite3.Row)."""
+    """A dict that also supports both string and integer indexing (like sqlite3.Row)."""
     def __getitem__(self, key):
         if isinstance(key, int):
             return list(self.values())[key]
-        return super().__getitem__(key)
+        return super().get(key)
+    
     def keys(self):
         return super().keys()
 
@@ -151,7 +161,14 @@ class TursoHttpCursor:
                 cols = [c["name"] for c in response.get("cols", [])]
                 self.description = [(c, None, None, None, None, None, None) for c in cols]
                 for row in response.get("rows", []):
-                    vals = [v.get("value") for v in row]
+                    vals = []
+                    for v in row:
+                        val = v.get("value")
+                        # Handle Turso's string-encoded large integers
+                        if v.get("type") == "integer" and val is not None:
+                            try: val = int(val)
+                            except: pass
+                        vals.append(val)
                     self._rows.append(TursoRow(zip(cols, vals)))
                 # For INSERT, get lastrowid from affected rows
                 self.lastrowid = response.get("last_insert_rowid")
