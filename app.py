@@ -74,7 +74,7 @@ def add_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-# Detection of Vercel Environment
+# Detect hosting environment
 IS_VERCEL = "VERCEL" in os.environ
 
 if IS_VERCEL:
@@ -86,20 +86,110 @@ else:
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+
+# ─── Turso Cloud DB Support ──────────────────────────────────────────
+# When TURSO_DATABASE_URL is set (Vercel production), use Turso for persistent storage.
+# Otherwise, fall back to local SQLite (development).
+TURSO_DATABASE_URL = os.environ.get('TURSO_DATABASE_URL', '')
+TURSO_AUTH_TOKEN = os.environ.get('TURSO_AUTH_TOKEN', '')
+USE_TURSO = bool(TURSO_DATABASE_URL)
+
+class TursoConnectionWrapper:
+    """
+    A thin sqlite3-compatible wrapper around libsql_experimental (Turso).
+    Supports: execute, executemany, fetchone, fetchall, commit, close, cursor(), row_factory.
+    """
+    def __init__(self, url, auth_token):
+        import libsql_experimental as libsql
+        self._conn = libsql.connect(url, auth_token=auth_token)
+        self.row_factory = None
+
+    def cursor(self):
+        return TursoCursorWrapper(self._conn, self)
+
+    def execute(self, sql, params=()):
+        return TursoCursorWrapper(self._conn, self)._exec(sql, params)
+
+    def executemany(self, sql, seq_of_params):
+        cur = TursoCursorWrapper(self._conn, self)
+        for params in seq_of_params:
+            cur._exec(sql, params)
+        return cur
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+class TursoCursorWrapper:
+    def __init__(self, conn, wrapper):
+        self._conn = conn
+        self._wrapper = wrapper
+        self._cursor = conn.cursor()
+        self._rows = []
+        self.lastrowid = None
+
+    def _exec(self, sql, params=()):
+        self._cursor.execute(sql, params)
+        self.lastrowid = self._cursor.lastrowid
+        return self
+
+    def execute(self, sql, params=()):
+        return self._exec(sql, params)
+
+    def executemany(self, sql, seq_of_params):
+        for params in seq_of_params:
+            self._exec(sql, params)
+        return self
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        if self._wrapper.row_factory:
+            return self._wrapper.row_factory(self._cursor, row)
+        return row
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        if self._wrapper.row_factory:
+            return [self._wrapper.row_factory(self._cursor, r) for r in rows]
+        return rows
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            raise StopIteration
+        if self._wrapper.row_factory:
+            return self._wrapper.row_factory(self._cursor, row)
+        return row
+
+    def close(self):
+        pass
+
 def get_db():
-    # If on Vercel, check if DB exists in /tmp, if not, copy it from root if exists
-    if IS_VERCEL and not os.path.exists(DB_PATH):
-        if os.path.exists('academic.db'):
-            import shutil
-            shutil.copy('academic.db', DB_PATH)
-            
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    # Standard SQLite WAL mode for better concurrency
-    conn.execute('PRAGMA journal_mode=WAL;')
-    conn.execute('PRAGMA synchronous=NORMAL;')
-    conn.execute('PRAGMA foreign_keys=ON;')
-    return conn
+    if USE_TURSO:
+        # ✅ Vercel + Turso: persistent cloud SQLite
+        conn = TursoConnectionWrapper(TURSO_DATABASE_URL, TURSO_AUTH_TOKEN)
+        conn.row_factory = sqlite3.Row
+        return conn
+    else:
+        # ✅ Local development: regular SQLite file
+        if IS_VERCEL and not os.path.exists(DB_PATH):
+            if os.path.exists('academic.db'):
+                import shutil
+                shutil.copy('academic.db', DB_PATH)
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA journal_mode=WAL;')
+        conn.execute('PRAGMA synchronous=NORMAL;')
+        conn.execute('PRAGMA foreign_keys=ON;')
+        return conn
+
 
 def init_db():
     conn = get_db()
@@ -286,8 +376,8 @@ def init_db():
     c.execute('SELECT count(*) FROM subjects WHERE section_id="A_MORNING"')
     if c.fetchone()[0] == 0:
         subjects = [
-            ('تطبيقات الويب (A)', 'قسم أ صباحي', 'WEB-A', '#4F46E5', 'A_MORNING'),
-            ('هياكل البيانات', 'قسم أ صباحي', 'DS-101', '#10B981', 'A_MORNING')
+            ('تطبيقات الويب (A)', 'شعبة أ صباحي', 'WEB-A', '#4F46E5', 'A_MORNING'),
+            ('هياكل البيانات', 'شعبة أ صباحي', 'DS-101', '#10B981', 'A_MORNING')
         ]
         c.executemany('INSERT INTO subjects (title, description, code, color, section_id) VALUES (?, ?, ?, ?, ?)', subjects)
 
@@ -549,7 +639,7 @@ def add_subject():
         sid = data['section_id']
         
     if not data.get('title') or not sid:
-        return jsonify({'error': 'يجب إدخال اسم المادة والقسم'}), 400
+        return jsonify({'error': 'يجب إدخال اسم المادة والشعبة'}), 400
         
     conn = get_db()
     conn.execute('INSERT INTO subjects (title, description, code, color, section_id) VALUES (?, ?, ?, ?, ?)',
@@ -732,7 +822,7 @@ def add_announcement():
     target_date = data.get('target_date', None)
     
     if not content or not sid:
-        return jsonify({'error': 'المحتوى والقسم مطلوبان'}), 400
+        return jsonify({'error': 'المحتوى والشعبة مطلوبان'}), 400
         
     conn = get_db()
     conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, sid, target_date))
@@ -821,7 +911,7 @@ def delete_user():
     
     if ctx['role'] == 'section_admin' and user['section_id'] != ctx['section_id']:
         conn.close()
-        return jsonify({'error': 'لا يمكنك حذف مستخدم من قسم آخر'}), 403
+        return jsonify({'error': 'لا يمكنك حذف مستخدم من شعبة أخرى'}), 403
 
     conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
     conn.commit()
@@ -865,7 +955,7 @@ def add_user():
              
         # Roles that MUST have a section
         if role in ['student', 'teacher', 'section_admin'] and not section_id:
-             return jsonify({'error': 'يجب تحديد القسم لهذا النوع من الحسابات'}), 400
+             return jsonify({'error': 'يجب تحديد الشعبة لهذا النوع من الحسابات'}), 400
 
     conn = get_db()
     try:
