@@ -77,6 +77,14 @@ const SubjectPage = async (params) => {
                                 ${i18n.t('add_lesson')}
                             </button>
                         ` : ''}
+                        ${isSuper ? `
+                            <button class="btn btn-outline" id="edit-subject-btn" style="border-color: #f59e0b; color: #f59e0b;" title="${i18n.lang === 'ar' ? 'تعديل المادة' : 'Edit Subject'}">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn btn-outline" id="delete-subject-btn" style="border-color: #ef4444; color: #ef4444;" title="${i18n.lang === 'ar' ? 'حذف المادة' : 'Delete Subject'}">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -206,6 +214,64 @@ const SubjectPage = async (params) => {
 
 SubjectPage.init = (params) => {
     const subjectId = params.id;
+
+    // Edit Subject (Super Admin)
+    const editSubBtn = document.getElementById('edit-subject-btn');
+    if (editSubBtn) {
+        editSubBtn.onclick = async () => {
+            // Get current details (we already have them from subject object in SubjectPage scope, 
+            // but we need to pass them to init, or rather we can just re-extract from DOM if needed, 
+            // but better yet, let's just use the subject object if available. 
+            // Wait, subject object is inside the async SubjectPage function, not SubjectPage.init.
+            // I'll need to fetch it or pass it. 
+            // Actually, let's just fetch the subject again to be sure or use params.id.
+
+            const subData = await api.getSubject(subjectId);
+            const sub = subData.subject;
+
+            const res = await UI.modal(i18n.lang === 'ar' ? 'تعديل المادة' : 'Edit Subject', `
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('title')}</label>
+                    <input id="edit-s-title" value="${sub.title}" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('code')}</label>
+                    <input id="edit-s-code" value="${sub.code || ''}" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.t('description')}</label>
+                    <textarea id="edit-s-desc">${sub.description || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">${i18n.lang === 'ar' ? 'لون المادة' : 'Subject Color'}</label>
+                    <input type="color" id="edit-s-color" value="${sub.color || '#4f46e5'}" style="height:45px;" />
+                </div>
+            `, async () => {
+                const title = document.getElementById('edit-s-title').value.trim();
+                const code = document.getElementById('edit-s-code').value.trim();
+                const description = document.getElementById('edit-s-desc').value.trim();
+                const color = document.getElementById('edit-s-color').value;
+
+                if (!title) return false;
+                await api.updateSubject(subjectId, { title, code, description, color });
+                return true;
+            });
+            if (res) window.location.reload();
+        };
+    }
+
+    // Delete Subject (Super Admin)
+    const delSubBtn = document.getElementById('delete-subject-btn');
+    if (delSubBtn) {
+        delSubBtn.onclick = async () => {
+            const confirmed = await UI.confirm(i18n.lang === 'ar' ? 'هل أنت متأكد من حذف هذه المادة وجميع دروسها؟' : 'Are you sure you want to delete this subject and all its lessons?');
+            if (confirmed) {
+                await api.deleteSubject(subjectId);
+                UI.toast(i18n.lang === 'ar' ? 'تم حذف المادة' : 'Subject deleted');
+                window.router.navigate('/');
+            }
+        };
+    }
 
     // Add Lesson button - now with file upload
     const addBtn = document.getElementById('add-lesson-here-btn');
