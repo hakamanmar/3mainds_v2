@@ -209,15 +209,16 @@ main#main-content {
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: var(--primary-gradient);
     color: white;
-    box-shadow: var(--shadow-primary);
+    box-shadow: var(--primary-shadow);
+    border: none;
 }
 
 .btn-primary:hover {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(79, 70, 229, 0.4);
+    filter: brightness(1.1);
 }
 
 .btn-ghost {
