@@ -87,113 +87,141 @@ else:
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
-# ─── Turso Cloud DB Support ──────────────────────────────────────────
+# ─── Turso Cloud DB via HTTP API ─────────────────────────────────────
+# Uses Turso's HTTP API — no compiled packages needed, works on Vercel!
 TURSO_DATABASE_URL = os.environ.get('TURSO_DATABASE_URL', '')
-TURSO_AUTH_TOKEN = os.environ.get('TURSO_AUTH_TOKEN', '')
-USE_TURSO = bool(TURSO_DATABASE_URL)
+TURSO_AUTH_TOKEN   = os.environ.get('TURSO_AUTH_TOKEN', '')
+USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
 
-# Try to import libsql_experimental (needed only for Turso)
-_libsql = None
 if USE_TURSO:
-    try:
-        import libsql_experimental as _libsql
-        print("[DB] libsql_experimental loaded — using Turso cloud database ✅")
-    except ImportError:
-        print("[DB] WARNING: libsql_experimental not found, falling back to local SQLite")
-        USE_TURSO = False
+    # Convert libsql:// to https:// for HTTP API
+    _turso_http_url = TURSO_DATABASE_URL.replace('libsql://', 'https://') + '/v2/pipeline'
+    print(f"[DB] Turso HTTP API enabled: {_turso_http_url}")
 
-class TursoConnectionWrapper:
-    """sqlite3-compatible wrapper for libsql_experimental (Turso)."""
-    def __init__(self, url, auth_token):
-        self._conn = _libsql.connect(url, auth_token=auth_token)
-        self.row_factory = None
+def _turso_execute(statements):
+    """
+    Execute one or more SQL statements via Turso HTTP API.
+    statements = [{"q": "SELECT ...", "params": [...]}, ...]
+    Returns list of result sets.
+    """
+    import urllib.request
+    import urllib.error
+    body = json.dumps({
+        "requests": [
+            {"type": "execute", "stmt": {"sql": s["q"], "args": [{"type": "text", "value": str(p)} if isinstance(p, str) else {"type": "integer", "value": p} if isinstance(p, int) else {"type": "float", "value": p} if isinstance(p, float) else {"type": "null"} for p in s.get("params", [])]}}
+            for s in statements
+        ] + [{"type": "close"}]
+    }).encode()
+    req = urllib.request.Request(
+        _turso_http_url,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
 
-    def cursor(self):
-        return TursoCursorWrapper(self._conn, self)
+class TursoRow(dict):
+    """A dict that also supports attribute access (like sqlite3.Row)."""
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+    def keys(self):
+        return super().keys()
+
+class TursoHttpCursor:
+    def __init__(self):
+        self._rows = []
+        self._idx = 0
+        self.lastrowid = None
+        self.description = None
 
     def execute(self, sql, params=()):
-        return TursoCursorWrapper(self._conn, self)._exec(sql, params)
-
-    def executemany(self, sql, seq_of_params):
-        cur = TursoCursorWrapper(self._conn, self)
-        for params in seq_of_params:
-            cur._exec(sql, params)
-        return cur
-
-    def commit(self):
+        self._rows = []
+        self._idx = 0
         try:
-            self._conn.commit()
-        except Exception:
-            pass
-
-    def close(self):
-        try:
-            self._conn.close()
-        except Exception:
-            pass
-
-class TursoCursorWrapper:
-    def __init__(self, conn, wrapper):
-        self._conn = conn
-        self._wrapper = wrapper
-        self._cursor = conn.cursor()
-        self.lastrowid = None
-
-    def _exec(self, sql, params=()):
-        self._cursor.execute(sql, params)
-        try:
-            self.lastrowid = self._cursor.lastrowid
-        except Exception:
-            self.lastrowid = None
+            result = _turso_execute([{"q": sql, "params": list(params)}])
+            res = result.get("results", [{}])[0]
+            if res.get("type") == "ok":
+                response = res.get("response", {}).get("result", {})
+                cols = [c["name"] for c in response.get("cols", [])]
+                self.description = [(c, None, None, None, None, None, None) for c in cols]
+                for row in response.get("rows", []):
+                    vals = [v.get("value") for v in row]
+                    self._rows.append(TursoRow(zip(cols, vals)))
+                # For INSERT, get lastrowid from affected rows
+                self.lastrowid = response.get("last_insert_rowid")
+        except Exception as e:
+            print(f"[Turso] execute error: {e}, sql={sql[:80]}")
+            raise
         return self
 
-    def execute(self, sql, params=()):
-        return self._exec(sql, params)
-
     def executemany(self, sql, seq_of_params):
         for params in seq_of_params:
-            self._exec(sql, params)
+            self.execute(sql, params)
         return self
 
     def fetchone(self):
-        row = self._cursor.fetchone()
-        if row is None:
-            return None
-        if self._wrapper.row_factory:
-            return self._wrapper.row_factory(self._cursor, row)
-        return row
+        if self._idx < len(self._rows):
+            row = self._rows[self._idx]
+            self._idx += 1
+            return row
+        return None
 
     def fetchall(self):
-        rows = self._cursor.fetchall()
-        if self._wrapper.row_factory:
-            return [self._wrapper.row_factory(self._cursor, r) for r in rows]
+        rows = self._rows[self._idx:]
+        self._idx = len(self._rows)
         return rows
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        row = self._cursor.fetchone()
+        row = self.fetchone()
         if row is None:
             raise StopIteration
-        if self._wrapper.row_factory:
-            return self._wrapper.row_factory(self._cursor, row)
         return row
 
     def close(self):
         pass
 
-def get_db():
-    if USE_TURSO and _libsql is not None:
-        # ✅ Vercel + Turso: persistent cloud SQLite
-        try:
-            conn = TursoConnectionWrapper(TURSO_DATABASE_URL, TURSO_AUTH_TOKEN)
-            conn.row_factory = sqlite3.Row
-            return conn
-        except Exception as e:
-            print(f"[DB] Turso connection failed: {e}, falling back to local SQLite")
+class TursoHttpConnection:
+    def __init__(self):
+        self._pending = []
+        self.row_factory = None
+        self._cursor = TursoHttpCursor()
 
-    # ✅ Fallback: local SQLite
+    def cursor(self):
+        return TursoHttpCursor()
+
+    def execute(self, sql, params=()):
+        cur = TursoHttpCursor()
+        cur.execute(sql, params)
+        return cur
+
+    def executemany(self, sql, seq_of_params):
+        cur = TursoHttpCursor()
+        cur.executemany(sql, seq_of_params)
+        return cur
+
+    def commit(self):
+        pass  # Each HTTP call is auto-committed
+
+    def close(self):
+        pass
+
+def get_db():
+    if USE_TURSO:
+        try:
+            return TursoHttpConnection()
+        except Exception as e:
+            print(f"[DB] Turso HTTP failed: {e}, using local SQLite")
+
+    # Fallback: local SQLite
     if IS_VERCEL and not os.path.exists(DB_PATH):
         if os.path.exists('academic.db'):
             import shutil
@@ -204,7 +232,6 @@ def get_db():
     conn.execute('PRAGMA synchronous=NORMAL;')
     conn.execute('PRAGMA foreign_keys=ON;')
     return conn
-
 
 
 def init_db():
