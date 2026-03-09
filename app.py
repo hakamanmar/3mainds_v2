@@ -427,8 +427,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Initialize the database immediately
-init_db()
+# Initialize the database (safe - app continues even if this fails)
+try:
+    init_db()
+    print("[DB] init_db() completed successfully")
+except Exception as e:
+    print(f"[DB] WARNING: init_db() failed: {e}")
+    print("[DB] App will continue - tables may need initialization on first request")
 
 # ─── System Auditing ──────────────────────────────────────────
 def audit_log(action, payload=None, risk_score="LOW"):
@@ -1005,8 +1010,10 @@ def add_user():
         conn.execute('INSERT INTO users (email, password, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?)',
                      (email, generate_password_hash(password), role, section_id, 0))
         conn.commit()
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'هذا البريد الإلكتروني مسجّل مسبقاً'}), 400
+    except Exception as e:
+        if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
+            return jsonify({'error': 'هذا البريد الإلكتروني مسجّل مسبقاً'}), 400
+        return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
     return jsonify({'success': True})
@@ -1194,11 +1201,14 @@ def submit_homework():
         conn.execute('INSERT INTO submissions (assignment_id, student_id, file_url) VALUES (?,?,?)',
                      (assignment_id, student_id, file_url))
         conn.commit()
-    except sqlite3.IntegrityError:
-        # Update if already exists
-        conn.execute('UPDATE submissions SET file_url = ?, submitted_at = CURRENT_TIMESTAMP WHERE assignment_id = ? AND student_id = ?',
-                     (file_url, assignment_id, student_id))
-        conn.commit()
+    except Exception as e:
+        if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower():
+            conn.execute('UPDATE submissions SET file_url = ?, submitted_at = CURRENT_TIMESTAMP WHERE assignment_id = ? AND student_id = ?',
+                         (file_url, assignment_id, student_id))
+            conn.commit()
+        else:
+            conn.close()
+            return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
     return jsonify({'success': True})
