@@ -7,12 +7,17 @@ const subjectIcons = ['ph-atom', 'ph-code', 'ph-calculator', 'ph-flask', 'ph-boo
 const HomePage = async () => {
     let subjects = [];
     let announcements = [];
+    let activeAttendance = null;
 
     try {
-        [subjects, announcements] = await Promise.all([
+        const results = await Promise.all([
             api.getSubjects(),
-            api.getAnnouncements()
+            api.getAnnouncements(),
+            fetch('/api/attendance/active-for-me').then(r => r.json())
         ]);
+        subjects = results[0];
+        announcements = results[1];
+        if (results[2].active) activeAttendance = results[2].session;
     } catch (e) {
         console.error(e);
         return `<div class="error-state">
@@ -50,8 +55,35 @@ const HomePage = async () => {
 
     const welcomeName = user ? user.email.split('@')[0] : '';
 
+    const attendanceBanner = activeAttendance ? `
+        <div class="attendance-alert-banner" 
+             style="background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%); color: white; padding: 1.25rem; border-radius: 16px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.2); animation: slideDown 0.5s ease-out; position: relative; overflow: hidden;">
+            <div style="position: absolute; top:0; left:0; right:0; bottom:0; background: url('https://www.transparenttextures.com/patterns/cubes.png'); opacity: 0.1;"></div>
+            <div style="display: flex; align-items: center; gap: 1rem; position: relative; z-index: 1;">
+                <div class="pulse-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    <i class="ph ph-qr-code"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.5px;">${i18n.lang === 'ar' ? 'بدأ تسجيل الحضور الآن!' : 'Attendance counts now!'}</h4>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">${i18n.lang === 'ar' ? `مادة ${activeAttendance.subject_title}` : `Subject: ${activeAttendance.subject_title}`}</p>
+                </div>
+            </div>
+            <button class="btn btn-light" data-path="/subject/${activeAttendance.subject_id}?action=scan" 
+                    style="position: relative; z-index: 1; font-weight: 700; background: white; color: #4f46e5; border: none; padding: 0.6rem 1.2rem; border-radius: 10px; display: flex; align-items: center; gap: 8px; transition: transform 0.2s;">
+                <i class="ph ph-rocket-launch"></i>
+                ${i18n.lang === 'ar' ? 'سجل حضورك' : 'Register Now'}
+            </button>
+        </div>
+        <style>
+            @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            .pulse-icon { animation: pulseAnim 2s infinite; }
+            @keyframes pulseAnim { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); } 70% { box-shadow: 0 0 0 15px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+        </style>
+    ` : '';
+
     if (subjects.length === 0) {
         return `
+            ${attendanceBanner}
             ${announcementsHTML}
             <div class="empty-state">
                 <i class="ph ph-books"></i>
@@ -62,6 +94,7 @@ const HomePage = async () => {
     }
 
     return `
+        ${attendanceBanner}
         ${announcementsHTML}
 
         <div class="page-header">
