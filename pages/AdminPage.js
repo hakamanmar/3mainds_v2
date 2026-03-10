@@ -159,8 +159,9 @@ const AdminPage = async () => {
                                     <div style="display:flex; align-items:center; gap: 0.75rem;">
                                         <i class="ph ph-circle-wavy-check" style="font-size:1.5rem; color: var(--primary);"></i>
                                         <div>
-                                            <div style="font-weight:600; font-size:1rem;">${u.email}</div>
-                                            <div style="display:flex; gap:0.4rem; margin-top:4px;">
+                                            <div style="font-weight:700; font-size:1rem;">${u.full_name || u.email}</div>
+                                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">${u.email}</div>
+                                            <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
                                                 <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
                                                 ${u.section_id ? `<span class="badge badge-light">${i18n.t(u.section_id)}</span>` : ''}
                                                  <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
@@ -174,7 +175,7 @@ const AdminPage = async () => {
                                     <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
                                         <i class="ph ph-arrows-counter-clockwise"></i>
                                     </button>
-                                    <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.email}">
+                                    <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.full_name || u.email}">
                                         <i class="ph ph-trash"></i>
                                     </button>
                                 </div>
@@ -393,55 +394,105 @@ AdminPage.init = () => {
     if (addUserBtn) {
         addUserBtn.addEventListener('click', async () => {
             const sections = await api.getSections();
+            const subjects = await api.getSubjects();
+            const currentUser = auth.getUser();
+
             const result = await UI.modal(i18n.t('create_account'), `
-                <div class="form-group">
-                    <label class="form-label">${i18n.t('email')}</label>
-                    <input type="email" id="u-email" placeholder="user@3minds.edu" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">${i18n.t('password')}</label>
-                    <input type="password" id="u-pass" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">${i18n.t('admin_panel')} - ${i18n.t('role') || 'Role'}</label>
-                    <select id="u-role" class="form-input">
-                        <option value="student">${i18n.t('student')}</option>
-                        <option value="teacher">${i18n.t('teacher')}</option>
-                        ${user.role === 'super_admin' ? `
-                            <option value="committee">${i18n.t('committee')}</option>
-                            <option value="section_admin">${i18n.t('section_admin')}</option>
-                            <option value="super_admin">${i18n.t('super_admin')}</option>
-                        ` : ''}
-                    </select>
-                </div>
-                <div class="form-group" id="section-select-wrapper">
-                    <label class="form-label">${i18n.t('select_section')}</label>
-                    <select id="u-section" class="form-input">
-                        <option value="">${i18n.t('no_section')}</option>
-                        ${sections.map(s => `<option value="${s.id}">${i18n.t(s.id)}</option>`).join('')}
-                    </select>
+                <style>
+                    .create-user-form .form-group { margin-bottom: 1rem; }
+                    .create-user-form label { font-weight: 600; font-size: 0.85rem; color: var(--text-muted); display:block; margin-bottom: 0.35rem; }
+                    .create-user-form input, .create-user-form select { width: 100%; padding: 0.7rem 1rem; border: 1.5px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 0.95rem; }
+                    .create-user-form input:focus, .create-user-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
+                    .form-section-title { font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+                    .multi-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; }
+                    .section-checkbox { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+                    .section-checkbox:hover { border-color: var(--primary); background: rgba(79,70,229,0.05); }
+                    .section-checkbox input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); }
+                    .section-checkbox.checked { border-color: var(--primary); background: rgba(79,70,229,0.08); }
+                </style>
+                <div class="create-user-form">
+                    <div class="form-section-title"><i class="ph ph-user"></i> المعلومات الشخصية</div>
+                    <div class="form-group">
+                        <label>الاسم الثلاثي (الاسم + اسم الأب + اسم العائلة)</label>
+                        <input type="text" id="u-fullname" placeholder="مثال: أحمد علي حسن" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label>${i18n.t('email')}</label>
+                        <input type="email" id="u-email" placeholder="user@3minds.edu" />
+                    </div>
+                    <div class="form-group">
+                        <label>${i18n.t('password')}</label>
+                        <input type="password" id="u-pass" placeholder="8+ أحرف" />
+                    </div>
+
+                    <div class="form-section-title"><i class="ph ph-shield"></i> الدور والصلاحيات</div>
+                    <div class="form-group">
+                        <label>${i18n.t('role')}</label>
+                        <select id="u-role" class="form-input">
+                            <option value="student">${i18n.t('student')}</option>
+                            <option value="teacher">${i18n.t('teacher')}</option>
+                            ${currentUser.role === 'super_admin' ? `
+                                <option value="committee">${i18n.t('committee')}</option>
+                                <option value="head_dept">${i18n.t('head_dept')}</option>
+                                <option value="section_admin">${i18n.t('section_admin')}</option>
+                                <option value="super_admin">${i18n.t('super_admin')}</option>
+                            ` : ''}
+                        </select>
+                    </div>
+
+                    <div id="section-select-wrapper">
+                        <div class="form-section-title"><i class="ph ph-circles-four"></i> الشعبة</div>
+                        <div class="form-group">
+                            <label>اختر الشعبة المرتبطة بالمستخدم</label>
+                            <select id="u-section" class="form-input">
+                                <option value="">${i18n.t('no_section')}</option>
+                                ${sections.map(s => `<option value="${s.id}">${i18n.t(s.id)}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="subject-assign-wrapper" style="display:none;">
+                        <div class="form-section-title"><i class="ph ph-books"></i> تعيين مادة دراسية</div>
+                        <div class="form-group">
+                            <label>اختر المادة التي سيدرّسها (اختياري)</label>
+                            <select id="u-subject" class="form-input">
+                                <option value="">-- بدون تعيين مادة الآن --</option>
+                                ${subjects.map(s => `<option value="${s.id}">${s.title} (${i18n.t(s.section_id)})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             `, async () => {
+                const full_name = document.getElementById('u-fullname').value.trim();
                 const email = document.getElementById('u-email').value.trim();
                 const pass = document.getElementById('u-pass').value;
                 const role = document.getElementById('u-role').value;
                 const sid = document.getElementById('u-section').value;
-                if (!email || !pass) return false;
-                await api.addUser(email, pass, role, sid);
+                const subjectEl = document.getElementById('u-subject');
+                const subject_id = subjectEl ? subjectEl.value : null;
+
+                if (!full_name) { UI.toast('الاسم الثلاثي مطلوب', 'error'); return false; }
+                if (!email || !pass) { UI.toast('البريد وكلمة المرور مطلوبان', 'error'); return false; }
+                await api.addUser(email, pass, role, sid, full_name, subject_id || null);
                 return true;
             });
             if (result) location.reload();
 
-            // UI logic to hide section for global roles (super admin and committee)
+            // UI logic: toggle section/subject based on role
             const roleSel = document.getElementById('u-role');
             const sidWrapper = document.getElementById('section-select-wrapper');
-            if (roleSel && sidWrapper) {
-                // Initial check
-                sidWrapper.style.display = (roleSel.value === 'super_admin' || roleSel.value === 'committee') ? 'none' : 'block';
+            const subjectWrapper = document.getElementById('subject-assign-wrapper');
 
-                roleSel.addEventListener('change', () => {
-                    sidWrapper.style.display = (roleSel.value === 'super_admin' || roleSel.value === 'committee') ? 'none' : 'block';
-                });
+            const updateVisibility = () => {
+                const r = roleSel ? roleSel.value : '';
+                const globalRoles = ['super_admin', 'committee', 'head_dept'];
+                if (sidWrapper) sidWrapper.style.display = globalRoles.includes(r) ? 'none' : 'block';
+                if (subjectWrapper) subjectWrapper.style.display = r === 'teacher' ? 'block' : 'none';
+            };
+
+            if (roleSel) {
+                updateVisibility();
+                roleSel.addEventListener('change', updateVisibility);
             }
         });
     }
