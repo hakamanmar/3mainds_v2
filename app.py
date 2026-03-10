@@ -342,26 +342,35 @@ def init_db():
         )
     ''')
     
-    # Add target_date column if it doesn't exist (SQLite only)
-    if not USE_TURSO:
-        try:
-            c.execute('SELECT target_date FROM announcements LIMIT 1')
-        except Exception:
-            c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
+    # Add target_date column if it doesn't exist
+    try:
+        c.execute('SELECT target_date FROM announcements LIMIT 1')
+    except Exception:
+        c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
 
-    # Add instructor_id column if it doesn't exist (SQLite only)
-    if not USE_TURSO:
-        try:
-            c.execute('SELECT instructor_id FROM subjects LIMIT 1')
-        except Exception:
-            c.execute('ALTER TABLE subjects ADD COLUMN instructor_id INTEGER REFERENCES users(id)')
+    # Add instructor_id column if it doesn't exist
+    try:
+        c.execute('SELECT instructor_id FROM subjects LIMIT 1')
+    except Exception:
+        c.execute('ALTER TABLE subjects ADD COLUMN instructor_id INTEGER REFERENCES users(id)')
 
-    # Add full_name column to users if it doesn't exist (SQLite only)
-    if not USE_TURSO:
-        try:
-            c.execute('SELECT full_name FROM users LIMIT 1')
-        except Exception:
-            c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
+    # Add full_name column to users if it doesn't exist
+    try:
+        c.execute('SELECT full_name FROM users LIMIT 1')
+    except Exception:
+        c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
+
+    # 13. User-Sections Junction Table (For multi-section support)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_sections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            section_id TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
+            UNIQUE(user_id, section_id)
+        )
+    ''')
 
     # 14. Instructor-Courses Junction Table (Many-to-Many)
     c.execute('''
@@ -1087,33 +1096,61 @@ def get_users():
     ctx = get_user_context()
     sid = request.args.get('section_id') or ctx['section_id']
     conn = get_db()
+    
+    # We will fetch all users first, then attach multiple sections
     if ctx['role'] in ['super_admin', 'head_dept']:
         if sid:
-            # Show users of the section PLUS global roles (they are relevant everywhere)
+            # Show users of the section PLUS global roles
+            # Also need to check if they belong to this section via user_sections
             users = conn.execute('''
-                SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
+                SELECT DISTINCT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
                 FROM users u 
-                WHERE u.section_id = ? OR u.role IN ('super_admin', 'committee', 'head_dept')
+                LEFT JOIN user_sections us ON u.id = us.user_id
+                WHERE u.section_id = ? OR us.section_id = ? OR u.role IN ('super_admin', 'committee', 'head_dept')
                 ORDER BY u.role DESC, u.email ASC
-            ''', (sid,)).fetchall()
+            ''', (sid, sid)).fetchall()
         else:
             users = conn.execute('''
-                SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
+                SELECT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
                 FROM users u
                 ORDER BY u.role DESC, u.email ASC
             ''').fetchall()
     else:
-        # Section Admin only sees users of their section (they don't need to see other global admins)
+        # Section Admin only sees users of their section
         users = conn.execute('''
-            SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
+            SELECT DISTINCT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
             (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
-            FROM users u WHERE u.section_id = ?
+            FROM users u 
+            LEFT JOIN user_sections us ON u.id = us.user_id
+            WHERE u.section_id = ? OR us.section_id = ?
             ORDER BY u.role DESC, u.email ASC
-        ''', (sid,)).fetchall()
+        ''', (sid, sid)).fetchall()
+
+    # Fetch all user_sections relations to populate a list for each user
+    us_rows = conn.execute('SELECT user_id, section_id FROM user_sections').fetchall()
     conn.close()
-    return jsonify([dict(u) for u in users])
+
+    us_map = {}
+    for r in us_rows:
+        ur_row = dict(r)
+        if ur_row['user_id'] not in us_map:
+            us_map[ur_row['user_id']] = []
+        us_map[ur_row['user_id']].append(ur_row['section_id'])
+
+    result = []
+    for u in users:
+        ur = dict(u)
+        uid = ur['id']
+        sections_list = list(us_map.get(uid, []))
+        primary = ur.get('primary_section')
+        if primary and primary not in sections_list:
+            sections_list.append(primary)
+        ur['sections'] = sections_list
+        result.append(ur)
+
+    return jsonify(result)
 
 @app.route('/api/users', methods=['DELETE'])
 @require_role('section_admin', 'super_admin')
@@ -1153,13 +1190,19 @@ def add_user():
     password = data.get('password', '')
     role = data.get('role', 'student')
     full_name = data.get('full_name', '').strip()
-    section_id = data.get('section_id')
-    if section_id == "": # Clean up empty strings from frontend
-        section_id = None
+    
+    # Handle multi-section
+    section_ids = data.get('section_ids', [])
+    if not section_ids and data.get('section_id'):
+        section_ids = [data.get('section_id')]
         
-    # If still None, fall back to creator's section (for teachers/students by section admins)
-    if not section_id:
-        section_id = ctx['section_id']
+    section_ids = [s for s in section_ids if s]  # Clean empty strings
+    primary_section = section_ids[0] if section_ids else None
+        
+    # If no section provided and creator is section_admin, force their section
+    if not primary_section and ctx['role'] == 'section_admin':
+        primary_section = ctx['section_id']
+        section_ids = [primary_section]
 
     if not email or not password or not role:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
@@ -1169,59 +1212,68 @@ def add_user():
 
     # Global roles (super_admin, committee, head_dept) never have a section_id
     if role in ['super_admin', 'committee', 'head_dept']:
-        section_id = None
+        primary_section = None
+        section_ids = []
 
     # Permission Checks
     if ctx['role'] == 'section_admin':
         # Section Admin can only create Students and Teachers for THEIR section
         if role not in ['student', 'teacher']:
             return jsonify({'error': 'ليس لديك صلاحية لإنشاء هذا النوع من الحسابات'}), 403
-        section_id = ctx['section_id'] # Force their own section
+        
+        # Enforce that all sections they assign are their own (usually just 1)
+        if any(s != ctx['section_id'] for s in section_ids):
+            return jsonify({'error': 'لا يمكنك إضافة مستخدم لشعبة لا تديرها'}), 403
+            
+        primary_section = ctx['section_id'] # Force their own section
+        section_ids = [primary_section]
+        
     elif ctx['role'] == 'head_dept':
         # Head of Dept can create teachers and students but NOT super admins
         if role in ['super_admin']:
             return jsonify({'error': 'ليس لديك صلاحية لإنشاء حساب مشرف عام'}), 403
-        if role in ['student', 'teacher', 'section_admin'] and not section_id:
+        if role in ['student', 'teacher', 'section_admin'] and not primary_section:
             return jsonify({'error': 'يجب تحديد الشعبة لهذا النوع من الحسابات'}), 400
+            
     elif ctx['role'] == 'super_admin':
         # ONLY the master super account (super@3minds.edu) can create other super_admins
         if role == 'super_admin' and ctx['email'] != 'super@3minds.edu':
              return jsonify({'error': 'ليس لديك صلاحية لإنشاء حساب مشرف عام جديد. هذا من صلاحيات المشرف الرئيسي فقط.'}), 403
              
         # Roles that MUST have a section
-        if role in ['student', 'teacher', 'section_admin'] and not section_id:
+        if role in ['student', 'teacher', 'section_admin'] and not primary_section:
              return jsonify({'error': 'يجب تحديد الشعبة لهذا النوع من الحسابات'}), 400
 
     conn = get_db()
     try:
         conn.execute('INSERT INTO users (email, password, full_name, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?, ?)',
-                     (email, generate_password_hash(password), full_name, role, section_id, 0))
+                     (email, generate_password_hash(password), full_name, role, primary_section, 0))
         conn.commit()
         
-        # If creating a teacher, assign courses via instructor_courses table
-        if role == 'teacher':
-            new_user = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
-            if new_user:
-                new_uid = dict(new_user)['id']
-                # Support both subject_ids (list) and legacy subject_id (single)
+        # Get the new user ID
+        new_user = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+        if new_user:
+            new_uid = dict(new_user)['id']
+            
+            # 1. Insert Multi-Sections
+            for s_id in section_ids:
+                conn.execute('INSERT OR IGNORE INTO user_sections (user_id, section_id) VALUES (?, ?)', (new_uid, s_id))
+            
+            # 2. Insert Instructor Courses (if teacher)
+            if role == 'teacher':
                 subject_ids = data.get('subject_ids', [])
                 if not subject_ids and data.get('subject_id'):
                     subject_ids = [data['subject_id']]
                 
                 for i, cid in enumerate(subject_ids):
                     if cid:
-                        # Insert into junction table
-                        conn.execute(
-                            'INSERT OR IGNORE INTO instructor_courses (instructor_id, course_id) VALUES (?, ?)',
-                            (new_uid, cid)
-                        )
+                        conn.execute('INSERT OR IGNORE INTO instructor_courses (instructor_id, course_id) VALUES (?, ?)', (new_uid, cid))
                         # Set instructor_id on first course as primary (legacy support)
                         if i == 0:
-                            conn.execute(
-                                'UPDATE subjects SET instructor_id = ? WHERE id = ?',
-                                (new_uid, cid)
-                            )
-                conn.commit()
+                            conn.execute('UPDATE subjects SET instructor_id = ? WHERE id = ?', (new_uid, cid))
+            
+            conn.commit()
+            
     except Exception as e:
         if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
             return jsonify({'error': 'هذا البريد الإلكتروني مسجّل مسبقاً'}), 400
