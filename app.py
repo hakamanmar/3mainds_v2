@@ -280,8 +280,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT NOT NULL, -- super_admin, section_admin, teacher, student, committee
-            section_id TEXT,    -- Link to sections, NULL for super_admin
+            full_name TEXT DEFAULT '',
+            role TEXT NOT NULL, -- super_admin, head_dept, section_admin, teacher, student, committee
+            section_id TEXT,    -- Link to sections, NULL for super_admin/head_dept/committee
             device_id TEXT,
             must_change_pw INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -354,6 +355,13 @@ def init_db():
             c.execute('SELECT instructor_id FROM subjects LIMIT 1')
         except Exception:
             c.execute('ALTER TABLE subjects ADD COLUMN instructor_id INTEGER REFERENCES users(id)')
+
+    # Add full_name column to users if it doesn't exist (SQLite only)
+    if not USE_TURSO:
+        try:
+            c.execute('SELECT full_name FROM users LIMIT 1')
+        except Exception:
+            c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
 
     # 6. Attendance Sessions (Linked to subject)
     c.execute('''
@@ -991,19 +999,19 @@ def get_users():
     ctx = get_user_context()
     sid = request.args.get('section_id') or ctx['section_id']
     conn = get_db()
-    if ctx['role'] == 'super_admin':
+    if ctx['role'] in ['super_admin', 'head_dept']:
         if sid:
             # Show users of the section PLUS global roles (they are relevant everywhere)
             users = conn.execute('''
-                SELECT u.id, u.email, u.role, u.section_id, u.created_at,
+                SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
                 FROM users u 
-                WHERE u.section_id = ? OR u.role IN ('super_admin', 'committee')
+                WHERE u.section_id = ? OR u.role IN ('super_admin', 'committee', 'head_dept')
                 ORDER BY u.role DESC, u.email ASC
             ''', (sid,)).fetchall()
         else:
             users = conn.execute('''
-                SELECT u.id, u.email, u.role, u.section_id, u.created_at,
+                SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
                 FROM users u
                 ORDER BY u.role DESC, u.email ASC
@@ -1011,7 +1019,7 @@ def get_users():
     else:
         # Section Admin only sees users of their section (they don't need to see other global admins)
         users = conn.execute('''
-            SELECT u.id, u.email, u.role, u.section_id, u.created_at,
+            SELECT u.id, u.email, u.full_name, u.role, u.section_id, u.created_at,
             (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
             FROM users u WHERE u.section_id = ?
             ORDER BY u.role DESC, u.email ASC
@@ -1056,6 +1064,7 @@ def add_user():
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
     role = data.get('role', 'student')
+    full_name = data.get('full_name', '').strip()
     section_id = data.get('section_id')
     if section_id == "": # Clean up empty strings from frontend
         section_id = None
@@ -1066,6 +1075,9 @@ def add_user():
 
     if not email or not password or not role:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
+    
+    if not full_name:
+        return jsonify({'error': 'الاسم الثلاثي مطلوب'}), 400
 
     # Global roles (super_admin, committee, head_dept) never have a section_id
     if role in ['super_admin', 'committee', 'head_dept']:
@@ -1094,8 +1106,8 @@ def add_user():
 
     conn = get_db()
     try:
-        conn.execute('INSERT INTO users (email, password, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?)',
-                     (email, generate_password_hash(password), role, section_id, 0))
+        conn.execute('INSERT INTO users (email, password, full_name, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?, ?)',
+                     (email, generate_password_hash(password), full_name, role, section_id, 0))
         conn.commit()
         # If creating a teacher and a subject_id was provided, assign the instructor
         if role == 'teacher' and data.get('subject_id'):
