@@ -158,11 +158,20 @@ export const api = {
     async deleteUser(id) {
         return this._fetch(`${API_BASE}/users?id=${id}`, { method: 'DELETE' });
     },
-    async addUser(email, password, role, section_id, full_name = '', subject_id = null) {
+    async addUser(email, password, role, section_id, full_name = '', subject_ids = []) {
         return this._fetch(`${API_BASE}/admin/add-user`, {
             method: 'POST',
-            body: JSON.stringify({ email, password, role, section_id, full_name, subject_id })
+            body: JSON.stringify({ email, password, role, section_id, full_name, subject_ids })
         });
+    },
+    async assignInstructorCourses(instructor_id, course_ids) {
+        return this._fetch(`${API_BASE}/instructor-courses`, {
+            method: 'POST',
+            body: JSON.stringify({ instructor_id, course_ids })
+        });
+    },
+    async getMyCourses() {
+        return this._fetch(`${API_BASE}/my-courses`);
     },
     async resetDevice(user_id) {
         return this._fetch(`${API_BASE}/admin/reset-device`, { method: 'POST', body: JSON.stringify({ user_id }) });
