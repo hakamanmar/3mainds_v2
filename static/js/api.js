@@ -226,12 +226,12 @@ export const api = {
     async getActiveSession(subjectId) {
         return this._fetch(`${API_BASE}/attendance/active/${subjectId}`);
     },
- 
-        async getSectionStudents(sectionId) {
-                    let url = `${API_BASE}/attendance/section-students`;
-                    if (sectionId) url += `?section_id=${sectionId}`;
-                    return this._fetch(url);
-        },
+
+    async getSectionStudents(sectionId) {
+        let url = `${API_BASE}/attendance/section-students`;
+        if (sectionId) url += `?section_id=${sectionId}`;
+        return this._fetch(url);
+    },
     async manualMarkAttendance(data) {
         return this._fetch(`${API_BASE}/attendance/manual-mark`, { method: 'POST', body: JSON.stringify(data) });
     },
@@ -272,4 +272,3 @@ export const api = {
         return this._fetch(`${API_BASE}/assignments/${assignmentId}/submissions`);
     }
 };
-
