@@ -323,6 +323,8 @@ export default async function AttendancePage(params) {
             }
         };
 
+        // Make updateList available globally within the page scope for immediate refresh after delete
+        container.updateLiveList = updateList;
         updateList();
         liveInterval = setInterval(updateList, 3000);
     }
@@ -406,6 +408,17 @@ export default async function AttendancePage(params) {
                 const res = await api.deleteAttendanceRecord(sessId, stuId);
                 if (res.success) {
                     UI.toast(i18n.lang === 'ar' ? 'تم حذف الحضور بنجاح' : 'Attendance record deleted');
+                    
+                    // Immediate feedback for live tracker
+                    const row = delAttendeeBtn.closest('.attendance-row');
+                    if (row) {
+                        row.style.opacity = '0.5';
+                        row.style.pointerEvents = 'none';
+                        setTimeout(() => {
+                            if (container.updateLiveList) container.updateLiveList();
+                        }, 500);
+                    }
+
                     // Refresh if in modal
                     const modal = document.querySelector('.modal-overlay');
                     if (modal) {
