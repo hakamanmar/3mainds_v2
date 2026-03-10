@@ -367,36 +367,29 @@ SubjectPage.init = (params) => {
     const openScanner = async () => {
         const html = `
             <div style="text-align: center; padding: 10px;">
-                <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); background: #f8fafc; min-height: 250px; display: flex; align-items: center; justify-content: center;">
-                    <button id="start-camera-btn" class="btn btn-primary" style="padding: 1.2rem 2rem; border-radius: 12px; font-weight: 700; font-size: 1.1rem;">
-                        <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'تشغيل الكاميرا الآن' : 'Start Camera Now'}
-                    </button>
-                </div>
+                <div id="qr-reader" style="width: 100%; max-width: 450px; margin: 0 auto; border: none !important;"></div>
                 
-                <div id="scanner-status" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
-                    <i class="ph ph-info"></i> ${i18n.lang === 'ar' ? 'يجب الموافقة على طلب الكاميرا' : 'Please approve camera request'}
-                </div>
-
                 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
-                    <button id="toggle-manual-btn" class="btn btn-outline" style="width: 100%; padding: 12px;">
-                        <i class="ph ph-keyboard"></i> ${i18n.lang === 'ar' ? 'أو أدخل الرمز يدوياً' : 'Or Enter Code Manually'}
+                    <button id="toggle-manual-btn" class="btn btn-outline" style="width: 100%; padding: 12px; height: auto;">
+                        <i class="ph ph-keyboard"></i> ${i18n.lang === 'ar' ? 'أو أدخل الرمز يدوياً (خيار بديل)' : 'Or Enter Code Manually'}
                     </button>
-                </div>
-
-                <div id="manual-input-area" style="display: none; margin-top: 1.5rem; animation: slideDown 0.3s ease;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px; border: 2px solid var(--primary);" placeholder="ABC123..." />
-                        <button id="manual-submit-btn" class="btn btn-primary" style="padding: 12px;"><i class="ph ph-check"></i></button>
+                    <div id="manual-input-area" style="display: none; margin-top: 1.5rem; animation: slideDown 0.3s ease;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px; border: 2px solid var(--primary); height: 50px;" placeholder="ABC123..." />
+                            <button id="manual-submit-btn" class="btn btn-primary" style="height: 50px; padding: 0 15px;"><i class="ph ph-check"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
 
-        let html5QrCode;
+        let html5QrcodeScanner;
         
         const onScanSuccess = async (decodedText) => {
-            if (html5QrCode) await html5QrCode.stop().catch(() => {});
-            UI.toast(i18n.lang === 'ar' ? 'تم قراءة الرمز!' : 'QR Code read!');
+            if (html5QrcodeScanner) {
+                await html5QrcodeScanner.clear().catch(() => {});
+            }
+            UI.toast(i18n.lang === 'ar' ? 'تم التقاط الرمز!' : 'Code detected!');
             const res = await api.scanQR(decodedText, user.id);
             if (res.success) {
                 UI.toast(res.message);
@@ -404,37 +397,38 @@ SubjectPage.init = (params) => {
                 if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
             } else {
                 UI.toast(res.message, 'error');
-                const startBtn = document.getElementById('start-camera-btn');
-                if (startBtn) startBtn.style.display = 'block';
+                // Restart scanner if error
+                initScannerUI();
             }
         };
 
-        const startScanner = async () => {
-            const statusEl = document.getElementById('scanner-status');
-            const startBtn = document.getElementById('start-camera-btn');
+        const initScannerUI = () => {
+            if (typeof Html5QrcodeScanner === 'undefined') {
+                UI.toast(i18n.lang === 'ar' ? 'خطأ: لم يتم تحميل مكتبة الكاميرا' : 'Error: Camera library not loaded', 'error');
+                return;
+            }
+
+            html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                rememberLastUsedCamera: true,
+                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+            }, /* verbose= */ false);
             
-            try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error(i18n.lang === 'ar' ? 'المتصفح لا يدعم الكاميرا' : 'Browser doesn\'t support camera');
-                }
-                if (startBtn) startBtn.style.display = 'none';
-                if (statusEl) statusEl.innerHTML = `<i class="ph-spinner ph-spin"></i> ${i18n.lang === 'ar' ? 'جاري الاتصال بالكاميرا...' : 'Connecting...'}`;
-
-                html5QrCode = new Html5Qrcode("reader");
-                await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 250 } }, onScanSuccess);
-                if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا تعمل' : 'Camera active'}</span>`;
-            } catch (err) {
-                console.error(err);
-                if (startBtn) startBtn.style.display = 'block';
-                if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger);">${err.message || 'فشل البدء'}</span>`;
-            }
+            html5QrcodeScanner.render(onScanSuccess, (err) => {
+                // Ignore routine errors
+            });
         };
 
-        // Trigger listeners immediately after modal is added to body
-        const initListeners = () => {
-            const startBtn = document.getElementById('start-camera-btn');
-            if (startBtn) startBtn.onclick = startScanner;
+        UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
+            onClose: async () => { if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => {}); },
+            hideFooter: true,
+            large: false
+        });
 
+        // Setup UI Listeners
+        setTimeout(() => {
+            initScannerUI();
             const toggleBtn = document.getElementById('toggle-manual-btn');
             if (toggleBtn) toggleBtn.onclick = () => {
                 const area = document.getElementById('manual-input-area');
@@ -447,22 +441,13 @@ SubjectPage.init = (params) => {
                  if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
                  const res = await api.scanQR(token, user.id);
                  if (res.success) {
-                    if (html5QrCode) await html5QrCode.stop().catch(() => {});
+                    if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => {});
                     UI.toast(res.message);
                     if (UI.closeCurrentModal) UI.closeCurrentModal();
                     if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
                  } else { UI.toast(res.message, 'error'); }
             };
-        };
-
-        // Don't await here because we want to attach listeners to the elements while it's open
-        UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
-            onClose: async () => { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop().catch(() => {}); },
-            hideFooter: true
-        });
-
-        // Small timeout to ensure elements are in the DOM before searching for them
-        setTimeout(initListeners, 200);
+        }, 300);
     };
 
     const attBtn = document.getElementById('student-attendance-btn');
