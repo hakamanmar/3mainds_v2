@@ -368,37 +368,27 @@ SubjectPage.init = (params) => {
         const html = `
             <div style="text-align: center; padding: 10px;">
                 <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); background: #f8fafc; min-height: 250px; display: flex; align-items: center; justify-content: center;">
-                    <button id="start-camera-btn" class="btn btn-primary" style="padding: 1rem 1.5rem; border-radius: 12px;">
-                        <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'تشغيل الكاميرا' : 'Start Camera'}
+                    <button id="start-camera-btn" class="btn btn-primary" style="padding: 1.2rem 2rem; border-radius: 12px; font-weight: 700; font-size: 1.1rem;">
+                        <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'تشغيل الكاميرا الآن' : 'Start Camera Now'}
                     </button>
                 </div>
                 
                 <div id="scanner-status" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
-                    <i class="ph ph-info"></i> ${i18n.lang === 'ar' ? 'يجب السماح بالكاميرا عند الطلب' : 'Please allow camera when prompted'}
+                    <i class="ph ph-info"></i> ${i18n.lang === 'ar' ? 'يجب الموافقة على طلب الكاميرا' : 'Please approve camera request'}
                 </div>
 
                 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                        ${i18n.lang === 'ar' ? 'أو استخدم الطرق البديلة:' : 'Or use alternative methods:'}
-                    </p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <button id="scan-file-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 10px;">
-                            <i class="ph ph-image"></i> ${i18n.lang === 'ar' ? 'من الاستوديو' : 'From Gallery'}
-                        </button>
-                        <button id="toggle-manual-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 10px;">
-                            <i class="ph ph-keyboard"></i> ${i18n.lang === 'ar' ? 'إدخال يدوي' : 'Manual Code'}
-                        </button>
-                    </div>
+                    <button id="toggle-manual-btn" class="btn btn-outline" style="width: 100%; padding: 12px;">
+                        <i class="ph ph-keyboard"></i> ${i18n.lang === 'ar' ? 'أو أدخل الرمز يدوياً' : 'Or Enter Code Manually'}
+                    </button>
                 </div>
 
                 <div id="manual-input-area" style="display: none; margin-top: 1.5rem; animation: slideDown 0.3s ease;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" placeholder="ABC123..." />
+                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px; border: 2px solid var(--primary);" placeholder="ABC123..." />
                         <button id="manual-submit-btn" class="btn btn-primary" style="padding: 12px;"><i class="ph ph-check"></i></button>
                     </div>
                 </div>
-                
-                <input type="file" id="qr-file-input" accept="image/*" style="display: none;" />
             </div>
         `;
 
@@ -406,7 +396,7 @@ SubjectPage.init = (params) => {
         
         const onScanSuccess = async (decodedText) => {
             if (html5QrCode) await html5QrCode.stop().catch(() => {});
-            UI.toast(i18n.lang === 'ar' ? 'تم قراءة الرمز بنجاح!' : 'QR code read successfully!');
+            UI.toast(i18n.lang === 'ar' ? 'تم قراءة الرمز!' : 'QR Code read!');
             const res = await api.scanQR(decodedText, user.id);
             if (res.success) {
                 UI.toast(res.message);
@@ -414,7 +404,6 @@ SubjectPage.init = (params) => {
                 if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
             } else {
                 UI.toast(res.message, 'error');
-                // Re-enable start button if toast is error
                 const startBtn = document.getElementById('start-camera-btn');
                 if (startBtn) startBtn.style.display = 'block';
             }
@@ -426,75 +415,54 @@ SubjectPage.init = (params) => {
             
             try {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error(i18n.lang === 'ar' ? 'المتصفح لا يدعم الوصول للكاميرا' : 'Browser does not support camera access');
+                    throw new Error(i18n.lang === 'ar' ? 'المتصفح لا يدعم الكاميرا' : 'Browser doesn\'t support camera');
                 }
-
                 if (startBtn) startBtn.style.display = 'none';
-                if (statusEl) statusEl.innerHTML = `<i class="ph-spinner ph-spin"></i> ${i18n.lang === 'ar' ? 'جاري بدء الكاميرا...' : 'Starting camera...'}`;
+                if (statusEl) statusEl.innerHTML = `<i class="ph-spinner ph-spin"></i> ${i18n.lang === 'ar' ? 'جاري الاتصال بالكاميرا...' : 'Connecting...'}`;
 
                 html5QrCode = new Html5Qrcode("reader");
-                const config = { fps: 15, qrbox: { width: 250, height: 250 } };
-                
-                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-                
-                if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا نشطة الآن' : 'Camera active'}</span>`;
+                await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 250 } }, onScanSuccess);
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا تعمل' : 'Camera active'}</span>`;
             } catch (err) {
-                console.error("Scanner Error:", err);
+                console.error(err);
                 if (startBtn) startBtn.style.display = 'block';
-                if (statusEl) {
-                    let errMsg = i18n.lang === 'ar' ? 'فشل: ' : 'Failed: ';
-                    if (err.name === 'NotAllowedError') errMsg += i18n.lang === 'ar' ? 'تم رفض الصلاحية' : 'Permission denied';
-                    else if (err.name === 'NotFoundError') errMsg += i18n.lang === 'ar' ? 'الكاميرا غير موجودة' : 'No camera found';
-                    else errMsg += err.message || err;
-                    statusEl.innerHTML = `<span style="color: var(--danger);">${errMsg}</span>`;
-                }
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger);">${err.message || 'فشل البدء'}</span>`;
             }
         };
 
-        await UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
-            onClose: async () => { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop().catch(() => {}); },
-            hideFooter: true
-        });
-
-        // Event listeners after modal is in DOM
-        setTimeout(() => {
+        // Trigger listeners immediately after modal is added to body
+        const initListeners = () => {
             const startBtn = document.getElementById('start-camera-btn');
             if (startBtn) startBtn.onclick = startScanner;
 
-            document.getElementById('toggle-manual-btn').onclick = () => {
+            const toggleBtn = document.getElementById('toggle-manual-btn');
+            if (toggleBtn) toggleBtn.onclick = () => {
                 const area = document.getElementById('manual-input-area');
                 area.style.display = area.style.display === 'none' ? 'block' : 'none';
             };
 
-            const fileInput = document.getElementById('qr-file-input');
-            document.getElementById('scan-file-btn').onclick = () => fileInput.click();
-            
-            fileInput.onchange = async (e) => {
-                if (e.target.files.length === 0) return;
-                const file = e.target.files[0];
-                const html5QrCodeFile = new Html5Qrcode("reader", /* verbose= */ false);
-                try {
-                    UI.toast(i18n.lang === 'ar' ? 'جاري فحص الصورة...' : 'Scanning photo...');
-                    const decodedText = await html5QrCodeFile.scanFile(file, true);
-                    onScanSuccess(decodedText);
-                } catch (err) {
-                    UI.toast(i18n.lang === 'ar' ? 'لم يتم العثور على رمز QR في الصورة' : 'No QR code found in image', 'error');
-                }
-            };
-
-            document.getElementById('manual-submit-btn').onclick = async () => {
+            const submitBtn = document.getElementById('manual-submit-btn');
+            if (submitBtn) submitBtn.onclick = async () => {
                  const token = document.getElementById('qr-token-input').value.trim();
                  if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
                  const res = await api.scanQR(token, user.id);
                  if (res.success) {
+                    if (html5QrCode) await html5QrCode.stop().catch(() => {});
                     UI.toast(res.message);
                     if (UI.closeCurrentModal) UI.closeCurrentModal();
                     if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
-                 } else {
-                    UI.toast(res.message, 'error');
-                 }
+                 } else { UI.toast(res.message, 'error'); }
             };
-        }, 300);
+        };
+
+        // Don't await here because we want to attach listeners to the elements while it's open
+        UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
+            onClose: async () => { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop().catch(() => {}); },
+            hideFooter: true
+        });
+
+        // Small timeout to ensure elements are in the DOM before searching for them
+        setTimeout(initListeners, 200);
     };
 
     const attBtn = document.getElementById('student-attendance-btn');
