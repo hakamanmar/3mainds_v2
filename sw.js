@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v4'; // Increment version to trigger update
+const CACHE_NAME = '3minds-v5'; // Incremented to clear old buggy cache (api duplicate declaration fix)
 const ASSETS = [
     '/',
     '/static/css/style.css',
