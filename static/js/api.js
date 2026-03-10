@@ -158,10 +158,10 @@ export const api = {
     async deleteUser(id) {
         return this._fetch(`${API_BASE}/users?id=${id}`, { method: 'DELETE' });
     },
-    async addUser(email, password, role, section_id, full_name = '', subject_ids = []) {
+    async addUser(email, password, role, section_ids = [], full_name = '', subject_ids = []) {
         return this._fetch(`${API_BASE}/admin/add-user`, {
             method: 'POST',
-            body: JSON.stringify({ email, password, role, section_id, full_name, subject_ids })
+            body: JSON.stringify({ email, password, role, section_ids, full_name, subject_ids })
         });
     },
     async assignInstructorCourses(instructor_id, course_ids) {
