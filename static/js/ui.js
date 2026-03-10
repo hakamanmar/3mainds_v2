@@ -1,5 +1,5 @@
 /* ui.js - 3Minds Platform - Clean & Professional */
-import { i18n } from './i18n.js';
+import { i18n } from '/static/js/i18n.js';
 
 export const UI = {
     modal(title, content, onConfirm, options = {}) {
