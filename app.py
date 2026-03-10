@@ -1469,9 +1469,10 @@ def attendance_live(session_id):
         "SELECT subject_id, refresh_interval, started_at FROM attendance_sessions WHERE id=?",
         (session_id,)
     ).fetchone()
-    total = conn.execute(
-        "SELECT count(*) FROM users WHERE role='student'"
-    ).fetchone()[0]
+    # Improved SQL for Turso compatibility
+    row_count = conn.execute("SELECT count(*) as total FROM users WHERE role='student'").fetchone()
+    total = int(list(row_count.values())[0]) if isinstance(row_count, dict) else row_count[0]
+    
     conn.close()
     return jsonify({
         'attended': [dict(r) for r in records],
@@ -1790,6 +1791,32 @@ def attendance_active(subject_id):
     session = _active_session(subject_id)
     if session:
         return jsonify({'active': True, 'session': session})
+    return jsonify({'active': False})
+
+# ── Student: Find ANY active session in my section ────────────────
+@app.route('/api/attendance/active-for-me', methods=['GET'])
+def attendance_active_for_me():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'active': False}), 401
+    
+    sid = ctx['section_id']
+    if not sid:
+        return jsonify({'active': False})
+        
+    conn = get_db()
+    # Find any active session belonging to a subject in the student's section
+    session = conn.execute('''
+        SELECT s.*, subj.title as subject_title, subj.color as subject_color
+        FROM attendance_sessions s
+        JOIN subjects subj ON s.subject_id = subj.id
+        WHERE subj.section_id = ? AND s.status = 'active'
+        ORDER BY s.started_at DESC LIMIT 1
+    ''', (sid,)).fetchone()
+    conn.close()
+    
+    if session:
+        return jsonify({'active': True, 'session': dict(session)})
     return jsonify({'active': False})
 
 
