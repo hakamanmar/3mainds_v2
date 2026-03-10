@@ -11,7 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 import time
-
+import requests
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
@@ -1121,13 +1121,25 @@ def upload_file():
     if not allowed_file(file.filename):
          return jsonify({'error': 'File type not allowed. Supported: PDF, Images, Videos, Audio, Docs.'}), 403
     
-    # Use UUID4 to completely obscure the original filename and prevent Path Traversal
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    secure_name = f"{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_name)
-    file.save(file_path)
-    
-    return jsonify({'success': True, 'url': f"/uploads/{secure_name}", 'filename': file.filename})
+    try:
+        # Uploading file automatically and for free to Catbox.moe
+        # Catbox.moe allows up to 200MB, no sign up required, completely free.
+        # It's an API widely used specifically for bypassing ephemeral storage limits on platforms like Vercel.
+        
+        response = requests.post(
+            'https://catbox.moe/user/api.php', 
+            data={'reqtype': 'fileupload'}, 
+            files={'fileToUpload': (file.filename, file.stream, getattr(file, 'mimetype', 'application/octet-stream'))}
+        )
+        
+        if response.status_code == 200 and response.text.startswith('http'):
+            # The API returns the raw direct link to the uploaded file
+            secure_url = response.text
+            return jsonify({'success': True, 'url': secure_url, 'filename': file.filename})
+        else:
+            return jsonify({'error': 'Free cloud upload failed.'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/uploads/<path:filename>')
 @limiter.limit("500 per hour")
