@@ -1329,9 +1329,14 @@ def get_stats():
 #  ATTENDANCE SYSTEM APIs
 # ────────────────────────────────────────────────────────────────
 
-def _gen_token(length=32):
-    # Military-Grade Cryptographic Hardening (Token Entropy ≥ 128 bits)
-    return secrets.token_urlsafe(length)
+def _gen_token(length=6):
+    """
+    Generates a short, human-readable alphanumeric token.
+    Optimized for manual entry and QR scanning.
+    """
+    import string
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(chars) for _ in range(length))
 
 def _active_session(subject_id):
     conn = get_db()
