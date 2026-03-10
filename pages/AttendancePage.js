@@ -455,7 +455,7 @@ export default async function AttendancePage(params) {
         try {
         UI.toast('جاري تحميل قائمة الطلاب...', 'info');
         const sessData = await api.getLiveAttendance(activeSession.session_id);
-        const allStudentsRaw = await api.getUsers(selectedSectionId);
+        const allStudentsRaw = await api.getSectionStudents(selectedSectionId);
         const allStudents = Array.isArray(allStudentsRaw) ? allStudentsRaw : [];
         const presentIds = new Set(Array.isArray(sessData.attended) ? sessData.attended.map(r => r.student_id) : []);
         
@@ -542,3 +542,4 @@ export default async function AttendancePage(params) {
     init();
     return container;
 }
+
