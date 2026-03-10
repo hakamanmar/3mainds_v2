@@ -99,7 +99,9 @@ export const translations = {
         no_section: 'بدون شعبة',
         role: 'الصلاحية',
         no_announcements: 'لا توجد إعلانات',
-        linked_devices_count: 'الأجهزة'
+        linked_devices_count: 'الأجهزة',
+        head_dept: 'رئيس القسم',
+        scan_attendance: 'تسجيل الحضور (QR)'
     },
     en: {
         dir: 'ltr',
@@ -201,7 +203,9 @@ export const translations = {
         no_section: 'No Section',
         role: 'Role',
         no_announcements: 'No Announcements',
-        linked_devices_count: 'Devices'
+        linked_devices_count: 'Devices',
+        head_dept: 'Head of Department',
+        scan_attendance: 'Scan Attendance (QR)'
     }
 };
 
