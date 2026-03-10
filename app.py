@@ -1129,13 +1129,12 @@ def upload_file():
     
     return jsonify({'success': True, 'url': f"/uploads/{secure_name}", 'filename': file.filename})
 
-@app.route('/uploads/<filename>')
+@app.route('/uploads/<path:filename>')
 @limiter.limit("500 per hour")
 def uploaded_file(filename):
-    """Serve uploaded files from the correct directory."""
-    safe_name = secure_filename(filename)
-    # Use the config variable which points to /tmp/uploads on Vercel
-    return send_from_directory(app.config['UPLOAD_FOLDER'], safe_name)
+    """Serve uploaded files from the correct directory, supporting subpaths."""
+    # No secure_filename here on the whole path because it strips slashes
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/api/assignments', methods=['GET'])
 def get_assignments():
