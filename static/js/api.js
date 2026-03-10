@@ -229,6 +229,12 @@ export const api = {
     async manualMarkAttendance(data) {
         return this._fetch(`${API_BASE}/attendance/manual-mark`, { method: 'POST', body: JSON.stringify(data) });
     },
+    async deleteAttendanceRecord(sessionId, studentId) {
+        return this._fetch(`${API_BASE}/attendance/delete-record`, {
+            method: 'DELETE',
+            body: JSON.stringify({ session_id: sessionId, student_id: studentId })
+        });
+    },
 
     // ── Homework / Assignments ──────────────────────────────
     async uploadFile(file) {
