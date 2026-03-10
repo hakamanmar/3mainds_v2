@@ -402,21 +402,50 @@ SubjectPage.init = (params) => {
         };
 
         const startScanner = async () => {
+            const statusEl = document.getElementById('scanner-status');
             try {
+                // Ensure context is secure (HTTPS or localhost)
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                    throw new Error(i18n.lang === 'ar' ? 'الكاميرا تتطلب اتصالاً آمناً (HTTPS)' : 'Camera requires HTTPS connection');
+                }
+
+                const cameras = await Html5Qrcode.getCameras();
+                if (!cameras || cameras.length === 0) {
+                    throw new Error(i18n.lang === 'ar' ? 'لم يتم العثور على كاميرا في هذا الجهاز' : 'No camera found on this device');
+                }
+
                 html5QrCode = new Html5Qrcode("reader");
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-                const statusEl = document.getElementById('scanner-status');
+                const config = { fps: 15, qrbox: { width: 250, height: 250 } };
+                
+                // Try back camera first, then fallback to any available
+                try {
+                    await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+                } catch (e) {
+                    await html5QrCode.start(cameras[0].id, config, onScanSuccess);
+                }
+
                 if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا نشطة الآن' : 'Camera active'}</span>`;
             } catch (err) {
-                console.error(err);
-                const statusEl = document.getElementById('scanner-status');
-                if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger); font-size: 0.85rem;">${i18n.lang === 'ar' ? 'فشل فتح الكاميرا، يرجى التأكد من الصلاحيات' : 'Camera failed, please check permissions'}</span>`;
+                console.error("Scanner Error:", err);
+                if (statusEl) {
+                    let errMsg = i18n.lang === 'ar' ? 'فشل فتح الكاميرا: ' : 'Camera failed: ';
+                    if (err.name === 'NotAllowedError') errMsg += i18n.lang === 'ar' ? 'تم رفض الصلاحية' : 'Permission denied';
+                    else if (err.name === 'NotFoundError') errMsg += i18n.lang === 'ar' ? 'الكاميرا غير موجودة' : 'No camera found';
+                    else errMsg += err.message || err;
+                    
+                    statusEl.innerHTML = `
+                        <div style="color: var(--danger); font-size: 0.85rem; padding: 10px; background: #fee2e2; border-radius: 8px; margin-bottom: 10px;">
+                            ${errMsg}
+                        </div>
+                        <button class="btn btn-sm btn-outline" onclick="location.reload()" style="font-size: 11px;">
+                            <i class="ph ph-arrows-clockwise"></i> ${i18n.lang === 'ar' ? 'إعادة المحاولة' : 'Try Again'}
+                        </button>
+                    `;
+                }
             }
         };
 
         UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, async () => {
-             // Confirm button logic is handled manually in scanners
              return false;
         }, {
             onClose: async () => {
@@ -424,11 +453,12 @@ SubjectPage.init = (params) => {
                     await html5QrCode.stop().catch(console.error);
                 }
             },
-            hideFooter: true
+            hideFooter: true,
+            large: false
         });
 
-        // Trigger scanner start after modal renders
-        setTimeout(startScanner, 300);
+        // Small delay to ensure modal DOM is ready
+        setTimeout(startScanner, 500);
         
         // Manual submit button inside modal
         setTimeout(() => {
