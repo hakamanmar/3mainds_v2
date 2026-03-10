@@ -132,7 +132,12 @@ export default async function AttendancePage(params) {
 
                 <div class="card">
                     <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>👥 ${i18n.t('live_attendance') || 'الحاضرون الآن'}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>👥 ${i18n.t('live_attendance') || 'الحاضرون الآن'}</span>
+                            <button id="manual-add-btn" class="btn btn-sm" style="padding: 4px 10px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-light); border-radius: 6px; font-size: 12px;">
+                                <i class="ph ph-plus-circle"></i> إضافة يدوي
+                            </button>
+                        </div>
                         <div class="live-badge" style="display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--green);">
                             <span class="live-dot" style="width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block;"></span>
                             <span id="attendee-counter">0 / 0</span>
@@ -308,8 +313,13 @@ export default async function AttendancePage(params) {
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                    <span class="tag tag-good">${i18n.t('present') || 'حاضر'}</span>
-                                    <span style="font-size: 10px; color: var(--muted);">بصمة QR 📲</span>
+                                    ${r.method === 'excused' ? `
+                                        <span class="tag tag-warn">مجاز 📄</span>
+                                        <span style="font-size: 10px; color: var(--muted);">عذر رسمي</span>
+                                    ` : `
+                                        <span class="tag tag-good">${r.method === 'manual' ? 'حضور يدوي' : (i18n.t('present') || 'حاضر')}</span>
+                                        <span style="font-size: 10px; color: var(--muted);">${r.method === 'manual' ? 'بواسطة الأستاذ' : 'بصمة QR 📲'}</span>
+                                    `}
                                 </div>
                                 <button class="delete-attendee-btn" data-session="${activeSession.session_id}" data-student="${r.student_id}" style="background: #fee2e2; border: none; color: #ef4444; width: 35px; height: 35px; border-radius: 8px; cursor: pointer;">
                                     <i class="ph ph-trash"></i>
@@ -317,6 +327,13 @@ export default async function AttendancePage(params) {
                             </div>
                         </div>
                     `).join('');
+                } else {
+                    listContainer.innerHTML = `
+                        <div class="empty-state" style="padding: 40px 0;">
+                            <i class="ph ph-users" style="font-size: 32px; color: var(--muted);"></i>
+                            <p>${i18n.t('waiting_scans') || 'بانتظار مسح الطلاب للرمز...'}</p>
+                        </div>
+                    `;
                 }
             } catch (e) {
                 console.error('Live tracker failed', e);
@@ -428,7 +445,93 @@ export default async function AttendancePage(params) {
                 }
             }
         }
+
+        if (e.target.closest('#manual-add-btn')) {
+            showManualAddModal();
+        }
     });
+
+    async function showManualAddModal() {
+        UI.toast('جاري تحميل قائمة الطلاب...', 'info');
+        const sessData = await api.getLiveAttendance(activeSession.session_id);
+        const allStudents = await api.getUsers(selectedSectionId);
+        const presentIds = new Set(sessData.attended.map(r => r.student_id));
+        
+        const html = `
+            <div style="direction: rtl; text-align: right;">
+                <p style="margin-bottom: 15px; color: var(--muted);">اختر الطالب لتسجيله كحاضر أو مجاز:</p>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <input type="text" id="student-search" class="form-control" placeholder="بحث عن اسم الطالب..." style="width: 100%;">
+                </div>
+                <div id="manual-student-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px;">
+                    ${allStudents.filter(s => s.role === 'student').map(s => {
+                        const isPresent = presentIds.has(s.id);
+                        return `
+                        <div class="student-item" data-email="${s.email}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); ${isPresent ? 'background: #f8fafc; opacity: 0.7;' : ''}">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="avatar-sm" style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">${s.email.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px;">${s.email}</div>
+                                    <div style="font-size: 11px; color: var(--muted);">${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                ${!isPresent ? `
+                                    <button class="btn-mark-present btn-sm" data-id="${s.id}" style="background: var(--blue); color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;">حضور</button>
+                                    <button class="btn-mark-excused btn-sm" data-id="${s.id}" style="background: #f59e0b; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;">مجاز</button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        UI.modal('تسجيل حضور يدوي / إجازة', html, null, { large: true, hideFooter: true });
+
+        // Search logic
+        const modal = document.querySelector('.modal-overlay');
+        const searchInput = modal.querySelector('#student-search');
+        searchInput.oninput = (e) => {
+            const val = e.target.value.toLowerCase();
+            modal.querySelectorAll('.student-item').forEach(item => {
+                item.style.display = item.dataset.email.toLowerCase().includes(val) ? 'flex' : 'none';
+            });
+        };
+
+        // Click logic
+        modal.onclick = async (e) => {
+            const btn = e.target.closest('.btn-mark-present, .btn-mark-excused');
+            if (btn) {
+                const method = e.target.classList.contains('btn-mark-present') ? 'manual' : 'excused';
+                const studentId = btn.dataset.id;
+                btn.disabled = true;
+                btn.innerHTML = '...';
+                
+                try {
+                    await api.manualMarkAttendance({
+                        session_id: activeSession.session_id,
+                        student_id: studentId,
+                        method: method
+                    });
+                    UI.toast(method === 'manual' ? 'تم تسجيل حضور الطالب' : 'تم تسجيل الطالب كمجاز');
+                    if (container.updateLiveList) container.updateLiveList();
+                    
+                    // Update UI in modal too
+                    const item = btn.closest('.student-item');
+                    item.style.background = '#f8fafc';
+                    item.style.opacity = '0.7';
+                    item.querySelector('div div:last-child').textContent = '✅ تمت الإضافة الآن';
+                    btn.parentElement.innerHTML = ''; 
+                } catch (err) {
+                    UI.toast(err.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = method === 'manual' ? 'حضور' : 'مجاز';
+                }
+            }
+        };
+    }
 
     init();
     return container;
