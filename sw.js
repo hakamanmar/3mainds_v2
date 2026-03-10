@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v5'; // Incremented to clear old buggy cache (api duplicate declaration fix)
+const CACHE_NAME = '3minds-v6'; // Bumped to force reload after ui.js import path fix
 const ASSETS = [
     '/',
     '/static/css/style.css',
