@@ -158,10 +158,10 @@ export const api = {
     async deleteUser(id) {
         return this._fetch(`${API_BASE}/users?id=${id}`, { method: 'DELETE' });
     },
-    async addUser(email, password, role, section_id) {
+    async addUser(email, password, role, section_id, full_name = '', subject_id = null) {
         return this._fetch(`${API_BASE}/admin/add-user`, {
             method: 'POST',
-            body: JSON.stringify({ email, password, role, section_id })
+            body: JSON.stringify({ email, password, role, section_id, full_name, subject_id })
         });
     },
     async resetDevice(user_id) {
