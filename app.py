@@ -1502,6 +1502,25 @@ def attendance_manual():
     conn.close()
     return jsonify({'success': True})
 
+# ── Delete attendance record ──────────────────────────────────────
+@app.route('/api/attendance/delete-record', methods=['DELETE'])
+def attendance_delete_record():
+    data = request.json or {}
+    session_id = data.get('session_id')
+    student_id = data.get('student_id')
+    
+    if not session_id or not student_id:
+        return jsonify({'error': 'session_id and student_id required'}), 400
+        
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM attendance_records WHERE session_id=? AND student_id=?",
+        (session_id, student_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 # ── Pause/Resume session ──────────────────────────────────────────
 @app.route('/api/attendance/toggle-status/<int:session_id>', methods=['POST'])
 def attendance_toggle_status(session_id):
