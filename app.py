@@ -363,6 +363,19 @@ def init_db():
         except Exception:
             c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
 
+    # 14. Instructor-Courses Junction Table (Many-to-Many)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS instructor_courses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instructor_id INTEGER NOT NULL,
+            course_id INTEGER NOT NULL,
+            assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (course_id) REFERENCES subjects(id) ON DELETE CASCADE,
+            UNIQUE(instructor_id, course_id)
+        )
+    ''')
+
     # 6. Attendance Sessions (Linked to subject)
     c.execute('''
         CREATE TABLE IF NOT EXISTS attendance_sessions (
@@ -545,16 +558,24 @@ def require_role(*roles):
     return decorator
 
 def check_subject_ownership(conn, subject_id, ctx):
-    """Securely checks if the current user profile has management rights for a subject."""
+    """Securely checks if current user has management rights for a subject.
+    Supports both legacy instructor_id (single) and instructor_courses (multi) assignment.
+    """
     if ctx['role'] in ['super_admin', 'head_dept']: return True
     
     res = conn.execute('SELECT section_id, instructor_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
     if not res: return False
     
-    # Simple row mapping for compatibility
     subj = dict(res)
     
     if ctx['role'] == 'teacher':
+        # Check new many-to-many table first (preferred)
+        ic = conn.execute(
+            'SELECT id FROM instructor_courses WHERE instructor_id = ? AND course_id = ?',
+            (ctx['user_id'], subject_id)
+        ).fetchone()
+        if ic: return True
+        # Fallback: legacy single instructor_id
         return subj.get('instructor_id') == ctx['user_id']
     
     if ctx['role'] == 'section_admin':
@@ -714,6 +735,68 @@ def get_all_sections():
     conn.close()
     return jsonify([dict(r) for r in rows])
 
+# ─── MY COURSES (Teacher-facing) ──────────────────────────────
+@app.route('/api/my-courses', methods=['GET'])
+@require_role('teacher')
+def get_my_courses():
+    """Returns ONLY the courses assigned to the current instructor."""
+    ctx = get_user_context()
+    conn = get_db()
+    courses = conn.execute('''
+        SELECT DISTINCT s.* FROM subjects s
+        LEFT JOIN instructor_courses ic ON s.id = ic.course_id AND ic.instructor_id = ?
+        WHERE ic.instructor_id = ? OR s.instructor_id = ?
+        ORDER BY s.created_at DESC
+    ''', (ctx['user_id'], ctx['user_id'], ctx['user_id'])).fetchall()
+    conn.close()
+    return jsonify([dict(c) for c in courses])
+
+# ─── ASSIGN COURSE TO INSTRUCTOR ──────────────────────────────
+@app.route('/api/instructor-courses', methods=['POST'])
+@require_role('super_admin', 'head_dept', 'section_admin')
+def assign_instructor_course():
+    data = request.json
+    instructor_id = data.get('instructor_id')
+    course_ids = data.get('course_ids', [])  # list of subject IDs
+    if not instructor_id or not course_ids:
+        return jsonify({'error': 'instructor_id and course_ids are required'}), 400
+    conn = get_db()
+    # Verify the target user is a teacher
+    user = conn.execute('SELECT role FROM users WHERE id = ?', (instructor_id,)).fetchone()
+    if not user or dict(user).get('role') != 'teacher':
+        conn.close()
+        return jsonify({'error': 'المستخدم المحدد ليس مدرساً'}), 400
+    try:
+        for cid in course_ids:
+            conn.execute(
+                'INSERT OR IGNORE INTO instructor_courses (instructor_id, course_id) VALUES (?, ?)',
+                (instructor_id, cid)
+            )
+            # Also update legacy instructor_id on subject (first course = primary)
+            conn.execute(
+                'UPDATE subjects SET instructor_id = ? WHERE id = ? AND (instructor_id IS NULL OR instructor_id = 0)',
+                (instructor_id, cid)
+            )
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/instructor-courses', methods=['DELETE'])
+@require_role('super_admin', 'head_dept', 'section_admin')
+def remove_instructor_course():
+    instructor_id = request.args.get('instructor_id')
+    course_id = request.args.get('course_id')
+    if not instructor_id or not course_id:
+        return jsonify({'error': 'instructor_id and course_id are required'}), 400
+    conn = get_db()
+    conn.execute('DELETE FROM instructor_courses WHERE instructor_id = ? AND course_id = ?', (instructor_id, course_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 # ─── SUBJECTS ─────────────────────────────────────────────────
 @app.route('/api/subjects', methods=['GET'])
 @require_role('student', 'teacher', 'section_admin', 'super_admin', 'head_dept')
@@ -731,8 +814,13 @@ def get_subjects():
             # Global roles see everything if no section selected
             subjects = conn.execute('SELECT * FROM subjects ORDER BY created_at DESC').fetchall()
     elif ctx['role'] == 'teacher':
-        # Teachers only see subjects they are assigned to
-        subjects = conn.execute('SELECT * FROM subjects WHERE instructor_id = ? ORDER BY created_at DESC', (ctx['user_id'],)).fetchall()
+        # Teachers see subjects from instructor_courses (multi) + legacy instructor_id fallback
+        subjects = conn.execute('''
+            SELECT DISTINCT s.* FROM subjects s
+            LEFT JOIN instructor_courses ic ON s.id = ic.course_id AND ic.instructor_id = ?
+            WHERE ic.instructor_id = ? OR s.instructor_id = ?
+            ORDER BY s.created_at DESC
+        ''', (ctx['user_id'], ctx['user_id'], ctx['user_id'])).fetchall()
     else:
         # Section Admins, and Students are restricted to their section
         sid = ctx['section_id']
@@ -1109,11 +1197,30 @@ def add_user():
         conn.execute('INSERT INTO users (email, password, full_name, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?, ?)',
                      (email, generate_password_hash(password), full_name, role, section_id, 0))
         conn.commit()
-        # If creating a teacher and a subject_id was provided, assign the instructor
-        if role == 'teacher' and data.get('subject_id'):
+        
+        # If creating a teacher, assign courses via instructor_courses table
+        if role == 'teacher':
             new_user = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
             if new_user:
-                conn.execute('UPDATE subjects SET instructor_id = ? WHERE id = ?', (dict(new_user)['id'], data['subject_id']))
+                new_uid = dict(new_user)['id']
+                # Support both subject_ids (list) and legacy subject_id (single)
+                subject_ids = data.get('subject_ids', [])
+                if not subject_ids and data.get('subject_id'):
+                    subject_ids = [data['subject_id']]
+                
+                for i, cid in enumerate(subject_ids):
+                    if cid:
+                        # Insert into junction table
+                        conn.execute(
+                            'INSERT OR IGNORE INTO instructor_courses (instructor_id, course_id) VALUES (?, ?)',
+                            (new_uid, cid)
+                        )
+                        # Set instructor_id on first course as primary (legacy support)
+                        if i == 0:
+                            conn.execute(
+                                'UPDATE subjects SET instructor_id = ? WHERE id = ?',
+                                (new_uid, cid)
+                            )
                 conn.commit()
     except Exception as e:
         if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
