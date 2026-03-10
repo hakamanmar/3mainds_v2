@@ -1492,13 +1492,14 @@ def attendance_manual():
     data = request.json or {}
     session_id = data.get('session_id')
     student_id = data.get('student_id')
-    note       = data.get('note', 'Manual by professor')
+    method     = data.get('method', 'manual') # 'manual' or 'excused'
+    note       = data.get('note', f'Marked as {method} by professor')
 
     conn = get_db()
     try:
         conn.execute(
             "INSERT OR IGNORE INTO attendance_records (session_id, student_id, method, note) VALUES (?,?,?,?)",
-            (session_id, student_id, 'manual', note)
+            (session_id, student_id, method, note)
         )
         conn.commit()
     except Exception as e:
