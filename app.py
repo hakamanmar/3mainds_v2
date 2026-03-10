@@ -1132,26 +1132,10 @@ def upload_file():
 @app.route('/uploads/<filename>')
 @limiter.limit("500 per hour")
 def uploaded_file(filename):
-    """Serve uploaded files with Military-Grade security headers."""
-    # Ensure filename contains no path traversal tricks before checking
+    """Serve uploaded files from the correct directory."""
     safe_name = secure_filename(filename)
-    if safe_name != filename:
-        return "Invalid filename", 400
-        
-    response = make_response(send_from_directory(app.config['UPLOAD_FOLDER'], safe_name))
-    
-    # Secure Serving: Force download for anything that shouldn't be executed inline (prevent XSS via SVG/HTML)
-    ext = safe_name.rsplit('.', 1)[-1].lower() if '.' in safe_name else ''
-    if request.args.get('download') or ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm', 'mp3', 'wav']:
-        # Force download as attachment
-        response.headers['Content-Disposition'] = f'attachment; filename="{safe_name}"'
-    else:
-        # Prevent inline execution even for media
-        response.headers['Content-Disposition'] = f'inline; filename="{safe_name}"'
-        
-    # Extra security for served files
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    return response
+    # Use the config variable which points to /tmp/uploads on Vercel
+    return send_from_directory(app.config['UPLOAD_FOLDER'], safe_name)
 
 @app.route('/api/assignments', methods=['GET'])
 def get_assignments():
