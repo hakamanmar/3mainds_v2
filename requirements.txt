@@ -5,3 +5,6 @@ fpdf2
 Werkzeug
 gunicorn
 flask-limiter
+
+
+requests
