@@ -364,31 +364,49 @@ SubjectPage.init = (params) => {
     // Translation feature was removed
 
 
-    // Student Attendance Scan
     const openScanner = async () => {
         const html = `
             <div style="text-align: center; padding: 10px;">
-                <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary);"></div>
-                <div id="scanner-status" style="margin-top: 1rem; color: var(--text-muted);">
-                    <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'جاري تهيئة الكاميرا...' : 'Initializing camera...'}
+                <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); background: #f8fafc; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                    <button id="start-camera-btn" class="btn btn-primary" style="padding: 1rem 1.5rem; border-radius: 12px;">
+                        <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'تشغيل الكاميرا' : 'Start Camera'}
+                    </button>
                 </div>
-                <div style="margin-top: 1rem;">
-                    <p style="font-size: 0.9rem; color: var(--text-muted);">${i18n.t('scan_instruction') || 'قم بتوجيه الكاميرا نحو رمز QR الظاهر على شاشة الأستاذ'}</p>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 1rem;">
-                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" placeholder="${i18n.lang === 'ar' ? 'أو أدخل الرمز يدوياً' : 'Or enter code manually'}" />
+                
+                <div id="scanner-status" style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+                    <i class="ph ph-info"></i> ${i18n.lang === 'ar' ? 'يجب السماح بالكاميرا عند الطلب' : 'Please allow camera when prompted'}
+                </div>
+
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        ${i18n.lang === 'ar' ? 'أو استخدم الطرق البديلة:' : 'Or use alternative methods:'}
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button id="scan-file-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 10px;">
+                            <i class="ph ph-image"></i> ${i18n.lang === 'ar' ? 'من الاستوديو' : 'From Gallery'}
+                        </button>
+                        <button id="toggle-manual-btn" class="btn btn-outline" style="font-size: 0.8rem; padding: 10px;">
+                            <i class="ph ph-keyboard"></i> ${i18n.lang === 'ar' ? 'إدخال يدوي' : 'Manual Code'}
+                        </button>
+                    </div>
+                </div>
+
+                <div id="manual-input-area" style="display: none; margin-top: 1.5rem; animation: slideDown 0.3s ease;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" placeholder="ABC123..." />
                         <button id="manual-submit-btn" class="btn btn-primary" style="padding: 12px;"><i class="ph ph-check"></i></button>
                     </div>
                 </div>
+                
+                <input type="file" id="qr-file-input" accept="image/*" style="display: none;" />
             </div>
         `;
 
         let html5QrCode;
         
         const onScanSuccess = async (decodedText) => {
-            if (html5QrCode) {
-                await html5QrCode.stop().catch(console.error);
-            }
-            UI.toast(i18n.lang === 'ar' ? 'تم التقاط الرمز، جاري التحقق...' : 'QR captured, verifying...');
+            if (html5QrCode) await html5QrCode.stop().catch(() => {});
+            UI.toast(i18n.lang === 'ar' ? 'تم قراءة الرمز بنجاح!' : 'QR code read successfully!');
             const res = await api.scanQR(decodedText, user.id);
             if (res.success) {
                 UI.toast(res.message);
@@ -396,89 +414,87 @@ SubjectPage.init = (params) => {
                 if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
             } else {
                 UI.toast(res.message, 'error');
-                // Potential loop prevention
-                setTimeout(startScanner, 1000);
+                // Re-enable start button if toast is error
+                const startBtn = document.getElementById('start-camera-btn');
+                if (startBtn) startBtn.style.display = 'block';
             }
         };
 
         const startScanner = async () => {
             const statusEl = document.getElementById('scanner-status');
+            const startBtn = document.getElementById('start-camera-btn');
+            
             try {
-                // Ensure context is secure (HTTPS or localhost)
-                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                    throw new Error(i18n.lang === 'ar' ? 'الكاميرا تتطلب اتصالاً آمناً (HTTPS)' : 'Camera requires HTTPS connection');
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error(i18n.lang === 'ar' ? 'المتصفح لا يدعم الوصول للكاميرا' : 'Browser does not support camera access');
                 }
 
-                const cameras = await Html5Qrcode.getCameras();
-                if (!cameras || cameras.length === 0) {
-                    throw new Error(i18n.lang === 'ar' ? 'لم يتم العثور على كاميرا في هذا الجهاز' : 'No camera found on this device');
-                }
+                if (startBtn) startBtn.style.display = 'none';
+                if (statusEl) statusEl.innerHTML = `<i class="ph-spinner ph-spin"></i> ${i18n.lang === 'ar' ? 'جاري بدء الكاميرا...' : 'Starting camera...'}`;
 
                 html5QrCode = new Html5Qrcode("reader");
                 const config = { fps: 15, qrbox: { width: 250, height: 250 } };
                 
-                // Try back camera first, then fallback to any available
-                try {
-                    await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-                } catch (e) {
-                    await html5QrCode.start(cameras[0].id, config, onScanSuccess);
-                }
-
+                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+                
                 if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا نشطة الآن' : 'Camera active'}</span>`;
             } catch (err) {
                 console.error("Scanner Error:", err);
+                if (startBtn) startBtn.style.display = 'block';
                 if (statusEl) {
-                    let errMsg = i18n.lang === 'ar' ? 'فشل فتح الكاميرا: ' : 'Camera failed: ';
+                    let errMsg = i18n.lang === 'ar' ? 'فشل: ' : 'Failed: ';
                     if (err.name === 'NotAllowedError') errMsg += i18n.lang === 'ar' ? 'تم رفض الصلاحية' : 'Permission denied';
                     else if (err.name === 'NotFoundError') errMsg += i18n.lang === 'ar' ? 'الكاميرا غير موجودة' : 'No camera found';
                     else errMsg += err.message || err;
-                    
-                    statusEl.innerHTML = `
-                        <div style="color: var(--danger); font-size: 0.85rem; padding: 10px; background: #fee2e2; border-radius: 8px; margin-bottom: 10px;">
-                            ${errMsg}
-                        </div>
-                        <button class="btn btn-sm btn-outline" onclick="location.reload()" style="font-size: 11px;">
-                            <i class="ph ph-arrows-clockwise"></i> ${i18n.lang === 'ar' ? 'إعادة المحاولة' : 'Try Again'}
-                        </button>
-                    `;
+                    statusEl.innerHTML = `<span style="color: var(--danger);">${errMsg}</span>`;
                 }
             }
         };
 
-        UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, async () => {
-             return false;
-        }, {
-            onClose: async () => {
-                if (html5QrCode && html5QrCode.isScanning) {
-                    await html5QrCode.stop().catch(console.error);
-                }
-            },
-            hideFooter: true,
-            large: false
+        await UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
+            onClose: async () => { if (html5QrCode && html5QrCode.isScanning) await html5QrCode.stop().catch(() => {}); },
+            hideFooter: true
         });
 
-        // Small delay to ensure modal DOM is ready
-        setTimeout(startScanner, 500);
-        
-        // Manual submit button inside modal
+        // Event listeners after modal is in DOM
         setTimeout(() => {
-            const manualBtn = document.getElementById('manual-submit-btn');
-            if(manualBtn) {
-                manualBtn.onclick = async () => {
-                     const token = document.getElementById('qr-token-input').value.trim();
-                     if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
-                     const res = await api.scanQR(token, user.id);
-                     if (res.success) {
-                        if (html5QrCode) await html5QrCode.stop().catch(console.error);
-                        UI.toast(res.message);
-                        if (UI.closeCurrentModal) UI.closeCurrentModal();
-                        if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
-                     } else {
-                        UI.toast(res.message, 'error');
-                     }
-                };
-            }
-        }, 500);
+            const startBtn = document.getElementById('start-camera-btn');
+            if (startBtn) startBtn.onclick = startScanner;
+
+            document.getElementById('toggle-manual-btn').onclick = () => {
+                const area = document.getElementById('manual-input-area');
+                area.style.display = area.style.display === 'none' ? 'block' : 'none';
+            };
+
+            const fileInput = document.getElementById('qr-file-input');
+            document.getElementById('scan-file-btn').onclick = () => fileInput.click();
+            
+            fileInput.onchange = async (e) => {
+                if (e.target.files.length === 0) return;
+                const file = e.target.files[0];
+                const html5QrCodeFile = new Html5Qrcode("reader", /* verbose= */ false);
+                try {
+                    UI.toast(i18n.lang === 'ar' ? 'جاري فحص الصورة...' : 'Scanning photo...');
+                    const decodedText = await html5QrCodeFile.scanFile(file, true);
+                    onScanSuccess(decodedText);
+                } catch (err) {
+                    UI.toast(i18n.lang === 'ar' ? 'لم يتم العثور على رمز QR في الصورة' : 'No QR code found in image', 'error');
+                }
+            };
+
+            document.getElementById('manual-submit-btn').onclick = async () => {
+                 const token = document.getElementById('qr-token-input').value.trim();
+                 if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
+                 const res = await api.scanQR(token, user.id);
+                 if (res.success) {
+                    UI.toast(res.message);
+                    if (UI.closeCurrentModal) UI.closeCurrentModal();
+                    if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
+                 } else {
+                    UI.toast(res.message, 'error');
+                 }
+            };
+        }, 300);
     };
 
     const attBtn = document.getElementById('student-attendance-btn');
