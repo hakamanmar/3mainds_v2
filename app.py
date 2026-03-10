@@ -308,8 +308,10 @@ def init_db():
             code TEXT,
             color TEXT,
             section_id TEXT NOT NULL,
+            instructor_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (section_id) REFERENCES sections(id)
+            FOREIGN KEY (section_id) REFERENCES sections(id),
+            FOREIGN KEY (instructor_id) REFERENCES users(id)
         )
     ''')
 
@@ -345,6 +347,13 @@ def init_db():
             c.execute('SELECT target_date FROM announcements LIMIT 1')
         except Exception:
             c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
+
+    # Add instructor_id column if it doesn't exist (SQLite only)
+    if not USE_TURSO:
+        try:
+            c.execute('SELECT instructor_id FROM subjects LIMIT 1')
+        except Exception:
+            c.execute('ALTER TABLE subjects ADD COLUMN instructor_id INTEGER REFERENCES users(id)')
 
     # 6. Attendance Sessions (Linked to subject)
     c.execute('''
@@ -514,8 +523,8 @@ def require_role(*roles):
     def decorator(f):
         def wrapper(*args, **kwargs):
             ctx = get_user_context()
-            # Super admin can do anything
-            if ctx['role'] == 'super_admin':
+            # Super admin and Head of Dept can do almost anything
+            if ctx['role'] in ['super_admin', 'head_dept']:
                  return f(*args, **kwargs)
             
             # Check if role matches
@@ -526,6 +535,28 @@ def require_role(*roles):
         wrapper.__name__ = f.__name__
         return wrapper
     return decorator
+
+def check_subject_ownership(conn, subject_id, ctx):
+    """Securely checks if the current user profile has management rights for a subject."""
+    if ctx['role'] in ['super_admin', 'head_dept']: return True
+    
+    res = conn.execute('SELECT section_id, instructor_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+    if not res: return False
+    
+    # Simple row mapping for compatibility
+    subj = dict(res)
+    
+    if ctx['role'] == 'teacher':
+        return subj.get('instructor_id') == ctx['user_id']
+    
+    if ctx['role'] == 'section_admin':
+        return subj.get('section_id') == ctx['section_id']
+    
+    if ctx['role'] == 'student':
+        return subj.get('section_id') == ctx['section_id']
+
+    return False
+
 
 # ─── Root Files (PWA & Branding) ─────────────────────────────
 @app.route('/manifest.json')
@@ -677,7 +708,7 @@ def get_all_sections():
 
 # ─── SUBJECTS ─────────────────────────────────────────────────
 @app.route('/api/subjects', methods=['GET'])
-@require_role('student', 'teacher', 'section_admin', 'super_admin')
+@require_role('student', 'teacher', 'section_admin', 'super_admin', 'head_dept')
 def get_subjects():
     ctx = get_user_context()
     conn = get_db()
@@ -685,14 +716,17 @@ def get_subjects():
     # Priority: query param section_id (for Super Admin/Committee selector)
     sid = request.args.get('section_id') or ctx['section_id']
     
-    if ctx['role'] in ['super_admin', 'committee']:
+    if ctx['role'] in ['super_admin', 'committee', 'head_dept']:
         if sid:
             subjects = conn.execute('SELECT * FROM subjects WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
         else:
             # Global roles see everything if no section selected
             subjects = conn.execute('SELECT * FROM subjects ORDER BY created_at DESC').fetchall()
+    elif ctx['role'] == 'teacher':
+        # Teachers only see subjects they are assigned to
+        subjects = conn.execute('SELECT * FROM subjects WHERE instructor_id = ? ORDER BY created_at DESC', (ctx['user_id'],)).fetchall()
     else:
-        # Teachers, Section Admins, and Students are restricted to their section
+        # Section Admins, and Students are restricted to their section
         sid = ctx['section_id']
         subjects = conn.execute('SELECT * FROM subjects WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
     
@@ -709,7 +743,7 @@ def get_subject_details(id):
         return jsonify({'error': 'المادة غير موجودة'}), 404
         
     # IDOR Check: Ensure user belongs to the same section as the subject
-    if ctx['role'] != 'super_admin' and subject['section_id'] != ctx['section_id']:
+    if not check_subject_ownership(conn, id, ctx):
         conn.close()
         audit_log("UNAUTHORIZED_ACCESS_ATTEMPT", {"target": f"subject_{id}", "user_id": ctx['user_id']}, risk_score="HIGH")
         return jsonify({'error': 'غير مصرح لك بالوصول لهذه المادة'}), 403
@@ -719,20 +753,20 @@ def get_subject_details(id):
     return jsonify({'subject': dict(subject), 'lessons': [dict(l) for l in lessons]})
 
 @app.route('/api/subjects', methods=['POST'])
-@require_role('section_admin')
+@require_role('section_admin', 'head_dept')
 def add_subject():
     data = request.json
     ctx = get_user_context()
     sid = ctx['section_id']
-    if ctx['role'] == 'super_admin' and data.get('section_id'):
+    if ctx['role'] in ['super_admin', 'head_dept'] and data.get('section_id'):
         sid = data['section_id']
         
     if not data.get('title') or not sid:
         return jsonify({'error': 'يجب إدخال اسم المادة والشعبة'}), 400
         
     conn = get_db()
-    conn.execute('INSERT INTO subjects (title, description, code, color, section_id) VALUES (?, ?, ?, ?, ?)',
-                 (data['title'], data.get('description', ''), data.get('code', ''), data.get('color', '#4f46e5'), sid))
+    conn.execute('INSERT INTO subjects (title, description, code, color, section_id, instructor_id) VALUES (?, ?, ?, ?, ?, ?)',
+                 (data['title'], data.get('description', ''), data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -800,8 +834,7 @@ def add_lesson():
         
         # IDOR Check for subject context
         conn = get_db()
-        subj = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
-        if not subj or (ctx['role'] != 'super_admin' and subj['section_id'] != ctx['section_id']):
+        if not check_subject_ownership(conn, subject_id, ctx):
             conn.close()
             return jsonify({'error': 'غير مصرح لك بالإضافة لهذه المادة'}), 403
         conn.close()
@@ -819,8 +852,7 @@ def add_lesson():
         
         # IDOR Check for subject context
         conn = get_db()
-        subj = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
-        if not subj or (ctx['role'] != 'super_admin' and subj['section_id'] != ctx['section_id']):
+        if not check_subject_ownership(conn, subject_id, ctx):
             conn.close()
             return jsonify({'error': 'غير مصرح لك بالإضافة لهذه المادة'}), 403
         conn.close()
@@ -883,38 +915,46 @@ def update_lesson(id):
 
 # ─── ANNOUNCEMENTS ────────────────────────────────────────────
 @app.route('/api/announcements', methods=['GET'])
-@require_role('student', 'teacher', 'section_admin', 'super_admin')
+@require_role('student', 'teacher', 'section_admin', 'super_admin', 'head_dept', 'committee')
 def get_announcements():
     ctx = get_user_context()
-    sid = ctx['section_id']
+    sid = request.args.get('section_id') or ctx['section_id']
     conn = get_db()
-    if ctx['role'] in ['super_admin', 'committee']:
+    if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
         if sid:
-            ann = conn.execute('SELECT * FROM announcements WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
+            # Also include 'ALL' section broadcasts
+            ann = conn.execute("SELECT * FROM announcements WHERE section_id = ? OR section_id = 'ALL' ORDER BY created_at DESC", (sid,)).fetchall()
         else:
             ann = conn.execute('SELECT * FROM announcements ORDER BY created_at DESC').fetchall()
     else:
-        ann = conn.execute('SELECT * FROM announcements WHERE section_id = ? ORDER BY created_at DESC', (sid,)).fetchall()
+        # Students, Teachers, Section Admins see their section + ALL broadcasts
+        ann = conn.execute("SELECT * FROM announcements WHERE section_id = ? OR section_id = 'ALL' ORDER BY created_at DESC", (sid,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in ann])
 
 @app.route('/api/announcements', methods=['POST'])
-@require_role('section_admin')
+@require_role('section_admin', 'head_dept')
 def add_announcement():
     data = request.json
     ctx = get_user_context()
     sid = ctx['section_id']
-    if ctx['role'] == 'super_admin' and data.get('section_id'):
-        sid = data['section_id']
+
+    # Head of Dept & Super Admin: can broadcast to ALL sections
+    if ctx['role'] in ['super_admin', 'head_dept']:
+        sid = data.get('section_id', 'ALL')
         
     content = data.get('content', '').strip()
     target_date = data.get('target_date', None)
     
     if not content or not sid:
         return jsonify({'error': 'المحتوى والشعبة مطلوبان'}), 400
-        
+
     conn = get_db()
-    conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, sid, target_date))
+    # If head_dept broadcasts to ALL, insert once with section_id='ALL'
+    if sid == 'ALL':
+        conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, 'ALL', target_date))
+    else:
+        conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, sid, target_date))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -946,7 +986,7 @@ def delete_announcement():
 
 # ─── USERS ────────────────────────────────────────────────────
 @app.route('/api/users', methods=['GET'])
-@require_role('section_admin', 'super_admin')
+@require_role('section_admin', 'super_admin', 'head_dept')
 def get_users():
     ctx = get_user_context()
     sid = request.args.get('section_id') or ctx['section_id']
@@ -1008,7 +1048,7 @@ def delete_user():
     return jsonify({'success': True})
 
 @app.route('/api/admin/add-user', methods=['POST'])
-@require_role('section_admin', 'super_admin')
+@require_role('section_admin', 'super_admin', 'head_dept')
 def add_user():
     data = request.json
     ctx = get_user_context()
@@ -1027,8 +1067,8 @@ def add_user():
     if not email or not password or not role:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
 
-    # Global roles (super_admin, committee) never have a section_id
-    if role in ['super_admin', 'committee']:
+    # Global roles (super_admin, committee, head_dept) never have a section_id
+    if role in ['super_admin', 'committee', 'head_dept']:
         section_id = None
 
     # Permission Checks
@@ -1037,6 +1077,12 @@ def add_user():
         if role not in ['student', 'teacher']:
             return jsonify({'error': 'ليس لديك صلاحية لإنشاء هذا النوع من الحسابات'}), 403
         section_id = ctx['section_id'] # Force their own section
+    elif ctx['role'] == 'head_dept':
+        # Head of Dept can create teachers and students but NOT super admins
+        if role in ['super_admin']:
+            return jsonify({'error': 'ليس لديك صلاحية لإنشاء حساب مشرف عام'}), 403
+        if role in ['student', 'teacher', 'section_admin'] and not section_id:
+            return jsonify({'error': 'يجب تحديد الشعبة لهذا النوع من الحسابات'}), 400
     elif ctx['role'] == 'super_admin':
         # ONLY the master super account (super@3minds.edu) can create other super_admins
         if role == 'super_admin' and ctx['email'] != 'super@3minds.edu':
@@ -1051,6 +1097,12 @@ def add_user():
         conn.execute('INSERT INTO users (email, password, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?)',
                      (email, generate_password_hash(password), role, section_id, 0))
         conn.commit()
+        # If creating a teacher and a subject_id was provided, assign the instructor
+        if role == 'teacher' and data.get('subject_id'):
+            new_user = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+            if new_user:
+                conn.execute('UPDATE subjects SET instructor_id = ? WHERE id = ?', (dict(new_user)['id'], data['subject_id']))
+                conn.commit()
     except Exception as e:
         if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
             return jsonify({'error': 'هذا البريد الإلكتروني مسجّل مسبقاً'}), 400
@@ -1173,8 +1225,9 @@ def get_assignments():
         d = dict(a)
         if ctx['role'] == 'student' and user_id:
             sub = conn.execute('SELECT id, submitted_at FROM submissions WHERE assignment_id = ? AND student_id = ?', (a['id'], user_id)).fetchone()
-            d['status'] = 'submitted' if sub else 'pending'
-            d['submitted_at'] = sub['submitted_at'] if sub else None
+            sub_dict = dict(sub) if sub else None
+            d['status'] = 'submitted' if sub_dict else 'pending'
+            d['submitted_at'] = sub_dict['submitted_at'] if sub_dict else None
         res.append(d)
         
     conn.close()
