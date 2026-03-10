@@ -2,18 +2,18 @@
 import { i18n } from './i18n.js';
 
 export const UI = {
-    modal(title, content, onConfirm) {
+    modal(title, content, onConfirm, options = {}) {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
-                <div class="modal-box">
+                <div class="modal-box" ${options.large ? 'style="max-width: 800px; width: 95%;"' : ''}>
                     <div class="modal-header">
                         <h3>${title}</h3>
                         <button class="modal-close-btn"><i class="ph ph-x"></i></button>
                     </div>
                     <div class="modal-body">${content}</div>
-                    <div class="modal-footer">
+                    <div class="modal-footer" ${options.hideFooter ? 'style="display:none;"' : ''}>
                         <button class="btn modal-cancel-btn">${i18n.t('cancel')}</button>
                         <button class="btn btn-primary modal-confirm-btn">${i18n.t('save')}</button>
                     </div>
@@ -21,31 +21,44 @@ export const UI = {
             `;
             document.body.appendChild(overlay);
 
-            const close = () => { overlay.remove(); resolve(null); };
+            const close = () => { 
+                if (options.onClose) options.onClose();
+                overlay.remove(); 
+                resolve(null); 
+            };
+            
+            // Global access to close current modal
+            UI.closeCurrentModal = close;
+
             overlay.querySelector('.modal-close-btn').onclick = close;
-            overlay.querySelector('.modal-cancel-btn').onclick = close;
+            const cancelBtn = overlay.querySelector('.modal-cancel-btn');
+            if (cancelBtn) cancelBtn.onclick = close;
+            
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
             const confirmBtn = overlay.querySelector('.modal-confirm-btn');
-            confirmBtn.onclick = async () => {
-                const origText = confirmBtn.innerHTML;
-                confirmBtn.innerHTML = '<div class="btn-spinner"></div>';
-                confirmBtn.disabled = true;
-                try {
-                    const result = await onConfirm();
-                    if (result !== false) {
-                        overlay.remove();
-                        resolve(result);
-                    } else {
+            if (confirmBtn) {
+                confirmBtn.onclick = async () => {
+                    const origText = confirmBtn.innerHTML;
+                    confirmBtn.innerHTML = '<div class="btn-spinner"></div>';
+                    confirmBtn.disabled = true;
+                    try {
+                        const result = await onConfirm();
+                        if (result !== false) {
+                            if (options.onClose) options.onClose();
+                            overlay.remove();
+                            resolve(result);
+                        } else {
+                            confirmBtn.innerHTML = origText;
+                            confirmBtn.disabled = false;
+                        }
+                    } catch (err) {
+                        UI.toast(err.message || i18n.t('error'), 'error');
                         confirmBtn.innerHTML = origText;
                         confirmBtn.disabled = false;
                     }
-                } catch (err) {
-                    UI.toast(err.message || i18n.t('error'), 'error');
-                    confirmBtn.innerHTML = origText;
-                    confirmBtn.disabled = false;
-                }
-            };
+                };
+            }
         });
     },
 
