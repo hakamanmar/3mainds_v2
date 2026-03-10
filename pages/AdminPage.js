@@ -452,13 +452,24 @@ AdminPage.init = () => {
                     </div>
 
                     <div id="subject-assign-wrapper" style="display:none;">
-                        <div class="form-section-title"><i class="ph ph-books"></i> تعيين مادة دراسية</div>
-                        <div class="form-group">
-                            <label>اختر المادة التي سيدرّسها (اختياري)</label>
-                            <select id="u-subject" class="form-input">
-                                <option value="">-- بدون تعيين مادة الآن --</option>
-                                ${subjects.map(s => `<option value="${s.id}">${s.title} (${i18n.t(s.section_id)})</option>`).join('')}
-                            </select>
+                        <div class="form-section-title"><i class="ph ph-books"></i> تعيين المواد الدراسية</div>
+                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                            اختر مادة واحدة أو أكثر سيدرّسها هذا الأستاذ
+                        </p>
+                        <div class="multi-select-grid" id="courses-grid">
+                            ${subjects.length === 0 
+                                ? `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:1/-1;">لا توجد مواد متاحة. أضف مواد أولاً.</p>`
+                                : subjects.map(s => `
+                                    <label class="section-checkbox" id="course-card-${s.id}" onclick="this.classList.toggle('checked'); document.getElementById('chk-${s.id}').checked = !document.getElementById('chk-${s.id}').checked;">
+                                        <input type="checkbox" id="chk-${s.id}" value="${s.id}" style="display:none;" />
+                                        <i class="ph ph-book-open-text" style="color:${s.color || 'var(--primary)'}; font-size:1.2rem;"></i>
+                                        <div>
+                                            <div style="font-weight:700; font-size:0.9rem;">${s.title}</div>
+                                            <div style="font-size:0.75rem; color:var(--text-muted);">${i18n.t(s.section_id)} · ${s.code || ''}</div>
+                                        </div>
+                                    </label>
+                                `).join('')
+                            }
                         </div>
                     </div>
                 </div>
@@ -468,12 +479,14 @@ AdminPage.init = () => {
                 const pass = document.getElementById('u-pass').value;
                 const role = document.getElementById('u-role').value;
                 const sid = document.getElementById('u-section').value;
-                const subjectEl = document.getElementById('u-subject');
-                const subject_id = subjectEl ? subjectEl.value : null;
+
+                // Collect all checked course IDs
+                const checkedBoxes = document.querySelectorAll('#courses-grid input[type=checkbox]:checked');
+                const subject_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value)).filter(Boolean);
 
                 if (!full_name) { UI.toast('الاسم الثلاثي مطلوب', 'error'); return false; }
                 if (!email || !pass) { UI.toast('البريد وكلمة المرور مطلوبان', 'error'); return false; }
-                await api.addUser(email, pass, role, sid, full_name, subject_id || null);
+                await api.addUser(email, pass, role, sid, full_name, subject_ids);
                 return true;
             });
             if (result) location.reload();
