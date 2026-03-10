@@ -201,22 +201,49 @@ class Router {
         `;
 
         if (user) {
-            let links = `
-                <button class="btn btn-ghost" data-path="/home">
-                    <i class="ph ph-house"></i>
-                    <span>${i18n.t('home')}</span>
-                </button>`;
+            let links = '';
 
-            if (user.role === 'super_admin') {
-                links += `
+            // === COMMITTEE: Only access committee panel, NO home, NO subjects ===
+            if (user.role === 'committee') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/committee">
+                        <i class="ph ph-seal-warning"></i>
+                        <span>${i18n.t('absence_committee')}</span>
+                    </button>`;
+
+            // === SUPER ADMIN: Full access ===
+            } else if (user.role === 'super_admin') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-shield-star"></i><span>${i18n.t('high_control')}</span></button>
                     <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
-            } else if (user.role === 'section_admin' || user.role === 'teacher' || user.role === 'committee') {
-                const path = user.role === 'section_admin' ? '/admin' : (user.role === 'teacher' ? '/attendance' : '/committee');
-                const icon = user.role === 'section_admin' ? 'ph ph-gear' : (user.role === 'teacher' ? 'ph ph-qr-code' : 'ph ph-seal-warning');
-                const label = i18n.t(user.role === 'section_admin' ? 'section_mgmt' : (user.role === 'teacher' ? 'attendance_mgmt' : 'absence_committee'));
-                links += `<button class="btn btn-ghost" data-path="${path}"><i class="${icon}"></i><span>${label}</span></button>`;
+
+            // === HEAD OF DEPT: Monitor everything, broadcast notifications ===
+            } else if (user.role === 'head_dept') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
+                    <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-eye"></i><span>مراقبة الأقسام</span></button>
+                    <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+
+            // === TEACHER: Only their subjects + attendance ===
+            } else if (user.role === 'teacher') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+
+            // === SECTION ADMIN: Manage their section ===
+            } else if (user.role === 'section_admin') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
+                    <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-gear"></i><span>${i18n.t('section_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+
+            // === STUDENT: View-only ===
+            } else if (user.role === 'student') {
+                links = `
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>`;
             }
 
             navHtml += `
@@ -224,7 +251,7 @@ class Router {
                     <i class="ph ph-user-circle-fill"></i>
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-weight:700; font-size:13px;">${user.email}</span>
-                        <span class="role-pill role-${user.role}" style="font-size:9px; width:fit-content;">${i18n.t(user.role).toUpperCase()}</span>
+                        <span class="role-pill role-${user.role}" style="font-size:9px; width:fit-content;">${i18n.t(user.role) ? i18n.t(user.role).toUpperCase() : user.role.toUpperCase()}</span>
                     </div>
                 </div>
                 <div class="nav-links-container">
