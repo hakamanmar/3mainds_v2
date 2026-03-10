@@ -1328,7 +1328,23 @@ def get_stats():
 # ────────────────────────────────────────────────────────────────
 #  ATTENDANCE SYSTEM APIs
 # ────────────────────────────────────────────────────────────────
+# -- Get students for a section (teacher-accessible) --------------
+@app.route('/api/attendance/section-students', methods=['GET'])
+@require_role('teacher', 'super_admin', 'section_admin')
+def attendance_section_students():
+        ctx = get_user_context()
+        section_id = request.args.get('section_id') or ctx['section_id']
+        if not section_id:
+                    return jsonify([])
+                conn = get_db()
+    students = conn.execute(
+                "SELECT id, email, role FROM users WHERE role='student' AND section_id=? ORDER BY email ASC",
+                (section_id,)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(s) for s in students])
 
+# 
 def _gen_token(length=6):
     """
     Generates a short, human-readable alphanumeric token.
@@ -1850,4 +1866,5 @@ def attendance_active_for_me():
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', debug=True, port=5000)
+
 
