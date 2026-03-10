@@ -48,167 +48,191 @@ const SubjectPage = async (params) => {
     const isStudent = user && (user.role === 'student' || user.role === 'super_admin');
 
     return `
-        <div class="subject-page">
-            <button class="back-btn" data-path="/">
-                <i class="ph ph-arrow-${i18n.lang === 'ar' ? 'right' : 'left'}"></i>
-                ${i18n.t('back')}
-            </button>
+        <div class="subject-page-v2">
+            <!-- Glass Header Navigation -->
+            <div class="page-top-nav">
+                <button class="glass-back-btn" data-path="/">
+                    <i class="ph-bold ph-caret-${i18n.lang === 'ar' ? 'right' : 'left'}"></i>
+                    <span>${i18n.t('back')}</span>
+                </button>
+                <div class="page-context-title">${subject.title || ''}</div>
+            </div>
 
-            <div class="subject-hero" style="border-color: ${subject.color || '#4f46e5'};">
-                <div class="subject-hero-accent" style="background: ${subject.color || '#4f46e5'};"></div>
-                <div class="subject-hero-content">
-                    <div>
-                        <h1>${subject.title || 'غير معروف'}</h1>
-                        <span class="subject-code-badge" style="background: ${subject.color || '#4f46e5'}20; color: ${subject.color || '#4f46e5'}; border: 1px solid ${subject.color || '#4f46e5'}40;">
-                            ${subject.code || ''}
-                        </span>
-                        <p style="margin-top: 0.75rem; color: var(--text-muted);">${subject.description || ''}</p>
+            <!-- Premium Hero Section -->
+            <div class="subject-premium-hero" style="--subj-color: ${subject.color || '#4f46e5'}">
+                <div class="hero-bg-accent"></div>
+                <div class="hero-inner">
+                    <div class="hero-left">
+                        <div class="hero-badge-row">
+                            <span class="premium-badge">
+                                <i class="ph-fill ph-graduation-cap"></i>
+                                ${subject.code || 'COURSE'}
+                            </span>
+                            ${subject.category ? `<span class="premium-tag">${subject.category}</span>` : ''}
+                        </div>
+                        <h1 class="hero-title">${subject.title || 'المادة الدراسية'}</h1>
+                        <p class="hero-subtitle">${subject.description || 'مرحباً بك في صفحة المادة، هنا تجد كافة المحاضرات والواجبات.'}</p>
                     </div>
-                    <div style="display: flex; gap: 10px;">
-                        ${isStudent ? `
-                            <button class="btn btn-outline" id="student-attendance-btn" style="white-space: nowrap; border-color: ${subject.color || '#4f46e5'}; color: ${subject.color || '#4f46e5'};">
-                                <i class="ph ph-qr-code"></i>
-                                ${i18n.t('scan_attendance') || 'تسجيل الحضور'}
-                            </button>
-                        ` : ''}
-                        ${isAdmin ? `
-                            <button class="btn btn-primary" id="add-lesson-here-btn" style="white-space: nowrap;">
-                                <i class="ph ph-plus-circle"></i>
-                                ${i18n.t('add_lesson')}
-                            </button>
-                        ` : ''}
-                        ${isSuper ? `
-                            <button class="btn btn-outline" id="edit-subject-btn" style="border-color: #f59e0b; color: #f59e0b;" title="${i18n.lang === 'ar' ? 'تعديل المادة' : 'Edit Subject'}">
-                                <i class="ph ph-pencil-simple"></i>
-                            </button>
-                            <button class="btn btn-outline" id="delete-subject-btn" style="border-color: #ef4444; color: #ef4444;" title="${i18n.lang === 'ar' ? 'حذف المادة' : 'Delete Subject'}">
-                                <i class="ph ph-trash"></i>
-                            </button>
-                        ` : ''}
+                    <div class="hero-right">
+                        <div class="hero-actions-glass">
+                            ${isStudent ? `
+                                <button class="action-card-btn primary" id="student-attendance-btn">
+                                    <div class="action-icon"><i class="ph-bold ph-qr-code"></i></div>
+                                    <span>${i18n.t('scan_attendance')}</span>
+                                </button>
+                            ` : ''}
+                            ${isAdmin ? `
+                                <button class="action-card-btn secondary" id="add-lesson-here-btn">
+                                    <div class="action-icon"><i class="ph-bold ph-plus"></i></div>
+                                    <span>${i18n.t('add_lesson')}</span>
+                                </button>
+                            ` : ''}
+                            ${isSuper ? `
+                                <div class="super-quick-actions">
+                                    <button class="mini-action-btn" id="edit-subject-btn" title="تعديل">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </button>
+                                    <button class="mini-action-btn danger" id="delete-subject-btn" title="حذف">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="lessons-section">
-                <h2 class="section-title">
-                    <i class="ph ph-files" style="color: ${subject.color || '#4f46e5'};"></i>
-                    ${i18n.t('materials')}
-                    <span class="count-pill">${lessons.length}</span>
-                </h2>
+            <!-- Content Grid Layout -->
+            <div class="subject-content-layout">
+                <!-- Left Column: Materials -->
+                <div class="content-main-col">
+                    <div class="section-header-v2">
+                        <div class="section-title-wrap">
+                            <div class="title-icon"><i class="ph-fill ph-folder-open"></i></div>
+                            <h2>${i18n.t('materials')}</h2>
+                            <span class="items-count-badge">${lessons.length}</span>
+                        </div>
+                    </div>
 
-                ${lessons.length === 0 ?
-            `<div class="empty-state" style="margin-top: 2rem;">
-                        <i class="ph ph-folder-open"></i>
-                        <h3>${i18n.t('no_materials')}</h3>
-                        <p>لم يتم رفع أي دروس لهذه المادة بعد</p>
-                    </div>` :
-            `<div class="lessons-grid" id="lessons-container">
-                        ${lessons.map((item, idx) => {
-                const icon = typeIcon[item.type] || 'ph-file';
-                const color = typeColor[item.type] || '#4f46e5';
-                const encodedUrl = encodeURIComponent(item.url || '');
-                const encodedName = encodeURIComponent(item.title || 'ملف');
-                return `
-                                <div class="card lesson-card" data-id="${item.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; background: var(--bg-card); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05); margin-bottom: 1rem; border: 1px solid var(--border-color); transition: transform 0.2s, box-shadow 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-                                        <div class="lesson-num" style="font-weight: bold; color: var(--text-muted); font-size: 1.1rem; min-width: 24px; text-align: center;">${idx + 1}</div>
-                                        <div class="lesson-icon" style="width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: ${color}15; color: ${color}; font-size: 1.5rem;">
-                                            <i class="ph ${icon}"></i>
-                                        </div>
-                                        <div class="lesson-info" style="flex: 1;">
-                                            <h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem; color: var(--text-main); font-weight: 600;">${item.title}</h4>
-                                            <span class="lesson-type tag" style="background: ${color}15; color: ${color}; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 500;">${item.type?.toUpperCase() || 'PDF'}</span>
-                                        </div>
-                                    </div>
-                                    <div class="lesson-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <button data-path="/viewer?url=${encodedUrl}&name=${encodedName}"
-                                                class="btn btn-outline lesson-btn" style="border-color: ${color}; color: ${color}; padding: 0.5rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; transition: all 0.2s; cursor: pointer;">
-                                            <i class="ph ph-eye" style="font-size: 1.1rem;"></i>
-                                            ${i18n.t('view')}
-                                        </button>
-                                        <a href="${item.url}" target="_blank"
-                                           class="btn btn-primary lesson-btn" style="background: ${color}; border-color: ${color}; color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; transition: all 0.2s;">
-                                            <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i>
-                                            ${i18n.t('download')}
-                                        </a>
-
-                                        ${isAdmin ? `
-                                            <button class="btn delete-lesson-btn" data-id="${item.id}"
-                                                    style="background: #fee2e2; color: #ef4444; border: none; padding: 0.5rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s;" title="Delete">
-                                                <i class="ph ph-trash" style="font-size: 1.1rem;"></i>
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            `;
-            }).join('')}
-                    </div>`
-        }
-            </div>
-
-            <div class="assignments-section" style="margin-top: 3rem; padding-bottom: 2rem;">
-                <h2 class="section-title">
-                    <i class="ph ph-notebook" style="color: #f59e0b;"></i>
-                    ${i18n.t('homework')}
-                    <span class="count-pill" style="background: #fffbeb; color: #f59e0b;">${assignments.length}</span>
-                </h2>
-
-                <div style="display: flex; gap: 15px; margin-bottom: 1.5rem;">
-                    ${isAdmin ? `
-                        <button class="btn btn-primary" id="add-assignment-btn" style="background: #f59e0b; border: none;">
-                            <i class="ph ph-plus-circle"></i>
-                            ${i18n.t('add_assignment')}
-                        </button>
-                    ` : ''}
-                </div>
-
-                ${assignments.length === 0 ?
-            `<div class="empty-state">
-                        <i class="ph ph-stack"></i>
-                        <h3>${i18n.t('no_assignments')}</h3>
-                    </div>` :
-            `<div class="assignments-grid">
-                        ${assignments.map(a => `
-                            <div class="card assignment-card" style="margin-bottom: 1.5rem; border: 1px solid var(--border-color); border-right: 4px solid #f59e0b; border-radius: 12px; background: var(--bg-card); padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap;">
-                                    <div style="flex: 1; min-width: 250px;">
-                                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: var(--text-main); font-weight: 600;">${a.title}</h3>
-                                        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem;">${a.description || ''}</p>
-                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                            ${a.due_date ? `
-                                                <span class="tag ${new Date(a.due_date) < new Date() ? 'tag-low' : 'tag-ok'}" style="padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
-                                                    <i class="ph ph-clock" style="font-size: 1rem;"></i> ${i18n.t('due_date')}: ${new Date(a.due_date).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                                                </span>
-                                            ` : ''}
-                                            <span class="tag tag-blue" style="background: rgba(37, 99, 235, 0.1); color: #2563eb; padding: 0.35rem 0.75rem; border-radius: 6px; font-weight: 500; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;"><i class="ph ph-file-code" style="font-size: 1rem;"></i> ${a.allowed_formats}</span>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; gap: 0.75rem; min-width: 140px;">
-                                        ${a.file_url ? `
-                                            <a href="${a.file_url}" target="_blank" class="btn btn-sm btn-outline" style="border-color: var(--border-color); color: var(--text-main); font-weight: 500; justify-content: center;">
-                                                <i class="ph ph-download" style="font-size: 1.1rem;"></i> ${i18n.t('view')} الملف المرفق
-                                            </a>
-                                        ` : ''}
-                                        ${isStudent ? `
-                                            <button class="btn btn-sm btn-primary submit-solution-btn" 
-                                                    data-id="${a.id}" 
-                                                    data-formats="${a.allowed_formats}" 
-                                                    style="background: #10b981; border: none; font-weight: 500; justify-content: center; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
-                                                    ${(a.due_date && new Date(a.due_date) < new Date()) ? 'disabled title="انتهى وقت التسليم"' : ''}>
-                                                <i class="ph ph-upload-simple" style="font-size: 1.1rem;"></i> ${new Date(a.due_date) < new Date() ? 'انتهى الوقت' : i18n.t('submit_homework')}
-                                            </button>
-                                        ` : ''}
-                                        ${isAdmin ? `
-                                            <button class="btn btn-sm btn-outline view-submissions-btn" data-id="${a.id}" style="color: #2563eb; border-color: #2563eb; font-weight: 500; justify-content: center;">
-                                                <i class="ph ph-users" style="font-size: 1.1rem;"></i> ${i18n.t('view_submissions')}
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                </div>
+                    ${lessons.length === 0 ? `
+                        <div class="premium-empty-state">
+                            <div class="empty-art">
+                                <i class="ph-light ph-files"></i>
                             </div>
-                        `).join('')}
-                    </div>`
-        }
+                            <h3>لا توجد مواد دراسية</h3>
+                            <p>لم يتم رفع أي محاضرات لهذه المادة حتى الآن.</p>
+                        </div>
+                    ` : `
+                        <div class="premium-lessons-list">
+                            ${lessons.map((item, idx) => {
+                                const type = getFileType(item.url);
+                                const icon = typeIcon[type] || 'ph-file';
+                                const color = typeColor[type] || '#4f46e5';
+                                const encodedUrl = encodeURIComponent(item.url || '');
+                                const encodedName = encodeURIComponent(item.title || 'ملف');
+                                return `
+                                    <div class="lesson-row-card" data-id="${item.id}" style="--item-color: ${color}">
+                                        <div class="row-left">
+                                            <div class="row-icon-box">
+                                                <i class="ph-bold ${icon}"></i>
+                                                <div class="icon-ring"></div>
+                                            </div>
+                                            <div class="row-details">
+                                                <h4>${item.title}</h4>
+                                                <div class="row-meta">
+                                                    <span class="meta-item"><i class="ph ph-calendar"></i> ${new Date().toLocaleDateString('ar-EG')}</span>
+                                                    <span class="meta-item type-tag" style="background: ${color}10; color: ${color}">${type}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row-right">
+                                            <div class="row-actions">
+                                                <button data-path="/viewer?url=${encodedUrl}&name=${encodedName}" 
+                                                        class="glass-action-btn view" title="${i18n.t('view')}">
+                                                    <i class="ph-bold ph-eye"></i>
+                                                </button>
+                                                <a href="${item.url}" target="_blank" 
+                                                   class="glass-action-btn download" title="${i18n.t('download')}">
+                                                    <i class="ph-bold ph-download-simple"></i>
+                                                </a>
+                                                ${isAdmin ? `
+                                                    <button class="glass-action-btn delete delete-lesson-btn" data-id="${item.id}">
+                                                        <i class="ph-bold ph-trash"></i>
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+
+                <!-- Right Column: Assignments & Info -->
+                <div class="content-side-col">
+                    <div class="sticky-sidebar">
+                        <div class="section-header-v2">
+                            <div class="section-title-wrap">
+                                <div class="title-icon alt"><i class="ph-fill ph-notebook"></i></div>
+                                <h2>${i18n.t('homework')}</h2>
+                                <span class="items-count-badge alt">${assignments.length}</span>
+                            </div>
+                            ${isAdmin ? `
+                                <button class="mini-add-btn" id="add-assignment-btn">
+                                    <i class="ph-bold ph-plus"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <div class="premium-assignments-list">
+                            ${assignments.length === 0 ? `
+                                <div class="side-empty-state">
+                                    <p>لا يوجد واجبات حالية</p>
+                                </div>
+                            ` : assignments.map(a => {
+                                const isExpired = a.due_date && new Date(a.due_date) < new Date();
+                                return `
+                                    <div class="assignment-mini-card ${isExpired ? 'expired' : ''}">
+                                        <div class="assign-header">
+                                            <h3>${a.title}</h3>
+                                            <div class="assign-status-dot"></div>
+                                        </div>
+                                        <p class="assign-desc">${a.description || ''}</p>
+                                        <div class="assign-footer">
+                                            <div class="assign-meta">
+                                                <span class="due-tag">
+                                                    <i class="ph-bold ph-clock"></i>
+                                                    ${new Date(a.due_date).toLocaleDateString('ar-EG', {month:'short', day:'numeric'})}
+                                                </span>
+                                                <span class="format-tag">${a.allowed_formats}</span>
+                                            </div>
+                                            <div class="assign-btns">
+                                                ${a.file_url ? `
+                                                    <a href="${a.file_url}" target="_blank" class="assign-icon-btn" title="الملف">
+                                                        <i class="ph-bold ph-file-pdf"></i>
+                                                    </a>
+                                                ` : ''}
+                                                ${isStudent ? `
+                                                    <button class="assign-main-btn submit-solution-btn" 
+                                                            data-id="${a.id}" data-formats="${a.allowed_formats}"
+                                                            ${isExpired ? 'disabled' : ''}>
+                                                        ${isExpired ? 'انتهى' : i18n.t('submit_homework')}
+                                                    </button>
+                                                ` : ''}
+                                                ${isAdmin ? `
+                                                    <button class="assign-main-btn alt view-submissions-btn" data-id="${a.id}">
+                                                        ${i18n.t('view_submissions')}
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
