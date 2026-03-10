@@ -365,29 +365,98 @@ SubjectPage.init = (params) => {
 
 
     // Student Attendance Scan
-    const attBtn = document.getElementById('student-attendance-btn');
-    if (attBtn) {
-        attBtn.onclick = async () => {
-            const html = `
-                <div style="text-align: center; padding: 10px;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;"><i class="ph ph-qr-code"></i></div>
-                    <p>${i18n.t('scan_instruction') || 'أدخل الرمز الظاهر على شاشة الأستاذ لتسجيل حضورك'}</p>
-                    <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.5rem; letter-spacing: 2px; margin-top: 1rem;" placeholder="ABC123..." />
+    const openScanner = async () => {
+        const html = `
+            <div style="text-align: center; padding: 10px;">
+                <div id="reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 2px solid var(--primary);"></div>
+                <div id="scanner-status" style="margin-top: 1rem; color: var(--text-muted);">
+                    <i class="ph ph-camera"></i> ${i18n.lang === 'ar' ? 'جاري تهيئة الكاميرا...' : 'Initializing camera...'}
                 </div>
-            `;
-            await UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, async () => {
-                const token = document.getElementById('qr-token-input').value.trim();
-                if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return false; }
-                const res = await api.scanQR(token, user.id);
-                if (res.success) {
-                    UI.toast(res.message);
-                    return true;
-                } else {
-                    UI.toast(res.message, 'error');
-                    return false;
-                }
-            });
+                <div style="margin-top: 1rem;">
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">${i18n.t('scan_instruction') || 'قم بتوجيه الكاميرا نحو رمز QR الظاهر على شاشة الأستاذ'}</p>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 1rem;">
+                        <input id="qr-token-input" class="form-control" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" placeholder="${i18n.lang === 'ar' ? 'أو أدخل الرمز يدوياً' : 'Or enter code manually'}" />
+                        <button id="manual-submit-btn" class="btn btn-primary" style="padding: 12px;"><i class="ph ph-check"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        let html5QrCode;
+        
+        const onScanSuccess = async (decodedText) => {
+            if (html5QrCode) {
+                await html5QrCode.stop().catch(console.error);
+            }
+            UI.toast(i18n.lang === 'ar' ? 'تم التقاط الرمز، جاري التحقق...' : 'QR captured, verifying...');
+            const res = await api.scanQR(decodedText, user.id);
+            if (res.success) {
+                UI.toast(res.message);
+                if (UI.closeCurrentModal) UI.closeCurrentModal();
+                if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
+            } else {
+                UI.toast(res.message, 'error');
+                // Potential loop prevention
+                setTimeout(startScanner, 1000);
+            }
         };
+
+        const startScanner = async () => {
+            try {
+                html5QrCode = new Html5Qrcode("reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+                const statusEl = document.getElementById('scanner-status');
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--success);"><i class="ph ph-record"></i> ${i18n.lang === 'ar' ? 'الكاميرا نشطة الآن' : 'Camera active'}</span>`;
+            } catch (err) {
+                console.error(err);
+                const statusEl = document.getElementById('scanner-status');
+                if (statusEl) statusEl.innerHTML = `<span style="color: var(--danger); font-size: 0.85rem;">${i18n.lang === 'ar' ? 'فشل فتح الكاميرا، يرجى التأكد من الصلاحيات' : 'Camera failed, please check permissions'}</span>`;
+            }
+        };
+
+        UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, async () => {
+             // Confirm button logic is handled manually in scanners
+             return false;
+        }, {
+            onClose: async () => {
+                if (html5QrCode && html5QrCode.isScanning) {
+                    await html5QrCode.stop().catch(console.error);
+                }
+            },
+            hideFooter: true
+        });
+
+        // Trigger scanner start after modal renders
+        setTimeout(startScanner, 300);
+        
+        // Manual submit button inside modal
+        setTimeout(() => {
+            const manualBtn = document.getElementById('manual-submit-btn');
+            if(manualBtn) {
+                manualBtn.onclick = async () => {
+                     const token = document.getElementById('qr-token-input').value.trim();
+                     if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
+                     const res = await api.scanQR(token, user.id);
+                     if (res.success) {
+                        if (html5QrCode) await html5QrCode.stop().catch(console.error);
+                        UI.toast(res.message);
+                        if (UI.closeCurrentModal) UI.closeCurrentModal();
+                        if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
+                     } else {
+                        UI.toast(res.message, 'error');
+                     }
+                };
+            }
+        }, 500);
+    };
+
+    const attBtn = document.getElementById('student-attendance-btn');
+    if (attBtn) attBtn.onclick = openScanner;
+
+    // AUTO-OPEN scanner if action=scan is present
+    if (params.action === 'scan') {
+        setTimeout(openScanner, 600);
     }
 
     // Add Assignment (Teacher/Super)
