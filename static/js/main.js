@@ -1,6 +1,6 @@
 /* main.js - 3Minds Platform - Enhanced Mobile Reliability */
-import { auth } from './api.js';
-import { i18n } from './i18n.js';
+import { auth } from '/static/js/api.js';
+import { i18n } from '/static/js/i18n.js';
 
 const pageModules = {
     '/': () => import('/pages/SectionSelectionPage.js'),
