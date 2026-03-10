@@ -452,10 +452,12 @@ export default async function AttendancePage(params) {
     });
 
     async function showManualAddModal() {
+        try {
         UI.toast('جاري تحميل قائمة الطلاب...', 'info');
         const sessData = await api.getLiveAttendance(activeSession.session_id);
-        const allStudents = await api.getUsers(selectedSectionId);
-        const presentIds = new Set(sessData.attended.map(r => r.student_id));
+        const allStudentsRaw = await api.getUsers(selectedSectionId);
+        const allStudents = Array.isArray(allStudentsRaw) ? allStudentsRaw : [];
+        const presentIds = new Set(Array.isArray(sessData.attended) ? sessData.attended.map(r => r.student_id) : []);
         
         const html = `
             <div style="direction: rtl; text-align: right;">
@@ -531,6 +533,10 @@ export default async function AttendancePage(params) {
                 }
             }
         };
+        } catch (err) {
+            console.error('showManualAddModal error:', err);
+            UI.toast('حدث خطأ عند تحميل قائمة الطلاب: ' + (err.message || ''), 'error');
+        }
     }
 
     init();
