@@ -1583,7 +1583,7 @@ def attendance_section_students():
         return jsonify([])
     conn = get_db()
     students = conn.execute(
-        "SELECT id, email, role FROM users WHERE role='student' AND section_id=? ORDER BY email ASC",
+        "SELECT id, email, full_name, role FROM users WHERE role='student' AND section_id=? ORDER BY full_name ASC, email ASC",
         (section_id,)
     ).fetchall()
     conn.close()
@@ -1725,7 +1725,7 @@ def attendance_live(session_id):
     conn = get_db()
     records = conn.execute('''
         SELECT ar.id, ar.scanned_at, ar.method,
-               u.id as student_id, u.email
+               u.id as student_id, u.email, u.full_name
         FROM attendance_records ar
         JOIN users u ON u.id = ar.student_id
         WHERE ar.session_id = ?
@@ -1869,7 +1869,7 @@ def attendance_session_details(session_id):
         return jsonify({'error': 'Session not found'}), 404
         
     records = conn.execute('''
-        SELECT ar.scanned_at, ar.method, u.email, u.id as student_id
+        SELECT ar.scanned_at, ar.method, u.email, u.full_name, u.id as student_id
         FROM attendance_records ar
         JOIN users u ON u.id = ar.student_id
         WHERE ar.session_id = ?
@@ -1959,11 +1959,11 @@ def attendance_report():
     # Filter students by section if not super_admin (or if super_admin specifies sid)
     if ctx['role'] == 'super_admin':
         if sid:
-            students = conn.execute("SELECT id, email FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+            students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
         else:
-            students = conn.execute("SELECT id, email FROM users WHERE role='student'").fetchall()
+            students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student'").fetchall()
     else:
-        students = conn.execute("SELECT id, email FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+        students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
 
     result = []
     for stu in students:
@@ -1986,6 +1986,7 @@ def attendance_report():
         result.append({
             'student_id':  stu['id'],
             'email':       stu['email'],
+            'full_name':    stu['full_name'],
             'total':       total,
             'attended':    attended,
             'absent':      absent,
@@ -2005,9 +2006,9 @@ def attendance_alerts():
     conn = get_db()
     
     if ctx['role'] == 'super_admin' and not sid:
-        students = conn.execute("SELECT id, email, section_id FROM users WHERE role='student'").fetchall()
+        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role='student'").fetchall()
     else:
-        students = conn.execute("SELECT id, email, section_id FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
         
     alerts = []
     for stu in students:
@@ -2031,6 +2032,7 @@ def attendance_alerts():
                     alerts.append({
                         'student_id':   stu['id'],
                         'email':        stu['email'],
+                        'full_name':    stu['full_name'],
                         'subject':      subj['title'],
                         'subject_code': subj['code'],
                         'total':        total,
