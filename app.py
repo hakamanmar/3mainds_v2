@@ -89,8 +89,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # ─── Turso Cloud DB via HTTP API ─────────────────────────────────────
 # Uses Turso's HTTP API — no compiled packages needed, works on Vercel!
-TURSO_DATABASE_URL = os.environ.get('TURSO_DATABASE_URL', '')
-TURSO_AUTH_TOKEN   = os.environ.get('TURSO_AUTH_TOKEN', '')
+TURSO_DATABASE_URL = os.environ.get('TURSO_DATABASE_URL') or os.environ.get('LIBSQL_URL') or os.environ.get('TURSO_URL', '')
+TURSO_AUTH_TOKEN   = os.environ.get('TURSO_AUTH_TOKEN') or os.environ.get('LIBSQL_AUTH_TOKEN') or ''
 USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
 
 if USE_TURSO:
@@ -249,6 +249,13 @@ def get_db():
     conn.execute('PRAGMA synchronous=NORMAL;')
     conn.execute('PRAGMA foreign_keys=ON;')
     return conn
+
+# Force immediate schema initialization for Vercel environments
+def ensure_schema():
+    print(f"[DB] Initializing schema... Turso Active: {USE_TURSO}")
+    init_db()
+
+ensure_schema()
 
 
 def init_db():
@@ -1151,7 +1158,10 @@ def get_users():
         ur['sections'] = sections_list
         result.append(ur)
 
-    return jsonify(result)
+    return jsonify({
+        'users': result,
+        'is_cloud': USE_TURSO
+    })
 
 @app.route('/api/users', methods=['DELETE'])
 @require_role('section_admin', 'super_admin')
@@ -2084,6 +2094,5 @@ def attendance_active_for_me():
 # ── Assignments & Submissions ──────────────────────────────────────
 
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', debug=True, port=5000)
 
