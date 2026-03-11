@@ -165,7 +165,7 @@ const AdminPage = async () => {
                                                 <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
                                                 ${(u.sections && u.sections.length > 0) 
                                                     ? u.sections.map(s => `<span class="badge badge-light">${i18n.t(s)}</span>`).join('') 
-                                                    : (u.section_id ? `<span class="badge badge-light">${i18n.t(u.section_id)}</span>` : '')}
+                                                    : (u.primary_section ? `<span class="badge badge-light">${i18n.t(u.primary_section)}</span>` : '')}
                                                  <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
                                                      <i class="ph ph-devices"></i> ${u.device_count || 0}/3
                                                  </span>
@@ -399,6 +399,25 @@ AdminPage.init = () => {
             const subjects = await api.getSubjects();
             const currentUser = auth.getUser();
 
+            // Wait for next tick so modal elements exist in DOM before attaching events
+            setTimeout(() => {
+                const roleSel = document.getElementById('u-role');
+                const sidWrapper = document.getElementById('section-select-wrapper');
+                const subjectWrapper = document.getElementById('subject-assign-wrapper');
+
+                const updateVisibility = () => {
+                    const r = roleSel ? roleSel.value : '';
+                    const globalRoles = ['super_admin', 'committee', 'head_dept'];
+                    if (sidWrapper) sidWrapper.style.display = globalRoles.includes(r) ? 'none' : 'block';
+                    if (subjectWrapper) subjectWrapper.style.display = r === 'teacher' ? 'block' : 'none';
+                };
+
+                if (roleSel) {
+                    updateVisibility();
+                    roleSel.addEventListener('change', updateVisibility);
+                }
+            }, 0);
+
             const result = await UI.modal(i18n.t('create_account'), `
                 <style>
                     .create-user-form .form-group { margin-bottom: 1rem; }
@@ -468,19 +487,34 @@ AdminPage.init = () => {
                         <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
                             اختر مادة واحدة أو أكثر سيدرّسها هذا الأستاذ
                         </p>
-                        <div class="multi-select-grid" id="courses-grid">
+                        <div class="multi-select-grid" id="courses-grid" style="grid-template-columns: 1fr;">
                             ${subjects.length === 0 
-                                ? `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:1/-1;">لا توجد مواد متاحة. أضف مواد أولاً.</p>`
-                                : subjects.map(s => `
-                                    <label class="section-checkbox" id="course-card-${s.id}">
-                                        <input type="checkbox" id="chk-${s.id}" value="${s.id}" style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)" />
-                                        <i class="ph ph-book-open-text" style="color:${s.color || 'var(--primary)'}; font-size:1.2rem;"></i>
-                                        <div>
-                                            <div style="font-weight:700; font-size:0.9rem;">${s.title}</div>
-                                            <div style="font-size:0.75rem; color:var(--text-muted);">${i18n.t(s.section_id)} · ${s.code || ''}</div>
+                                ? `<p style="color:var(--text-muted); font-size:0.85rem;">لا توجد مواد متاحة. أضف مواد أولاً.</p>`
+                                : (() => {
+                                    // Group subjects by section
+                                    const groups = {};
+                                    subjects.forEach(s => {
+                                        if (!groups[s.section_id]) groups[s.section_id] = [];
+                                        groups[s.section_id].push(s);
+                                    });
+                                    return Object.entries(groups).map(([sid, subjs]) => `
+                                        <div style="margin-bottom:0.5rem;">
+                                            <div style="font-size:0.7rem; font-weight:700; color:var(--primary); margin-bottom:0.25rem;">${i18n.t(sid)}</div>
+                                            <div class="multi-select-grid">
+                                                ${subjs.map(s => `
+                                                    <label class="section-checkbox" id="course-card-${s.id}">
+                                                        <input type="checkbox" id="chk-${s.id}" value="${s.id}" style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)" />
+                                                        <i class="ph ph-book-open-text" style="color:${s.color || 'var(--primary)'}; font-size:1.2rem;"></i>
+                                                        <div>
+                                                            <div style="font-weight:700; font-size:0.9rem;">${s.title}</div>
+                                                            <div style="font-size:0.7rem; color:var(--text-muted);">${s.code || ''}</div>
+                                                        </div>
+                                                    </label>
+                                                `).join('')}
+                                            </div>
                                         </div>
-                                    </label>
-                                `).join('')
+                                    `).join('');
+                                })()
                             }
                         </div>
                     </div>
@@ -509,25 +543,11 @@ AdminPage.init = () => {
                 }
 
                 await api.addUser(email, pass, role, section_ids, full_name, subject_ids);
+                UI.toast(i18n.t('success'), 'success');
                 return true;
             });
-            if (result) location.reload();
-
-            // UI logic: toggle section/subject based on role
-            const roleSel = document.getElementById('u-role');
-            const sidWrapper = document.getElementById('section-select-wrapper');
-            const subjectWrapper = document.getElementById('subject-assign-wrapper');
-
-            const updateVisibility = () => {
-                const r = roleSel ? roleSel.value : '';
-                const globalRoles = ['super_admin', 'committee', 'head_dept'];
-                if (sidWrapper) sidWrapper.style.display = globalRoles.includes(r) ? 'none' : 'block';
-                if (subjectWrapper) subjectWrapper.style.display = r === 'teacher' ? 'block' : 'none';
-            };
-
-            if (roleSel) {
-                updateVisibility();
-                roleSel.addEventListener('change', updateVisibility);
+            if (result) {
+                setTimeout(() => location.reload(), 800);
             }
         });
     }
