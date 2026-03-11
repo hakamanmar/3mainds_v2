@@ -718,8 +718,8 @@ def change_password():
     user_id = data.get('user_id')
     new_password = data.get('password', '')
 
-    if len(new_password) < 8:
-        return jsonify({'error': 'كلمة المرور قصيرة جداً (8 أحرف على الأقل)'}), 400
+    if not new_password:
+        return jsonify({'error': 'كلمة المرور مطلوبة'}), 400
 
     conn = get_db()
     conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
