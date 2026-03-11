@@ -176,6 +176,12 @@ export const api = {
             body: JSON.stringify({ user_id, new_password })
         });
     },
+    async resetDevice(user_id) {
+        return this._fetch(`${API_BASE}/admin/reset-device`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id })
+        });
+    },
     async assignInstructorCourses(instructor_id, course_ids) {
         return this._fetch(`${API_BASE}/instructor-courses`, {
             method: 'POST',
