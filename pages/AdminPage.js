@@ -5,14 +5,19 @@ import { UI } from '/static/js/ui.js';
 
 const AdminPage = async () => {
     const selectedSectionId = api.getSelectedSection();
-    let subjects = [], users = [], announcements = [], stats = {};
+    let subjects = [], users = [], announcements = [], stats = {}, isCloud = false;
     try {
-        [subjects, users, announcements, stats] = await Promise.all([
+        const [sRes, uRes, aRes, stRes] = await Promise.all([
             api.getSubjects(selectedSectionId),
             api.getUsers(selectedSectionId),
             api.getAnnouncements(),
             api.getStats()
         ]);
+        subjects = sRes;
+        users = Array.isArray(uRes) ? uRes : (uRes.users || []);
+        isCloud = uRes.is_cloud || false;
+        announcements = aRes;
+        stats = stRes;
     } catch (e) {
         return `<div class="error-state"><i class="ph ph-warning-circle"></i><h3>${i18n.t('error')}</h3><p>${e.message}</p></div>`;
     }
