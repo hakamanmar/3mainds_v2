@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v6'; // Bumped to force reload after ui.js import path fix
+const CACHE_NAME = '3minds-v7'; // Updated for UI field fixes and password limits removal
 const ASSETS = [
     '/',
     '/static/css/style.css',
