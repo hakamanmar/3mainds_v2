@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v7'; // Updated for UI field fixes and password limits removal
+const CACHE_NAME = '3minds-v8'; // Explicitly excluding /api/ from cache to fix stale dashboard lists
 const ASSETS = [
     '/',
     '/static/css/style.css',
@@ -35,6 +35,13 @@ self.addEventListener('activate', (event) => {
 // Fetch: Smart caching for offline access
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // CRITICAL: Exclusion list to ensure real-time data for API and Auth
+    const isApi = url.pathname.startsWith('/api/') || 
+                  url.pathname.startsWith('/login') || 
+                  url.pathname.startsWith('/logout');
+
+    if (isApi) return; // Let browser handle API calls without SW interference
 
     // Dynamic caching for lectures (PDFs, Images, etc.) in the /uploads/ folder
     if (url.pathname.startsWith('/uploads/')) {
