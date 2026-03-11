@@ -1310,6 +1310,36 @@ def add_user():
 
 @app.route('/api/admin/reset-device', methods=['POST'])
 @require_role('section_admin', 'super_admin')
+def admin_reset_device():
+    data = request.json or {}
+    uid = data.get('user_id')
+    if not uid:
+        return jsonify({'error': 'User ID is required'}), 400
+    conn = get_db()
+    conn.execute('DELETE FROM user_devices WHERE user_id = ?', (uid,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/admin/change-password', methods=['POST'])
+@require_role('super_admin')
+def admin_change_password():
+    data = request.json or {}
+    uid = data.get('user_id')
+    new_pw = data.get('new_password')
+    if not uid or not new_pw:
+        return jsonify({'error': 'User ID and password are required'}), 400
+    
+    conn = get_db()
+    try:
+        conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?', 
+                     (generate_password_hash(new_pw), uid))
+        conn.commit()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+    return jsonify({'success': True})
 def reset_device():
     data = request.json
     user_id = data.get('user_id')
@@ -1582,10 +1612,13 @@ def attendance_section_students():
     if not section_id:
         return jsonify([])
     conn = get_db()
-    students = conn.execute(
-        "SELECT id, email, full_name, role FROM users WHERE role='student' AND section_id=? ORDER BY full_name ASC, email ASC",
-        (section_id,)
-    ).fetchall()
+    students = conn.execute('''
+        SELECT DISTINCT u.id, u.email, u.full_name, u.role 
+        FROM users u
+        LEFT JOIN user_sections us ON u.id = us.user_id
+        WHERE u.role='student' AND (u.section_id=? OR us.section_id=?)
+        ORDER BY u.full_name ASC, u.email ASC
+    ''', (section_id, section_id)).fetchall()
     conn.close()
     return jsonify([dict(s) for s in students])
 
@@ -1684,10 +1717,12 @@ def attendance_scan():
         return jsonify({'error': 'token and student_id required'}), 400
 
     conn = get_db()
-    session = conn.execute(
-        "SELECT * FROM attendance_sessions WHERE qr_token=? AND status='active'",
-        (token,)
-    ).fetchone()
+    session = conn.execute('''
+        SELECT s.*, sub.section_id 
+        FROM attendance_sessions s
+        JOIN subjects sub ON s.subject_id = sub.id
+        WHERE s.qr_token=? AND s.status='active'
+    ''', (token,)).fetchone()
 
     if not session:
         conn.close()
@@ -1701,6 +1736,17 @@ def attendance_scan():
             return jsonify({'success': False, 'message': 'انتهت صلاحية رمز QR — اطلب من الأستاذ عرض الرمز الجديد'}), 400
     except:
         pass
+
+    # Verify student is authorized for this section
+    is_authorized = conn.execute('''
+        SELECT 1 FROM users WHERE id=? AND section_id=? 
+        UNION 
+        SELECT 1 FROM user_sections WHERE user_id=? AND section_id=?
+    ''', (student_id, session['section_id'], student_id, session['section_id'])).fetchone()
+
+    if not is_authorized:
+        conn.close()
+        return jsonify({'success': False, 'message': 'عذراً، أنت لست مسجلاً في هذه الشعبة لهذا اليوم'}), 403
 
     # Military-Grade Defense: Atomic insert to prevent TOCTOU Race Conditions
     try:
@@ -1735,8 +1781,21 @@ def attendance_live(session_id):
         "SELECT subject_id, refresh_interval, started_at FROM attendance_sessions WHERE id=?",
         (session_id,)
     ).fetchone()
-    # Improved SQL for Turso compatibility
-    row_count = conn.execute("SELECT count(*) as total FROM users WHERE role='student'").fetchone()
+    # Improved SQL for Turso: Find section ID first
+    session_info = conn.execute('''
+        SELECT sub.section_id 
+        FROM attendance_sessions s
+        JOIN subjects sub ON s.subject_id = sub.id
+        WHERE s.id = ?
+    ''', (session_id,)).fetchone()
+    sid = session_info['section_id'] if session_info else None
+
+    row_count = conn.execute('''
+        SELECT count(DISTINCT u.id) as total 
+        FROM users u
+        LEFT JOIN user_sections us ON u.id = us.user_id
+        WHERE u.role='student' AND (u.section_id=? OR us.section_id=?)
+    ''', (sid, sid)).fetchone()
     total = int(list(row_count.values())[0]) if isinstance(row_count, dict) else row_count[0]
     
     conn.close()
