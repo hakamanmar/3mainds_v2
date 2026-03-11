@@ -214,7 +214,7 @@ export default async function AttendancePage(params) {
                         <tbody>
                             ${data.attended.map(r => `
                                 <tr>
-                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${r.email}</td>
+                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${r.full_name || r.email}</td>
                                     <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;"><span class="tag tag-ok">${r.method === 'qr' ? 'بصمة QR' : 'يدوي'}</span></td>
                                     <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px;">${new Date(r.scanned_at).toLocaleTimeString('ar-EG')}</td>
                                     <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
@@ -301,14 +301,14 @@ export default async function AttendancePage(params) {
 
                 if (data.attended.length > 0) {
                     listContainer.innerHTML = data.attended.map(r => `
-                        <div class="attendance-row" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border); background: #fff; margin-bottom: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: slideInUp 0.3s ease;">
+                        <div class="attendance-row" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border); background: #fff; margin-bottom: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: slideInUp 0.3s ease;" data-name="${r.full_name || ''}" data-email="${r.email || ''}">
                             <div class="user-avatar" style="width: 45px; height: 45px; border-radius: 12px; background: var(--blue-bg); color: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; border: 2px solid var(--blue-light);">
-                                ${r.email.charAt(0).toUpperCase()}
+                                ${(r.full_name || r.email).charAt(0).toUpperCase()}
                             </div>
                             <div style="flex: 1;">
-                                <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">${r.email}</div>
+                                <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">${r.full_name || r.email}</div>
                                 <div style="font-size: 12px; color: var(--muted); display:flex; align-items:center; gap:5px;">
-                                    <i class="ph ph-clock"></i> ${new Date(r.scanned_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    <i class="ph ph-envelope"></i> ${r.email}  <span style="margin: 0 5px;">|</span> <i class="ph ph-clock"></i> ${new Date(r.scanned_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
@@ -469,12 +469,12 @@ export default async function AttendancePage(params) {
                     ${allStudents.filter(s => s.role === 'student').map(s => {
                         const isPresent = presentIds.has(s.id);
                         return `
-                        <div class="student-item" data-email="${s.email}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); ${isPresent ? 'background: #f8fafc; opacity: 0.7;' : ''}">
+                        <div class="student-item" data-email="${s.email}" data-name="${s.full_name || ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); ${isPresent ? 'background: #f8fafc; opacity: 0.7;' : ''}">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="avatar-sm" style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">${s.email.charAt(0).toUpperCase()}</div>
+                                <div class="avatar-sm" style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">${(s.full_name || s.email).charAt(0).toUpperCase()}</div>
                                 <div>
-                                    <div style="font-weight: 600; font-size: 14px;">${s.email}</div>
-                                    <div style="font-size: 11px; color: var(--muted);">${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
+                                    <div style="font-weight: 600; font-size: 14px;">${s.full_name || s.email}</div>
+                                    <div style="font-size: 11px; color: var(--muted);">${s.email} | ${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 8px;">
@@ -498,7 +498,9 @@ export default async function AttendancePage(params) {
         searchInput.oninput = (e) => {
             const val = e.target.value.toLowerCase();
             modal.querySelectorAll('.student-item').forEach(item => {
-                item.style.display = item.dataset.email.toLowerCase().includes(val) ? 'flex' : 'none';
+                const matches = item.dataset.email.toLowerCase().includes(val) || 
+                               item.dataset.name.toLowerCase().includes(val);
+                item.style.display = matches ? 'flex' : 'none';
             });
         };
 
@@ -542,4 +544,3 @@ export default async function AttendancePage(params) {
     init();
     return container;
 }
-
