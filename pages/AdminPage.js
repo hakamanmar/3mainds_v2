@@ -183,6 +183,11 @@ const AdminPage = async () => {
                                     </div>
                                 </div>
                                 <div class="list-item-actions">
+                                    ${user.role === 'super_admin' ? `
+                                        <button class="icon-btn change-pw-btn" data-id="${u.id}" data-email="${u.email}" title="تغيير كلمة السر">
+                                            <i class="ph ph-key"></i>
+                                        </button>
+                                    ` : ''}
                                     <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
                                         <i class="ph ph-arrows-counter-clockwise"></i>
                                     </button>
@@ -566,8 +571,28 @@ AdminPage.init = () => {
         btn.addEventListener('click', async () => {
             if (await UI.confirm(i18n.t('reset_device'))) {
                 await api.resetDevice(btn.dataset.id);
-                location.reload();
+                UI.toast(i18n.t('success'), 'success');
+                setTimeout(() => location.reload(), 1000);
             }
+        });
+    });
+
+    document.querySelectorAll('.change-pw-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.id;
+            const email = btn.dataset.email;
+            UI.modal(`تغيير كلمة سر الحساب: ${email}`, `
+                <div class="form-group">
+                    <label>كلمة السر الجديدة</label>
+                    <input type="text" id="admin-new-pw" class="form-control" placeholder="أدخل كلمة السر الجديدة هنا">
+                </div>
+            `, async () => {
+                const newPw = document.getElementById('admin-new-pw').value;
+                if (!newPw) { UI.toast('يرجى إدخال كلمة سر', 'error'); return false; }
+                await api.adminChangePassword(uid, newPw);
+                UI.toast('تم تغيير كلمة السر بنجاح', 'success');
+                return true;
+            });
         });
     });
 
