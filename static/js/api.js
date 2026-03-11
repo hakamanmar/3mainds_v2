@@ -170,6 +170,12 @@ export const api = {
             body: JSON.stringify({ email, password, role, section_ids, full_name, subject_ids })
         });
     },
+    async adminChangePassword(user_id, new_password) {
+        return this._fetch(`${API_BASE}/admin/change-password`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id, new_password })
+        });
+    },
     async assignInstructorCourses(instructor_id, course_ids) {
         return this._fetch(`${API_BASE}/instructor-courses`, {
             method: 'POST',
