@@ -104,8 +104,12 @@ const AdminPage = async () => {
                                 <div class="ann-admin-content">
                                     <i class="ph ph-megaphone" style="color: var(--primary); font-size: 1.2rem;"></i>
                                     <div>
-                                        <div style="font-weight:600;">${i18n.t(a.section_id)}</div>
-                                        <span style="font-size:0.95rem;">${a.content}</span>
+                                        <div style="font-weight:700; color:var(--primary);">${i18n.t(a.section_id)}</div>
+                                        <div style="font-size:0.95rem;">${a.content}</div>
+                                        <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
+                                            <i class="ph ph-user"></i> نشر بواسطة: <strong>${a.publisher_name || 'مسؤول'}</strong> 
+                                            <span style="opacity:0.6;">(${a.publisher_role || 'إدارة'})</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="ann-admin-actions">
