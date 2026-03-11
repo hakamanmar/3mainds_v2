@@ -373,11 +373,13 @@ export default async function AttendancePage(params) {
                     professor_id: user.id,
                     refresh_interval: interval
                 });
+                const selectedSubj = subjects.find(s => s.id == subjectId);
                 activeSession = {
                     session_id: res.session_id,
                     token: res.token,
                     interval: res.interval,
-                    status: 'active'
+                    status: 'active',
+                    section_id: selectedSubj ? selectedSubj.section_id : selectedSectionId
                 };
                 render();
             } catch (err) {
@@ -455,13 +457,14 @@ export default async function AttendancePage(params) {
         try {
         UI.toast('جاري تحميل قائمة الطلاب...', 'info');
         const sessData = await api.getLiveAttendance(activeSession.session_id);
-        const allStudentsRaw = await api.getSectionStudents(selectedSectionId);
+        const sid = activeSession.section_id || selectedSectionId;
+        const allStudentsRaw = await api.getSectionStudents(sid);
         const allStudents = Array.isArray(allStudentsRaw) ? allStudentsRaw : [];
         const presentIds = new Set(Array.isArray(sessData.attended) ? sessData.attended.map(r => r.student_id) : []);
         
         const html = `
             <div style="direction: rtl; text-align: right;">
-                <p style="margin-bottom: 15px; color: var(--muted);">اختر الطالب لتسجيله كحاضر أو مجاز:</p>
+                <p style="margin-bottom: 15px; color: var(--muted);">اختر الطالب لتسجيله كحاضر أو مجاز (إجمالي طلاب الشعبة: ${allStudents.length}):</p>
                 <div class="form-group" style="margin-bottom: 15px;">
                     <input type="text" id="student-search" class="form-control" placeholder="بحث عن اسم الطالب..." style="width: 100%;">
                 </div>
