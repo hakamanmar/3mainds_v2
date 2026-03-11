@@ -439,11 +439,11 @@ AdminPage.init = () => {
                     </div>
                     <div class="form-group">
                         <label>${i18n.t('email')}</label>
-                        <input type="email" id="u-email" placeholder="user@3minds.edu" />
+                        <input type="email" id="u-email-field" placeholder="user@3minds.edu" />
                     </div>
                     <div class="form-group">
                         <label>${i18n.t('password')}</label>
-                        <input type="password" id="u-pass" placeholder="8+ أحرف" />
+                        <input type="password" id="u-pass-field" placeholder="••••••••" />
                     </div>
 
                     <div class="form-section-title"><i class="ph ph-shield"></i> الدور والصلاحيات</div>
@@ -521,8 +521,8 @@ AdminPage.init = () => {
                 </div>
             `, async () => {
                 const full_name = document.getElementById('u-fullname').value.trim();
-                const email = document.getElementById('u-email').value.trim();
-                const pass = document.getElementById('u-pass').value;
+                const email = document.getElementById('u-email-field').value.trim();
+                const pass = document.getElementById('u-pass-field').value;
                 const role = document.getElementById('u-role').value;
 
                 // Collect all checked section IDs
@@ -534,7 +534,8 @@ AdminPage.init = () => {
                 const subject_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value)).filter(Boolean);
 
                 if (!full_name) { UI.toast('الاسم الثلاثي مطلوب', 'error'); return false; }
-                if (!email || !pass) { UI.toast('البريد وكلمة المرور مطلوبان', 'error'); return false; }
+                if (!email) { UI.toast('البريد الإلكتروني مطلوب', 'error'); return false; }
+                if (!pass) { UI.toast('كلمة المرور مطلوبة', 'error'); return false; }
                 
                 // Allow empty section_ids if it's a global role, otherwise show an error if none selected
                 const globalRoles = ['super_admin', 'committee', 'head_dept'];
