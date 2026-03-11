@@ -164,14 +164,15 @@ class TursoHttpCursor:
                     vals = []
                     for v in row:
                         val = v.get("value")
-                        # Handle Turso's string-encoded large integers
                         if v.get("type") == "integer" and val is not None:
                             try: val = int(val)
                             except: pass
                         vals.append(val)
                     self._rows.append(TursoRow(zip(cols, vals)))
-                # For INSERT, get lastrowid from affected rows
                 self.lastrowid = response.get("last_insert_rowid")
+            elif res.get("type") == "error":
+                err_msg = res.get("error", {}).get("message", "Unknown Turso Error")
+                raise Exception(err_msg)
         except Exception as e:
             print(f"[Turso] execute error: {e}, sql={sql[:80]}")
             raise
@@ -264,15 +265,18 @@ def init_db():
     c = conn.cursor()
 
     # --- Migration Helper: Check schema compatibility ---
-    try:
-        # Check for user_devices table - if it's missing, we need a clean start for the new device system
-        c.execute('SELECT id FROM user_devices LIMIT 1')
-    except Exception:
-        print("[DB] user_devices table missing - Performing clean schema reset for migration...")
-        for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections']:
-            try:
-                c.execute(f'DROP TABLE IF EXISTS {tbl}')
-            except: pass
+    # On Vercel, if critical tables are missing, perform a clean reset.
+    # This helps with schema migrations on serverless environments where old files might persist.
+    if IS_VERCEL:
+        try:
+            # Avoid repeated drops — only check once on startup
+            c.execute('SELECT id FROM users LIMIT 1')
+        except Exception:
+            print("[DB] Critical tables missing or damaged — Re-initializing schema...")
+            for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections', 'user_sections', 'instructor_courses']:
+                try:
+                    c.execute(f'DROP TABLE IF EXISTS {tbl}')
+                except: pass
 
     # 1. Sections Table
     c.execute('''
@@ -602,6 +606,14 @@ def check_subject_ownership(conn, subject_id, ctx):
         return subj.get('section_id') == ctx['section_id']
 
     return False
+
+@app.after_request
+def add_header(response):
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 # Initialize database schema
 ensure_schema()
