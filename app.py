@@ -252,10 +252,11 @@ def get_db():
 
 # Force immediate schema initialization for Vercel environments
 def ensure_schema():
-    print(f"[DB] Initializing schema... Turso Active: {USE_TURSO}")
-    init_db()
-
-ensure_schema()
+    try:
+        print(f"[DB] Initializing schema... Turso Active: {USE_TURSO}")
+        init_db()
+    except Exception as e:
+        print(f"[DB] Critical: ensure_schema failed: {e}")
 
 
 def init_db():
@@ -602,6 +603,8 @@ def check_subject_ownership(conn, subject_id, ctx):
 
     return False
 
+# Initialize database schema
+ensure_schema()
 
 # ─── Root Files (PWA & Branding) ─────────────────────────────
 @app.route('/manifest.json')
