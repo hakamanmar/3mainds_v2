@@ -82,20 +82,76 @@ export default async function CommitteePage(params) {
                     <canvas id="trendsChart" height="250"></canvas>
                 </div>
                 <div class="card">
-                    <div class="card-title">⚠️ ${i18n.t('absence_alerts') || 'تنبيهات الغياب الحرجة'}</div>
-                    <div id="alerts-list" style="max-height: 250px; overflow-y: auto;">
-                        ${alerts.length === 0 ? '<p class="empty-text">لا توجد تنبيهات حالياً</p>' : alerts.map(a => `
-                            <div class="alert-item" style="padding: 12px; border-bottom: 1px solid var(--border); border-right: 4px solid var(--red); margin-bottom: 8px; background: #fef2f2; border-radius: 4px;">
-                                <div style="font-weight: 700; font-size: 14px;">${a.full_name || a.email}</div>
-                                <div style="font-size: 12px; color: var(--muted);">${a.subject} — نسبة الغياب: <span style="color:var(--red); font-weight:700;">${a.absence_rate}%</span></div>
-                            </div>
-                        `).join('')}
+                    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>⚠️ ${i18n.t('absence_alerts') || 'تنبيهات الغياب الحرجة'}</span>
+                        <span class="alerts-badge">${alerts.length}</span>
                     </div>
-                    <button class="btn btn-red-soft" style="width:100%; margin-top:10px;">
-                        ${i18n.t('send_bulk_warnings') || 'إرسال إنذارات لجميع المشمولين'}
+                    <div id="alerts-list" class="alerts-board-container">
+                        ${alerts.length === 0 ? `
+                            <div class="empty-state-mini">
+                                <i class="ph ph-check-circle" style="color:var(--green);"></i>
+                                <p>لا يوجد طلاب متجاوزين لنسبة الغياب حالياً</p>
+                            </div>
+                        ` : alerts.map(a => {
+                            const rate = a.absence_rate;
+                            const statusColor = rate >= 25 ? '#ef4444' : (rate >= 15 ? '#f59e0b' : '#3b82f6');
+                            const statusLabel = rate >= 25 ? 'فصل نهائي' : (rate >= 15 ? 'إنذار ثاني' : 'إنذار أول');
+                            
+                            return `
+                                <div class="alert-card-premium">
+                                    <div class="alert-status-pillar" style="background: ${statusColor}"></div>
+                                    <div class="alert-content-main">
+                                        <div class="alert-row-top">
+                                            <div class="alert-stu-info">
+                                                <span class="alert-stu-name">${a.full_name || a.email}</span>
+                                                <span class="alert-stu-email">${a.email}</span>
+                                            </div>
+                                            <div class="alert-level-badge" style="background: ${statusColor}15; color: ${statusColor}">
+                                                ${statusLabel}
+                                            </div>
+                                        </div>
+                                        <div class="alert-row-mid">
+                                            <div class="alert-subj-tag">
+                                                <i class="ph ph-book-open"></i> ${a.subject}
+                                            </div>
+                                            <div class="alert-percentage">
+                                                <span class="p-val">${rate}%</span>
+                                                <span class="p-lbl">نسبة الغياب</span>
+                                            </div>
+                                        </div>
+                                        <div class="alert-progress-bg">
+                                            <div class="alert-progress-fill" style="width: ${Math.min(rate, 100)}%; background: ${statusColor}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <button class="btn btn-red-soft" style="width:100%; margin-top:15px; font-weight:700;">
+                        <i class="ph ph-paper-plane-tilt"></i> ${i18n.t('send_bulk_warnings') || 'إرسال إنذارات لجميع المشمولين'}
                     </button>
                 </div>
             </div>
+            <style>
+                .alerts-board-container { max-height: 400px; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 12px; }
+                .alerts-badge { background: var(--red); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+                .alert-card-premium { display: flex; background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: transform 0.2s; }
+                .alert-card-premium:hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                .alert-status-pillar { width: 6px; flex-shrink: 0; }
+                .alert-content-main { flex: 1; padding: 12px 15px; }
+                .alert-row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+                .alert-stu-info { display: flex; flex-direction: column; }
+                .alert-stu-name { font-weight: 800; font-size: 0.95rem; color: var(--text-main); }
+                .alert-stu-email { font-size: 0.75rem; color: var(--muted); }
+                .alert-level-badge { font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 8px; }
+                .alert-row-mid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+                .alert-subj-tag { font-size: 0.8rem; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 5px; background: var(--primary-light); padding: 4px 10px; border-radius: 6px; }
+                .alert-percentage { text-align: right; }
+                .alert-percentage .p-val { font-size: 1.1rem; font-weight: 900; color: var(--text-main); display: block; line-height: 1; }
+                .alert-percentage .p-lbl { font-size: 0.6rem; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+                .alert-progress-bg { height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+                .alert-progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-out; }
+            </style>
 
             <div class="card" style="margin-top: 24px;">
                 <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
