@@ -86,7 +86,7 @@ export default async function CommitteePage(params) {
                     <div id="alerts-list" style="max-height: 250px; overflow-y: auto;">
                         ${alerts.length === 0 ? '<p class="empty-text">لا توجد تنبيهات حالياً</p>' : alerts.map(a => `
                             <div class="alert-item" style="padding: 12px; border-bottom: 1px solid var(--border); border-right: 4px solid var(--red); margin-bottom: 8px; background: #fef2f2; border-radius: 4px;">
-                                <div style="font-weight: 700; font-size: 14px;">${a.email}</div>
+                                <div style="font-weight: 700; font-size: 14px;">${a.full_name || a.email}</div>
                                 <div style="font-size: 12px; color: var(--muted);">${a.subject} — نسبة الغياب: <span style="color:var(--red); font-weight:700;">${a.absence_rate}%</span></div>
                             </div>
                         `).join('')}
@@ -162,7 +162,10 @@ export default async function CommitteePage(params) {
                     <tbody>
                         ${data.map(r => `
                             <tr>
-                                <td>${r.email}</td>
+                                <td>
+                                    <div style="font-weight: 700;">${r.full_name || r.email}</div>
+                                    <div style="font-size: 11px; color: var(--muted);">${r.email}</div>
+                                </td>
                                 <td>${r.total}</td>
                                 <td>${r.attended}</td>
                                 <td>${r.absent}</td>
