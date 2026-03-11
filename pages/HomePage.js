@@ -327,4 +327,4 @@ function formatDate(dateStr) {
     }
 }
 
-export default HomePage;ر
+export default HomePage;
