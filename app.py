@@ -348,9 +348,11 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content TEXT NOT NULL,
             section_id TEXT NOT NULL,
+            publisher_id INTEGER,
             target_date TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (section_id) REFERENCES sections(id)
+            FOREIGN KEY (section_id) REFERENCES sections(id),
+            FOREIGN KEY (publisher_id) REFERENCES users(id)
         )
     ''')
     
@@ -359,6 +361,12 @@ def init_db():
         c.execute('SELECT target_date FROM announcements LIMIT 1')
     except Exception:
         c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
+
+    # Add publisher_id column if it doesn't exist
+    try:
+        c.execute('SELECT publisher_id FROM announcements LIMIT 1')
+    except Exception:
+        c.execute('ALTER TABLE announcements ADD COLUMN publisher_id INTEGER REFERENCES users(id)')
 
     # Add instructor_id column if it doesn't exist
     try:
@@ -1050,12 +1058,32 @@ def get_announcements():
     if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
         if sid:
             # Also include 'ALL' section broadcasts
-            ann = conn.execute("SELECT * FROM announcements WHERE section_id = ? OR section_id = 'ALL' ORDER BY created_at DESC", (sid,)).fetchall()
+            query = """
+                SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
+                FROM announcements a
+                LEFT JOIN users u ON a.publisher_id = u.id
+                WHERE a.section_id = ? OR a.section_id = 'ALL' 
+                ORDER BY a.created_at DESC
+            """
+            ann = conn.execute(query, (sid,)).fetchall()
         else:
-            ann = conn.execute('SELECT * FROM announcements ORDER BY created_at DESC').fetchall()
+            query = """
+                SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
+                FROM announcements a
+                LEFT JOIN users u ON a.publisher_id = u.id
+                ORDER BY a.created_at DESC
+            """
+            ann = conn.execute(query).fetchall()
     else:
         # Students, Teachers, Section Admins see their section + ALL broadcasts
-        ann = conn.execute("SELECT * FROM announcements WHERE section_id = ? OR section_id = 'ALL' ORDER BY created_at DESC", (sid,)).fetchall()
+        query = """
+            SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
+            FROM announcements a
+            LEFT JOIN users u ON a.publisher_id = u.id
+            WHERE a.section_id = ? OR a.section_id = 'ALL' 
+            ORDER BY a.created_at DESC
+        """
+        ann = conn.execute(query, (sid,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in ann])
 
@@ -1079,9 +1107,11 @@ def add_announcement():
     conn = get_db()
     # If head_dept broadcasts to ALL, insert once with section_id='ALL'
     if sid == 'ALL':
-        conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, 'ALL', target_date))
+        conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
+                     (content, 'ALL', ctx['user_id'], target_date))
     else:
-        conn.execute('INSERT INTO announcements (content, section_id, target_date) VALUES (?, ?, ?)', (content, sid, target_date))
+        conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
+                     (content, sid, ctx['user_id'], target_date))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
