@@ -451,8 +451,8 @@ AdminPage.init = () => {
                             ${sections.length === 0 
                                 ? `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:1/-1;">لا توجد شُعب متاحة. أضف شُعباً أولاً.</p>`
                                 : sections.map(s => `
-                                    <label class="section-checkbox" id="section-card-${s.id}" onclick="this.classList.toggle('checked'); document.getElementById('chk-sec-${s.id}').checked = !document.getElementById('chk-sec-${s.id}').checked;">
-                                        <input type="checkbox" id="chk-sec-${s.id}" value="${s.id}" style="display:none;" />
+                                    <label class="section-checkbox" id="section-card-${s.id}">
+                                        <input type="checkbox" id="chk-sec-${s.id}" value="${s.id}" style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)" />
                                         <i class="ph ph-circles-three-plus" style="color:var(--primary); font-size:1.2rem;"></i>
                                         <div>
                                             <div style="font-weight:700; font-size:0.9rem;">${i18n.t(s.id)}</div>
@@ -472,8 +472,8 @@ AdminPage.init = () => {
                             ${subjects.length === 0 
                                 ? `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:1/-1;">لا توجد مواد متاحة. أضف مواد أولاً.</p>`
                                 : subjects.map(s => `
-                                    <label class="section-checkbox" id="course-card-${s.id}" onclick="this.classList.toggle('checked'); document.getElementById('chk-${s.id}').checked = !document.getElementById('chk-${s.id}').checked;">
-                                        <input type="checkbox" id="chk-${s.id}" value="${s.id}" style="display:none;" />
+                                    <label class="section-checkbox" id="course-card-${s.id}">
+                                        <input type="checkbox" id="chk-${s.id}" value="${s.id}" style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)" />
                                         <i class="ph ph-book-open-text" style="color:${s.color || 'var(--primary)'}; font-size:1.2rem;"></i>
                                         <div>
                                             <div style="font-weight:700; font-size:0.9rem;">${s.title}</div>
