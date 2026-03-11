@@ -36,7 +36,7 @@ export const translations = {
         device_locked: 'هذا الحساب مرتبط بجهاز آخر. يرجى مراجعة المسؤول.',
         change_pw_title: 'تغيير كلمة المرور',
         new_pw: 'كلمة مرور جديدة',
-        pw_min_len: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل.',
+        pw_min_len: 'يرجى إدخال كلمة مرور صالحة.',
         manage_students: 'إدارة الطلاب',
         reset_device: 'إعادة ضبط الجهاز',
         force_reset: 'فرض تغيير كلمة المرور',
