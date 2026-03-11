@@ -31,26 +31,95 @@ const HomePage = async () => {
     const user = auth.getUser();
 
     const announcementsHTML = announcements.length > 0 ? `
-        <div class="announcements-banner">
-            <div class="ann-icon"><i class="ph ph-megaphone-simple"></i></div>
-            <div class="ann-content">
-                <h4>${i18n.t('announcements')}</h4>
-                <div class="ann-list">
-                    ${announcements.map(a => `
-                        <div class="ann-item">
-                            <i class="ph ph-dot-outline" style="color: var(--primary);"></i>
-                            <span style="flex: 1;">${a.content}</span>
-                            ${a.target_date ?
-            `<div class="ann-countdown" data-target="${a.target_date}" style="color: var(--danger); font-weight: bold; background: var(--danger-light); padding: 2px 8px; border-radius: 4px;">
-                                    <small><i class="ph ph-clock"></i> <span class="cd-text">${i18n.t('calculating')}</span></small>
-                                </div>`
-            : `<small>${formatDate(a.created_at)}</small>`
-        }
-                        </div>
-                    `).join('')}
+        <div class="bulletin-board-v2 fade-in">
+            <div class="bulletin-header">
+                <div class="bulletin-title-group">
+                    <div class="bulletin-pulse"></div>
+                    <h3>${i18n.lang === 'ar' ? 'لوحة التبليغات والغيابات' : 'Bulletins & Absences'}</h3>
                 </div>
+                <div class="bulletin-count">${announcements.length} ${i18n.lang === 'ar' ? 'تنبيهات' : 'Alerts'}</div>
+            </div>
+            <div class="bulletin-scroll-area">
+                ${announcements.map(a => {
+                    const isUrgent = a.target_date && new Date(a.target_date) < new Date(Date.now() + 86400000); // within 24h
+                    const pubRole = a.publisher_role || 'admin';
+                    const roleLabel = {
+                        'super_admin': 'المدير العام',
+                        'head_dept': 'رئيس القسم',
+                        'section_admin': 'مدير الشعبة',
+                        'committee': 'اللجنة الامتحانية',
+                        'teacher': 'أستاذ المادة'
+                    }[pubRole] || 'مسؤول';
+
+                    return `
+                        <div class="bulletin-item-premium ${isUrgent ? 'urgent' : ''}">
+                            <div class="bulletin-left-accent" style="background: ${isUrgent ? 'var(--red)' : 'var(--primary)'}"></div>
+                            <div class="bulletin-main">
+                                <div class="bulletin-top-row">
+                                    <div class="publisher-info">
+                                        <div class="pub-avatar" style="background: ${isUrgent ? 'var(--red-light)' : 'var(--primary-light)'}; color: ${isUrgent ? 'var(--red)' : 'var(--primary)'}">
+                                            <i class="ph-fill ${isUrgent ? 'ph-warning-octagon' : 'ph-user-gear'}"></i>
+                                        </div>
+                                        <div class="pub-details">
+                                            <span class="pub-name">${a.publisher_name || 'إدارة المنصة'}</span>
+                                            <span class="pub-role">${roleLabel}</span>
+                                        </div>
+                                    </div>
+                                    <div class="bulletin-meta">
+                                        <span class="bulletin-tag ${a.section_id === 'ALL' ? 'global' : 'local'}">
+                                            ${a.section_id === 'ALL' ? 'تبليغ عام' : `شعبة ${a.section_id}`}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="bulletin-body">
+                                    <p>${a.content}</p>
+                                </div>
+                                <div class="bulletin-footer">
+                                    <div class="bulletin-time">
+                                        <i class="ph ph-clock-counter-clockwise"></i>
+                                        ${formatDate(a.created_at)}
+                                    </div>
+                                    ${a.target_date ? `
+                                        <div class="bulletin-countdown-v2 ann-countdown" data-target="${a.target_date}">
+                                            <i class="ph-bold ph-hourglass-high"></i>
+                                            <span class="cd-text">${i18n.t('calculating')}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </div>
+        <style>
+            .bulletin-board-v2 { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 2rem; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+            .bulletin-header { padding: 1.25rem 1.5rem; background: rgba(248, 250, 252, 0.8); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+            .bulletin-title-group { display: flex; align-items: center; gap: 10px; }
+            .bulletin-pulse { width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); animation: pulseAlert 2s infinite; }
+            @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+            .bulletin-title-group h3 { font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; }
+            .bulletin-count { font-size: 0.75rem; font-weight: 700; background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 20px; }
+            .bulletin-scroll-area { max-height: 400px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 12px; }
+            .bulletin-item-premium { position: relative; background: white; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all 0.2s; display: flex; }
+            .bulletin-item-premium:hover { transform: translateX(${i18n.lang === 'ar' ? '-4px' : '4px'}); border-color: var(--primary-light); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            .bulletin-item-premium.urgent { border-color: var(--red-light); background: #fffafb; }
+            .bulletin-left-accent { width: 4px; flex-shrink: 0; }
+            .bulletin-main { flex: 1; padding: 1rem; }
+            .bulletin-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+            .publisher-info { display: flex; align-items: center; gap: 10px; }
+            .pub-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+            .pub-details { display: flex; flex-direction: column; }
+            .pub-name { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+            .pub-role { font-size: 0.7rem; color: var(--muted); }
+            .bulletin-tag { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+            .bulletin-tag.global { background: #f0fdf4; color: #16a34a; }
+            .bulletin-tag.local { background: #eff6ff; color: #2563eb; }
+            .bulletin-body { font-size: 0.95rem; line-height: 1.6; color: #334155; margin-bottom: 12px; }
+            .bulletin-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+            .bulletin-time { font-size: 0.75rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+            .bulletin-countdown-v2 { font-size: 0.75rem; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 6px; background: #fef2f2; padding: 4px 10px; border-radius: 8px; }
+        </style>
     ` : '';
 
     const welcomeName = user ? user.email.split('@')[0] : '';
@@ -258,4 +327,4 @@ function formatDate(dateStr) {
     }
 }
 
-export default HomePage;
+export default HomePage;ر
