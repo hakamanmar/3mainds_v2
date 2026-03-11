@@ -28,6 +28,10 @@ const AdminPage = async () => {
 
     return `
         <div class="admin-page">
+            <div style="position:fixed; top:1rem; left:1rem; z-index:100; font-size:0.65rem; padding:4px 8px; border-radius:6px; background: ${isCloud ? '#059669' : '#dc2626'}; color:white; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
+                <i class="ph ${isCloud ? 'ph-cloud-check' : 'ph-warning'}"></i> 
+                ${isCloud ? 'Cloud Database' : 'Local Database (Temporary)'}
+            </div>
             <div class="page-header">
                 <div>
                     <h1><i class="ph ph-shield-star" style="color: var(--primary);"></i> ${i18n.t('admin_panel')}</h1>
