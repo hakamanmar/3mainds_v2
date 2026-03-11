@@ -1095,6 +1095,7 @@ def delete_announcement():
 def get_users():
     ctx = get_user_context()
     sid = request.args.get('section_id') or ctx['section_id']
+    if not sid: sid = None
     conn = get_db()
     
     # We will fetch all users first, then attach multiple sections
