@@ -64,7 +64,13 @@ export const api = {
         const sectionId = (user && user.section_id) || selectedSection;
         if (sectionId) headers['X-Section-ID'] = sectionId;
 
-        const res = await fetch(url, { ...options, headers });
+        let finalUrl = url;
+        if (options.method === 'GET' || !options.method) {
+            const separator = finalUrl.includes('?') ? '&' : '?';
+            finalUrl += `${separator}t=${Date.now()}`;
+        }
+
+        const res = await fetch(finalUrl, { ...options, headers });
         if (res.status === 401) {
             // Token expired or invalid
             auth.logout();
