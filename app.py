@@ -1560,7 +1560,7 @@ def submit_homework():
     return jsonify({'success': True})
 
 @app.route('/api/assignments/<int:id>/submissions', methods=['GET'])
-@require_role('teacher', 'super_admin')
+@require_role('teacher', 'super_admin', 'section_admin', 'head_dept', 'committee', 'admin')
 def get_assignment_submissions(id):
     conn = get_db()
     # Get the assignment to find out which subject/section it belongs to
@@ -1570,10 +1570,16 @@ def get_assignment_submissions(id):
         return jsonify({'error': 'Assignment not found'}), 404
         
     subject = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (assignment['subject_id'],)).fetchone()
-    section_id = subject['section_id']
+    section_id = subject['section_id'] if subject else None
 
-    # Get all students in this section
-    students = conn.execute('SELECT id, email FROM users WHERE role = "student" AND section_id = ?', (section_id,)).fetchall()
+    # Get all students in this section (accounting for user_sections mapping)
+    query = '''
+        SELECT DISTINCT u.id, u.email, u.full_name 
+        FROM users u 
+        LEFT JOIN user_sections us ON u.id = us.user_id 
+        WHERE u.role = "student" AND (u.section_id = ? OR us.section_id = ?)
+    '''
+    students = conn.execute(query, (section_id, section_id)).fetchall()
     
     # Get all submissions for this assignment
     submissions = conn.execute('SELECT * FROM submissions WHERE assignment_id = ?', (id,)).fetchall()
@@ -1585,10 +1591,10 @@ def get_assignment_submissions(id):
     for s in students:
         if s['id'] in sub_map:
             sub_data = sub_map[s['id']]
-            sub_data['email'] = s['email']
+            sub_data['email'] = s['full_name'] or s['email'] # Using full_name instead of email for better UI
             submitted.append(sub_data)
         else:
-            not_submitted.append({'id': s['id'], 'email': s['email']})
+            not_submitted.append({'id': s['id'], 'email': s['full_name'] or s['email']})
             
     conn.close()
     return jsonify({
