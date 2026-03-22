@@ -5,7 +5,7 @@ import { UI } from '/static/js/ui.js';
 
 export default async function AssignmentDetailsPage(params) {
     const user = auth.getUser();
-    if (!user || (user.role !== 'teacher' && user.role !== 'super_admin')) {
+    if (!user || !['super_admin', 'section_admin', 'teacher', 'head_dept', 'committee', 'admin'].includes(user.role)) {
         window.router.navigate('/');
         return;
     }
