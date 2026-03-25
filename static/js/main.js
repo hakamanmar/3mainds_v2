@@ -13,6 +13,8 @@ const pageModules = {
     '/viewer': () => import('/pages/ViewerPage.js'),
     '/assignment/submissions': () => import('/pages/AssignmentDetailsPage.js'),
     '/results': () => import('/pages/MyResultsPage.js'),
+    '/exams': () => import('/pages/ExamListPage.js'),
+    '/exams/create': () => import('/pages/ExamCreatePage.js'),
 };
 
 class Router {
@@ -166,6 +168,17 @@ class Router {
         } else if (path.startsWith('/subject/')) {
             params.id = path.split('/')[2];
             loader = () => import('/pages/SubjectPage.js');
+        } else if (path.startsWith('/exam/') && path.endsWith('/take')) {
+            params.id = path.split('/')[2];
+            loader = () => import('/pages/ExamTakePage.js');
+        } else if (path.startsWith('/exam/') && path.endsWith('/results')) {
+            params.id = path.split('/')[2];
+            params.mode = 'results';
+            loader = () => import('/pages/ExamResultsPage.js');
+        } else if (path.startsWith('/exam/') && path.endsWith('/result')) {
+            params.id = path.split('/')[2];
+            params.mode = 'result';
+            loader = () => import('/pages/ExamResultsPage.js');
         } else {
             loader = pageModules[path] || pageModules['/'];
         }
@@ -235,7 +248,8 @@ class Router {
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-shield-star"></i><span>${i18n.t('high_control')}</span></button>
                     <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
-                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
             // === HEAD OF DEPT: Monitor everything, broadcast notifications ===
             } else if (user.role === 'head_dept') {
@@ -243,26 +257,30 @@ class Router {
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-eye"></i><span>مراقبة الأقسام</span></button>
                     <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
-                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
             // === TEACHER: Only their subjects + attendance ===
             } else if (user.role === 'teacher') {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
-                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
             // === SECTION ADMIN: Manage their section ===
             } else if (user.role === 'section_admin') {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-gear"></i><span>${i18n.t('section_mgmt')}</span></button>
-                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>`;
+                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
             // === STUDENT: View-only ===
             } else if (user.role === 'student') {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
-                    <button class="btn btn-ghost" data-path="/results"><i class="ph ph-medal"></i><span>نتائجي</span></button>`;
+                    <button class="btn btn-ghost" data-path="/results"><i class="ph ph-medal"></i><span>نتائجي</span></button>
+                    <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
             }
 
             navHtml += `
