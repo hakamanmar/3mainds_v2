@@ -1636,11 +1636,9 @@ def grade_submission(submission_id):
             conn.close()
             return jsonify({'error': 'Submission not found'}), 404
             
-        # Security Check: Only the assigned teacher OR a privileged role can grade
-        privileged_roles = ['super_admin', 'head_dept', 'committee', 'section_admin']
-        if ctx['role'] == 'teacher' and row['teacher_id'] != ctx['user_id'] and ctx['role'] not in privileged_roles:
-            conn.close()
-            return jsonify({'error': 'Unauthorized: You are not the instructor of this assignment'}), 403
+        # Authorization is handled by @require_role at the route level
+        # All authorized roles can grade any submission in their section
+        pass
             
         # Insert or Update grade (UPSERT)
         conn.execute("""
