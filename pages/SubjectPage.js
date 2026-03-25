@@ -196,9 +196,9 @@ const SubjectPage = async (params) => {
                                     <div class="assignment-mini-card ${isExpired ? 'expired' : ''}">
                                         <div class="assign-header">
                                             <h3>${a.title}</h3>
-                                            <div class="assign-status-dot"></div>
+                                            ${a.status === 'submitted' ? '<span class="status-badge-mini">تم التسليم</span>' : '<div class="assign-status-dot"></div>'}
                                         </div>
-                                        <p class="assign-desc">${a.description || ''}</p>
+                                        ${!isStudent ? `<p class="assign-desc">${a.description || ''}</p>` : ''}
                                         <div class="assign-footer">
                                             <div class="assign-meta">
                                                 <span class="due-tag">
@@ -208,19 +208,26 @@ const SubjectPage = async (params) => {
                                                 <span class="format-tag">${a.allowed_formats}</span>
                                             </div>
                                             <div class="assign-btns">
-                                                ${a.file_url ? `
+                                                ${a.file_url && !isStudent ? `
                                                     <a href="${a.file_url}" target="_blank" class="assign-icon-btn" title="الملف">
                                                         <i class="ph-bold ph-file-pdf"></i>
                                                     </a>
                                                 ` : ''}
                                                 ${isStudent ? `
-                                                    <button class="assign-main-btn submit-solution-btn" 
-                                                            data-id="${a.id}" data-formats="${a.allowed_formats}"
-                                                            ${isExpired ? 'disabled' : ''}>
-                                                        ${isExpired ? 'انتهى' : i18n.t('submit_homework')}
-                                                    </button>
+                                                    <div style="display:flex; gap:8px; width:100%;">
+                                                        <button class="assign-main-btn submit-solution-btn" 
+                                                                data-id="${a.id}" data-formats="${a.allowed_formats}"
+                                                                ${isExpired ? 'disabled' : ''}>
+                                                            ${isExpired ? 'انتهى' : (a.status === 'submitted' ? 'استبدال الحل' : i18n.t('submit_homework'))}
+                                                        </button>
+                                                        ${a.status === 'submitted' && !isExpired ? `
+                                                            <button class="mini-icon-btn danger delete-submission-btn" data-sub-id="${a.submission_id}" title="حذف التسليم">
+                                                                <i class="ph-bold ph-trash"></i>
+                                                            </button>
+                                                        ` : ''}
+                                                    </div>
                                                 ` : ''}
-                                                ${isAdmin ? `
+                                                ${isAdmin && !isStudent ? `
                                                     <button class="assign-main-btn alt view-submissions-btn" data-id="${a.id}">
                                                         ${i18n.t('view_submissions')}
                                                     </button>
@@ -571,6 +578,22 @@ SubjectPage.init = (params) => {
     document.querySelectorAll('.view-submissions-btn').forEach(btn => {
         btn.onclick = () => {
             window.router.navigate(`/assignment/${btn.dataset.id}/submissions`);
+        };
+    });
+
+    // Delete Submission (Student)
+    document.querySelectorAll('.delete-submission-btn').forEach(btn => {
+        btn.onclick = async () => {
+            const confirmed = await UI.confirm(i18n.lang === 'ar' ? 'هل أنت متأكد من حذف هذا التسليم؟' : 'Are you sure you want to delete this submission?');
+            if (confirmed) {
+                const res = await api.deleteSubmission(btn.dataset.subId);
+                if (res.success) {
+                    UI.toast(i18n.lang === 'ar' ? 'تم حذف التسليم' : 'Submission deleted');
+                    window.location.reload();
+                } else {
+                    UI.toast(res.error || 'Error', 'error');
+                }
+            }
         };
     });
 };
