@@ -170,8 +170,13 @@ class Router {
         try {
             const module = await loader();
             const content = await module.default(params);
+            if (content == null) {
+                // page returned undefined - likely redirected, do nothing
+                return;
+            }
             if (typeof content === 'string') this.baseContainer.innerHTML = content;
-            else { this.baseContainer.innerHTML = ''; this.baseContainer.appendChild(content); }
+            else if (content instanceof Node) { this.baseContainer.innerHTML = ''; this.baseContainer.appendChild(content); }
+            else { this.baseContainer.innerHTML = String(content); }
             if (module.default.init) module.default.init(params);
             this.updateNav();
         } catch (err) {
