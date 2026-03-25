@@ -471,6 +471,21 @@ def init_db():
         )
     ''')
 
+    # 10. Grading Layer (New separate structure)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS submission_grades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            submission_id INTEGER NOT NULL,
+            grade TEXT NOT NULL,
+            feedback TEXT,
+            instructor_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+            FOREIGN KEY (instructor_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(submission_id)
+        )
+    ''')
+
     # Seed Sections
     c.execute('SELECT count(*) as total FROM sections')
     row = c.fetchone()
@@ -1514,6 +1529,109 @@ def add_homework():
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+@app.route('/api/assignment/<int:assignment_id>/submissions', methods=['GET'])
+@require_role('teacher', 'super_admin', 'section_admin', 'committee')
+def get_assignment_submissions(assignment_id):
+    try:
+        conn = get_db()
+        # Join with users to get student info and join with submission_grades for results
+        query = """
+            SELECT 
+                s.id, s.assignment_id, s.student_id, s.file_url, s.submitted_at, 
+                u.full_name, u.email,
+                g.grade as current_grade, g.feedback as current_feedback, 
+                g.instructor_id as grader_id
+            FROM submissions s
+            JOIN users u ON s.student_id = u.id
+            LEFT JOIN submission_grades g ON s.id = g.submission_id
+            WHERE s.assignment_id = ?
+            ORDER BY s.submitted_at DESC
+        """
+        rows = conn.execute(query, (assignment_id,)).fetchall()
+        
+        results = []
+        for r in rows:
+            d = dict(r)
+            # Unified name logic safely handles empty names
+            d['student_name'] = d.get('full_name') if (d.get('full_name') and str(d.get('full_name')).strip()) else d.get('email', 'Unknown Student')
+            results.append(d)
+            
+        conn.close()
+        return jsonify(results)
+    except Exception as e:
+        print(f"ERROR in get_assignment_submissions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/submissions/<int:submission_id>/grade', methods=['POST'])
+@require_role('teacher', 'super_admin', 'head_dept')
+def grade_submission(submission_id):
+    data = request.json
+    grade = data.get('grade')
+    feedback = data.get('feedback', '')
+    ctx = get_user_context()
+    
+    if grade is None:
+        return jsonify({'error': 'Grade is required'}), 400
+        
+    try:
+        conn = get_db()
+        # Verify submission and instructor ownership
+        query = """
+            SELECT s.id, a.teacher_id, a.subject_id
+            FROM submissions s
+            JOIN assignments a ON s.assignment_id = a.id
+            WHERE s.id = ?
+        """
+        row = conn.execute(query, (submission_id,)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Submission not found'}), 404
+            
+        # Security Check: Only the assigned teacher OR a super_admin/head_dept can grade
+        if ctx['role'] == 'teacher' and row['teacher_id'] != ctx['user_id']:
+            conn.close()
+            return jsonify({'error': 'Unauthorized: You are not the instructor of this assignment'}), 403
+            
+        # Insert or Update grade (UPSERT)
+        conn.execute("""
+            INSERT INTO submission_grades (submission_id, grade, feedback, instructor_id)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(submission_id) DO UPDATE SET
+                grade = excluded.grade,
+                feedback = excluded.feedback,
+                instructor_id = excluded.instructor_id,
+                created_at = CURRENT_TIMESTAMP
+        """, (submission_id, grade, feedback, ctx['user_id']))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/student/grades', methods=['GET'])
+@require_role('student', 'super_admin')
+def get_student_grades():
+    ctx = get_user_context()
+    try:
+        conn = get_db()
+        query = """
+            SELECT 
+                a.title as assignment_title, 
+                s.submitted_at,
+                g.grade, g.feedback, g.created_at as graded_at
+            FROM submissions s
+            JOIN assignments a ON s.assignment_id = a.id
+            LEFT JOIN submission_grades g ON s.id = g.submission_id
+            WHERE s.student_id = ?
+            ORDER BY s.submitted_at DESC
+        """
+        rows = conn.execute(query, (ctx['user_id'],)).fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/submissions', methods=['POST'])
 @require_role('student', 'super_admin')
