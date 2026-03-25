@@ -1562,46 +1562,61 @@ def submit_homework():
 @app.route('/api/assignments/<int:id>/submissions', methods=['GET'])
 @require_role('teacher', 'super_admin', 'section_admin', 'head_dept', 'committee', 'admin')
 def get_assignment_submissions(id):
-    conn = get_db()
-    # Get the assignment to find out which subject/section it belongs to
-    assignment = conn.execute('SELECT * FROM assignments WHERE id = ?', (id,)).fetchone()
-    if not assignment:
-        conn.close()
-        return jsonify({'error': 'Assignment not found'}), 404
-        
-    subject = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (assignment['subject_id'],)).fetchone()
-    section_id = subject['section_id'] if subject else None
-
-    # Get all students in this section (accounting for user_sections mapping)
-    query = '''
-        SELECT DISTINCT u.id, u.email, u.full_name 
-        FROM users u 
-        LEFT JOIN user_sections us ON u.id = us.user_id 
-        WHERE u.role = "student" AND (u.section_id = ? OR us.section_id = ?)
-    '''
-    students = conn.execute(query, (section_id, section_id)).fetchall()
-    
-    # Get all submissions for this assignment
-    submissions = conn.execute('SELECT * FROM submissions WHERE assignment_id = ?', (id,)).fetchall()
-    sub_map = {s['student_id']: dict(s) for s in submissions}
-    
-    submitted = []
-    not_submitted = []
-    
-    for s in students:
-        if s['id'] in sub_map:
-            sub_data = sub_map[s['id']]
-            sub_data['email'] = s['full_name'] or s['email'] # Using full_name instead of email for better UI
-            submitted.append(sub_data)
-        else:
-            not_submitted.append({'id': s['id'], 'email': s['full_name'] or s['email']})
+    conn = None
+    try:
+        conn = get_db()
+        # Get the assignment
+        assignment = conn.execute('SELECT * FROM assignments WHERE id = ?', (id,)).fetchone()
+        if not assignment:
+            conn.close()
+            return jsonify({'error': 'الواجب غير موجود'}), 404
             
-    conn.close()
-    return jsonify({
-        'assignment': dict(assignment),
-        'submitted': submitted,
-        'not_submitted': not_submitted
-    })
+        # Get section_id
+        subject = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (assignment['subject_id'],)).fetchone()
+        section_id = subject['section_id'] if subject else None
+
+        # Get all students (Fixed SQL syntax with single quotes)
+        query = '''
+            SELECT DISTINCT u.id, u.email, u.full_name 
+            FROM users u 
+            LEFT JOIN user_sections us ON u.id = us.user_id 
+            WHERE u.role = 'student' AND (u.section_id = ? OR us.section_id = ?)
+        '''
+        students = conn.execute(query, (section_id, section_id)).fetchall()
+        
+        # Get all submissions
+        submissions = conn.execute('SELECT * FROM submissions WHERE assignment_id = ?', (id,)).fetchall()
+        sub_map = {s['student_id']: dict(s) for s in submissions}
+        
+        submitted = []
+        not_submitted = []
+        
+        for s in students:
+            # Check if name exists else fallback to email
+            student_name = s['full_name'] if (s['full_name'] and str(s['full_name']).strip()) else s['email']
+            
+            if s['id'] in sub_map:
+                sub_data = sub_map[s['id']]
+                sub_data['email'] = student_name # For UI display
+                submitted.append(sub_data)
+            else:
+                not_submitted.append({'id': s['id'], 'email': student_name})
+                
+        conn.close()
+        return jsonify({
+            'assignment': dict(assignment),
+            'submitted': submitted,
+            'not_submitted': not_submitted
+        })
+    except Exception as e:
+        if conn:
+            try: conn.close()
+            except: pass
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Submissions Error: {error_details}")
+        # Send raw error message to frontend for direct debugging
+        return jsonify({'error': f'Server Debug: {str(e)}'}), 500
 
 # ─── STATS ────────────────────────────────────────────────────
 @app.route('/api/stats', methods=['GET'])
