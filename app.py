@@ -1055,37 +1055,33 @@ def get_announcements():
     ctx = get_user_context()
     sid = request.args.get('section_id') or ctx['section_id']
     conn = get_db()
+    
+    base_query = """
+        SELECT a.*, u.full_name, u.email as publisher_email, u.role as publisher_role 
+        FROM announcements a
+        LEFT JOIN users u ON a.publisher_id = u.id
+    """
+    
     if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
         if sid:
-            # Also include 'ALL' section broadcasts
-            query = """
-                SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
-                FROM announcements a
-                LEFT JOIN users u ON a.publisher_id = u.id
-                WHERE a.section_id = ? OR a.section_id = 'ALL' 
-                ORDER BY a.created_at DESC
-            """
+            query = base_query + " WHERE a.section_id = ? OR a.section_id = 'ALL' ORDER BY a.created_at DESC"
             ann = conn.execute(query, (sid,)).fetchall()
         else:
-            query = """
-                SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
-                FROM announcements a
-                LEFT JOIN users u ON a.publisher_id = u.id
-                ORDER BY a.created_at DESC
-            """
+            query = base_query + " ORDER BY a.created_at DESC"
             ann = conn.execute(query).fetchall()
     else:
-        # Students, Teachers, Section Admins see their section + ALL broadcasts
-        query = """
-            SELECT a.*, u.full_name as publisher_name, u.role as publisher_role 
-            FROM announcements a
-            LEFT JOIN users u ON a.publisher_id = u.id
-            WHERE a.section_id = ? OR a.section_id = 'ALL' 
-            ORDER BY a.created_at DESC
-        """
+        query = base_query + " WHERE a.section_id = ? OR a.section_id = 'ALL' ORDER BY a.created_at DESC"
         ann = conn.execute(query, (sid,)).fetchall()
+    
+    results = []
+    for r in ann:
+        d = dict(r)
+        # Fallback logic: Name -> Email -> 'إدارة المنصة'
+        d['publisher_name'] = d.get('full_name') if (d.get('full_name') and str(d.get('full_name')).strip()) else d.get('publisher_email', 'إدارة المنصة')
+        results.append(d)
+        
     conn.close()
-    return jsonify([dict(r) for r in ann])
+    return jsonify(results)
 
 @app.route('/api/announcements', methods=['POST'])
 @require_role('section_admin', 'head_dept')
