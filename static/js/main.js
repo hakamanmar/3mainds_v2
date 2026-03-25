@@ -29,6 +29,7 @@ class Router {
         this.initNotifications();
         this.initPWA();
         this.updateNav();
+        this.resolve();
     }
 
     initGlobalListeners() {
