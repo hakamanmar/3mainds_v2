@@ -1485,21 +1485,69 @@ def get_assignments():
 
     assignments = conn.execute('SELECT * FROM assignments WHERE subject_id = ? ORDER BY created_at DESC', (subject_id,)).fetchall()
     
-    # If user is student, check their submission status using verified ctx['user_id']
     user_id = ctx['user_id']
+    is_teacher_or_admin = ctx['role'] in ['teacher', 'super_admin', 'section_admin', 'head_dept', 'committee']
     
     res = []
     for a in assignments:
         d = dict(a)
+        
+        # Security: Mask details for students as requested
+        if not is_teacher_or_admin:
+            d['description'] = None
+            d['file_url'] = None
+            
         if ctx['role'] == 'student' and user_id:
             sub = conn.execute('SELECT id, submitted_at FROM submissions WHERE assignment_id = ? AND student_id = ?', (a['id'], user_id)).fetchone()
-            sub_dict = dict(sub) if sub else None
-            d['status'] = 'submitted' if sub_dict else 'pending'
-            d['submitted_at'] = sub_dict['submitted_at'] if sub_dict else None
+            if sub:
+                sub_dict = dict(sub)
+                d['status'] = 'submitted'
+                d['submitted_at'] = sub_dict['submitted_at']
+                d['submission_id'] = sub_dict['id']
+            else:
+                d['status'] = 'pending'
+                d['submitted_at'] = None
+                d['submission_id'] = None
         res.append(d)
         
     conn.close()
     return jsonify(res)
+
+@app.route('/api/submissions/<int:submission_id>', methods=['DELETE'])
+@require_role('student', 'super_admin')
+def delete_submission(submission_id):
+    ctx = get_user_context()
+    conn = get_db()
+    
+    # Check submission ownership and due date
+    query = """
+        SELECT s.student_id, a.due_date 
+        FROM submissions s
+        JOIN assignments a ON s.assignment_id = a.id
+        WHERE s.id = ?
+    """
+    row = conn.execute(query, (submission_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Submission not found'}), 404
+        
+    if ctx['role'] == 'student' and row['student_id'] != ctx['user_id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    # Check if due date has passed
+    if row['due_date']:
+        try:
+            due = datetime.fromisoformat(row['due_date'].replace(' ', 'T'))
+            if due < datetime.now():
+                conn.close()
+                return jsonify({'error': 'Cannot delete after due date'}), 400
+        except: pass
+        
+    conn.execute('DELETE FROM submissions WHERE id = ?', (submission_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/api/assignments', methods=['POST'])
 @require_role('teacher', 'super_admin')
