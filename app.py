@@ -1612,7 +1612,7 @@ def get_assignment_submissions(assignment_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/submissions/<int:submission_id>/grade', methods=['POST'])
-@require_role('teacher', 'super_admin', 'head_dept')
+@require_role('teacher', 'super_admin', 'head_dept', 'committee', 'section_admin')
 def grade_submission(submission_id):
     data = request.json
     grade = data.get('grade')
@@ -1636,8 +1636,9 @@ def grade_submission(submission_id):
             conn.close()
             return jsonify({'error': 'Submission not found'}), 404
             
-        # Security Check: Only the assigned teacher OR a super_admin/head_dept can grade
-        if ctx['role'] == 'teacher' and row['teacher_id'] != ctx['user_id']:
+        # Security Check: Only the assigned teacher OR a privileged role can grade
+        privileged_roles = ['super_admin', 'head_dept', 'committee', 'section_admin']
+        if ctx['role'] == 'teacher' and row['teacher_id'] != ctx['user_id'] and ctx['role'] not in privileged_roles:
             conn.close()
             return jsonify({'error': 'Unauthorized: You are not the instructor of this assignment'}), 403
             
