@@ -306,5 +306,30 @@ export const api = {
     },
     async deleteSubmission(submissionId) {
         return this._fetch(`${API_BASE}/submissions/${submissionId}`, { method: 'DELETE' });
+    },
+    // ── MCQ EXAM SYSTEM ──────────────────────────────────────────
+    async listExams() {
+        return this._fetch(`${API_BASE}/exams`);
+    },
+    async createExam(data) {
+        return this._fetch(`${API_BASE}/exams`, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } });
+    },
+    async getExam(examId) {
+        return this._fetch(`${API_BASE}/exams/${examId}`);
+    },
+    async startExam(examId) {
+        return this._fetch(`${API_BASE}/exams/${examId}/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    },
+    async submitExam(examId, data) {
+        return this._fetch(`${API_BASE}/exams/${examId}/submit`, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } });
+    },
+    async getExamResults(examId) {
+        return this._fetch(`${API_BASE}/exams/${examId}/results`);
+    },
+    async addExamFeedback(examId, data) {
+        return this._fetch(`${API_BASE}/exams/${examId}/feedback`, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } });
+    },
+    async deleteExam(examId) {
+        return this._fetch(`${API_BASE}/exams/${examId}`, { method: 'DELETE' });
     }
 };
