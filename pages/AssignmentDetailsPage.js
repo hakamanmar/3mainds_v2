@@ -116,22 +116,39 @@ export default async function AssignmentDetailsPage(params) {
                                <p style="margin-top:1rem;">لم يتم رفع أي ملفات حتى الآن</p>
                            </div>`
                         : data.submitted.map(s => `
-                            <div class="submission-item" style="display:flex; align-items:center; justify-content:space-between; padding:1rem; border:1px solid var(--border); border-radius:16px; gap:1rem; transition:all 0.2s;">
+                            <div class="submission-item" style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem; border:1px solid var(--border); border-radius:20px; gap:1rem; transition:all 0.2s; background:#fff;">
                                 <div style="display:flex; align-items:center; gap:1rem; min-width:0; flex:1;">
-                                    <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:1.2rem; flex-shrink:0; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
-                                        ${(s.email || 'ط').charAt(0).toUpperCase()}
+                                    <div style="width:50px; height:50px; background:linear-gradient(135deg, #10b981, #059669); border-radius:14px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:1.3rem; flex-shrink:0; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
+                                        ${(s.student_name || 'ط').charAt(0).toUpperCase()}
                                     </div>
                                     <div style="min-width:0;">
-                                        <div style="font-weight:700; color:#1e1b4b; font-size:1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.email || 'طالب'}</div>
-                                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
-                                            <i class="ph ph-clock"></i> ${s.submitted_at ? new Date(s.submitted_at).toLocaleString('ar-EG') : 'غير مسجل'}
+                                        <div style="font-weight:700; color:#1e1b4b; font-size:1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.student_name}</div>
+                                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:flex; gap:12px; align-items:center;">
+                                            <span><i class="ph ph-envelope"></i> ${s.email}</span>
+                                            <span><i class="ph ph-calendar"></i> ${s.submitted_at ? new Date(s.submitted_at).toLocaleString('ar-EG') : 'N/A'}</span>
                                         </div>
+                                        ${s.current_grade ? `
+                                            <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                                                <span class="tag tag-success" style="font-weight:800;"><i class="ph-bold ph-star"></i> درجة: ${s.current_grade}</span>
+                                                ${s.current_feedback ? `<span style="font-size:0.8rem; color:var(--text-muted); background:#f1f5f9; padding:2px 8px; border-radius:6px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.current_feedback}</span>` : ''}
+                                            </div>
+                                        ` : '<div style="margin-top:8px; font-size:0.8rem; color:#f59e0b; font-weight:700;"><i class="ph ph-clock"></i> بانتظار التقييم</div>'}
                                     </div>
                                 </div>
-                                ${s.file_url ? `
-                                    <a href="${s.file_url}" target="_blank" class="btn btn-primary" style="padding:0.6rem 1.25rem; border-radius:12px; font-weight:600; flex-shrink:0;">
-                                        <i class="ph ph-download-simple"></i> تحميل
-                                    </a>` : `<span style="color:var(--text-muted); font-size:0.85rem; padding:0.6rem">لا يوجد ملف</span>`}
+                                <div style="display:flex; gap:0.75rem; align-items:center;">
+                                    ${s.file_url ? `
+                                        <a href="${s.file_url}" target="_blank" class="glass-btn" title="معاينة الملف" style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:#f1f5f9; color:#4f46e5;">
+                                            <i class="ph ph-file-pdf" style="font-size:1.4rem;"></i>
+                                        </a>` : ''}
+                                    <button class="btn btn-primary grade-btn" 
+                                            data-id="${s.id}" 
+                                            data-student="${s.student_name}" 
+                                            data-grade="${s.current_grade || ''}" 
+                                            data-feedback="${s.current_feedback || ''}"
+                                            style="padding:0.75rem 1.5rem; border-radius:14px; font-weight:700;">
+                                        <i class="ph ph-check-circle"></i> ${s.current_grade ? 'تعديل التقييم' : 'تقييم الآن'}
+                                    </button>
+                                </div>
                             </div>
                         `).join('')}
                     </div>
@@ -151,12 +168,15 @@ export default async function AssignmentDetailsPage(params) {
                                <p style="font-weight:700; margin-top:1rem;">ممتاز! اكتملت جميع التسليمات</p>
                            </div>`
                         : data.not_submitted.map(s => `
-                            <div style="display:flex; align-items:center; gap:1rem; padding:0.85rem; border-radius:12px; background:#fff; border:1px solid var(--border);">
-                                <div style="width:38px; height:38px; background:#fef2f2; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#ef4444; font-size:1rem; flex-shrink:0;">
-                                    ${(s.email || 'ط').charAt(0).toUpperCase()}
+                            <div style="display:flex; align-items:center; gap:1rem; padding:1rem; border-radius:16px; background:#fff; border:1px solid var(--border);">
+                                <div style="width:40px; height:40px; background:#fef2f2; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#ef4444; font-size:1rem; flex-shrink:0;">
+                                    ${(s.full_name || 'ط').charAt(0).toUpperCase()}
                                 </div>
-                                <div style="font-weight:600; color:#1e1b4b; font-size:0.95rem;">${s.email || 'طالب'}</div>
-                                <div style="margin-right:auto; color:#ef4444; font-size:0.75rem; font-weight:700;">انتظار</div>
+                                <div style="min-width:0;">
+                                    <div style="font-weight:700; color:#1e1b4b; font-size:0.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.full_name || s.email}</div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">لم يتم التسليم بعد</div>
+                                </div>
+                                <div style="margin-right:auto; color:#ef4444; font-size:0.75rem; font-weight:700; background:#fef2f2; padding:3px 8px; border-radius:6px;">غائب</div>
                             </div>
                         `).join('')}
                     </div>
@@ -164,9 +184,47 @@ export default async function AssignmentDetailsPage(params) {
             </div>
         </div>
         <style>
-            .submission-item:hover { transform: translateY(-2px); border-color: var(--primary) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+            .submission-item:hover { transform: translateY(-3px); border-color: var(--primary) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+            .glass-btn:hover { background: #e2e8f0 !important; transform: scale(1.05); }
         </style>
     `;
+
+    // Event listener for Grading Modal
+    container.querySelectorAll('.grade-btn').forEach(btn => {
+        btn.onclick = async () => {
+            const sid = btn.dataset.id;
+            const student = btn.dataset.student;
+            const currentGrade = btn.dataset.grade;
+            const currentFeedback = btn.dataset.feedback;
+
+            const html = `
+                <div style="padding:0.5rem;">
+                    <p style="color:var(--text-muted); margin-bottom:1.5rem;">تقييم الطالب: <strong style="color:var(--primary);">${student}</strong></p>
+                    <div class="form-group">
+                        <label class="form-label">الدرجة (مثال: 90 أو A+)</label>
+                        <input id="grade-val" class="form-control" value="${currentGrade}" placeholder="أدخل الدرجة..." style="height:50px; font-size:1.1rem; font-weight:700;" />
+                    </div>
+                    <div class="form-group" style="margin-top:1.5rem;">
+                        <label class="form-label">ملاحظات الأستاذ / التغذية الراجعة</label>
+                        <textarea id="grade-feedback" class="form-control" rows="4" placeholder="اكتب ملاحظاتك هنا للهذا الطالب...">${currentFeedback}</textarea>
+                    </div>
+                </div>
+            `;
+
+            const res = await UI.modal('تقييم تسليم الواجب', html, async () => {
+                const grade = document.getElementById('grade-val').value.trim();
+                const feedback = document.getElementById('grade-feedback').value.trim();
+                if (!grade) { UI.toast('يرجى إدخال الدرجة أولاً', 'error'); return false; }
+                await api.gradeSubmission(sid, { grade, feedback });
+                return true;
+            });
+
+            if (res) {
+                UI.toast('تم حفظ التقييم بنجاح ✅');
+                window.location.reload();
+            }
+        };
+    });
 
     return container;
 }
