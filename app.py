@@ -273,7 +273,7 @@ def init_db():
             c.execute('SELECT id FROM users LIMIT 1')
         except Exception:
             print("[DB] Critical tables missing or damaged — Re-initializing schema...")
-            for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections', 'user_sections', 'instructor_courses']:
+            for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections', 'user_sections', 'instructor_courses', 'submission_grades']:
                 try:
                     c.execute(f'DROP TABLE IF EXISTS {tbl}')
                 except: pass
@@ -1531,7 +1531,7 @@ def add_homework():
     return jsonify({'success': True})
 
 @app.route('/api/assignment/<int:assignment_id>/submissions', methods=['GET'])
-@require_role('teacher', 'super_admin', 'section_admin', 'committee')
+@require_role('teacher', 'super_admin', 'section_admin', 'committee', 'head_dept')
 def get_assignment_submissions(assignment_id):
     try:
         conn = get_db()
@@ -1675,7 +1675,7 @@ def submit_homework():
 
 @app.route('/api/assignments/<int:id>/submissions', methods=['GET'])
 @require_role('teacher', 'super_admin', 'section_admin', 'head_dept', 'committee', 'admin')
-def get_assignment_submissions(id):
+def get_assignment_submissions_v2(id):
     conn = None
     try:
         conn = get_db()
