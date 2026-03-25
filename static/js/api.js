@@ -303,5 +303,8 @@ export const api = {
     },
     async getAssignmentSubmissions(assignmentId) {
         return this._fetch(`${API_BASE}/assignment/${assignmentId}/submissions`);
+    },
+    async deleteSubmission(submissionId) {
+        return this._fetch(`${API_BASE}/submissions/${submissionId}`, { method: 'DELETE' });
     }
 };
