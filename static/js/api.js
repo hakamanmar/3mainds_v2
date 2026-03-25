@@ -302,7 +302,7 @@ export const api = {
         return this._fetch(`${API_BASE}/student/grades`);
     },
     async getAssignmentSubmissions(assignmentId) {
-        return this._fetch(`${API_BASE}/assignment/${assignmentId}/submissions`);
+        return this._fetch(`${API_BASE}/assignments/${assignmentId}/submissions`);
     },
     async deleteSubmission(submissionId) {
         return this._fetch(`${API_BASE}/submissions/${submissionId}`, { method: 'DELETE' });
