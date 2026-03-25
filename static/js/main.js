@@ -25,6 +25,17 @@ class Router {
         document.documentElement.lang = i18n.lang;
 
         window.addEventListener('popstate', () => this.resolve());
+        // Global error capture to reveal white-screen causes
+        window.onerror = (msg, url, line, col, error) => {
+            if (this.baseContainer) {
+                this.baseContainer.innerHTML = `<div style="padding:2rem; color:red; background:#fff1f2; border:1px solid #fda4af; border-radius:12px; margin:2rem;">
+                    <h3>Runtime Error</h3>
+                    <p>${msg}</p>
+                    <small>${url} L:${line}:${col}</small>
+                </div>`;
+            }
+            return false;
+        };
         this.initTheme();
         this.initNotifications();
         this.initPWA();
