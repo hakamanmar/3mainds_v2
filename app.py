@@ -1737,32 +1737,42 @@ def get_assignment_submissions_v2(id):
         subject = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (assignment['subject_id'],)).fetchone()
         section_id = subject['section_id'] if subject else None
 
-        # Get all students (Fixed SQL syntax with single quotes)
-        query = '''
+        # Get all students for this section
+        query_students = '''
             SELECT DISTINCT u.id, u.email, u.full_name 
             FROM users u 
             LEFT JOIN user_sections us ON u.id = us.user_id 
             WHERE u.role = 'student' AND (u.section_id = ? OR us.section_id = ?)
         '''
-        students = conn.execute(query, (section_id, section_id)).fetchall()
+        students = conn.execute(query_students, (section_id, section_id)).fetchall()
         
-        # Get all submissions
-        submissions = conn.execute('SELECT * FROM submissions WHERE assignment_id = ?', (id,)).fetchall()
+        # Get all submissions for this assignment with GRADES
+        query_subs = """
+            SELECT 
+                s.id, s.assignment_id, s.student_id, s.file_url, s.submitted_at, 
+                u.full_name as student_name, u.email,
+                g.grade as current_grade, g.feedback as current_feedback, 
+                g.instructor_id as grader_id
+            FROM submissions s
+            JOIN users u ON s.student_id = u.id
+            LEFT JOIN submission_grades g ON s.id = g.submission_id
+            WHERE s.assignment_id = ?
+        """
+        submissions = conn.execute(query_subs, (id,)).fetchall()
         sub_map = {s['student_id']: dict(s) for s in submissions}
         
         submitted = []
         not_submitted = []
         
         for s in students:
-            # Check if name exists else fallback to email
-            student_name = s['full_name'] if (s['full_name'] and str(s['full_name']).strip()) else s['email']
-            
             if s['id'] in sub_map:
-                sub_data = sub_map[s['id']]
-                sub_data['email'] = student_name # For UI display
-                submitted.append(sub_data)
+                sd = sub_map[s['id']]
+                # Ensure name fallback
+                if not sd.get('student_name') or not str(sd['student_name']).strip():
+                    sd['student_name'] = sd.get('email')
+                submitted.append(sd)
             else:
-                not_submitted.append({'id': s['id'], 'email': student_name})
+                not_submitted.append(dict(s))
                 
         conn.close()
         return jsonify({
@@ -1771,14 +1781,8 @@ def get_assignment_submissions_v2(id):
             'not_submitted': not_submitted
         })
     except Exception as e:
-        if conn:
-            try: conn.close()
-            except: pass
-        import traceback
-        error_details = traceback.format_exc()
-        print(f"Submissions Error: {error_details}")
-        # Send raw error message to frontend for direct debugging
-        return jsonify({'error': f'Server Debug: {str(e)}'}), 500
+        if conn: conn.close()
+        return jsonify({'error': f'Server Error: {str(e)}'}), 500
 
 # ─── STATS ────────────────────────────────────────────────────
 @app.route('/api/stats', methods=['GET'])
