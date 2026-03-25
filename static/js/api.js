@@ -295,7 +295,13 @@ export const api = {
     async submitHomework(data) {
         return this._fetch(`${API_BASE}/submissions`, { method: 'POST', body: JSON.stringify(data) });
     },
+    async gradeSubmission(submissionId, data) {
+        return this._fetch(`${API_BASE}/submissions/${submissionId}/grade`, { method: 'POST', body: JSON.stringify(data) });
+    },
+    async getStudentGrades() {
+        return this._fetch(`${API_BASE}/student/grades`);
+    },
     async getAssignmentSubmissions(assignmentId) {
-        return this._fetch(`${API_BASE}/assignments/${assignmentId}/submissions`);
+        return this._fetch(`${API_BASE}/assignment/${assignmentId}/submissions`);
     }
 };
