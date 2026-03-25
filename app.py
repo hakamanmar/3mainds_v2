@@ -2385,6 +2385,428 @@ def attendance_active_for_me():
 
 # ── Assignments & Submissions ──────────────────────────────────────
 
+# ═══════════════════════════════════════════════════════════════════
+# MCQ EXAM SYSTEM – Separate Layer (non-breaking)
+# ═══════════════════════════════════════════════════════════════════
+
+def init_exam_tables():
+    """Initialize exam tables safely without affecting existing schema."""
+    try:
+        conn = get_db()
+        c = conn.cursor()
+
+        # Exams table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS exams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                subject_id INTEGER NOT NULL,
+                teacher_id INTEGER NOT NULL,
+                duration_minutes INTEGER NOT NULL DEFAULT 60,
+                sections TEXT DEFAULT '[]',
+                is_active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+                FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+
+        # Questions table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS exam_questions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exam_id INTEGER NOT NULL,
+                question_text TEXT NOT NULL,
+                option_a TEXT NOT NULL,
+                option_b TEXT NOT NULL,
+                option_c TEXT NOT NULL,
+                option_d TEXT NOT NULL,
+                correct_answer TEXT NOT NULL,
+                question_order INTEGER DEFAULT 0,
+                FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+            )
+        ''')
+
+        # Attempts table (one per student per exam)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS exam_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exam_id INTEGER NOT NULL,
+                student_id INTEGER NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                submitted_at TIMESTAMP,
+                answers TEXT DEFAULT '{}',
+                score REAL,
+                total_questions INTEGER DEFAULT 0,
+                feedback TEXT,
+                is_submitted INTEGER DEFAULT 0,
+                FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(exam_id, student_id)
+            )
+        ''')
+
+        conn.commit()
+        conn.close()
+        print("[DB] Exam tables initialized.")
+    except Exception as e:
+        print(f"[DB] Exam table init warning: {e}")
+
+# Initialize exam tables on startup
+try:
+    init_exam_tables()
+except Exception as e:
+    print(f"[DB] Exam init skipped: {e}")
+
+
+# ── EXAM ROUTES ────────────────────────────────────────────────────
+
+@app.route('/api/exams', methods=['GET'])
+def list_exams():
+    """List exams visible to the current user."""
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = get_db()
+    try:
+        if ctx['role'] in ['teacher']:
+            # Teacher sees only their own exams
+            rows = conn.execute(
+                'SELECT e.*, s.title as subject_title FROM exams e JOIN subjects s ON e.subject_id = s.id WHERE e.teacher_id = ? ORDER BY e.created_at DESC',
+                (ctx['user_id'],)
+            ).fetchall()
+        elif ctx['role'] in ['super_admin', 'head_dept', 'section_admin', 'committee']:
+            rows = conn.execute(
+                'SELECT e.*, s.title as subject_title FROM exams e JOIN subjects s ON e.subject_id = s.id ORDER BY e.created_at DESC'
+            ).fetchall()
+        elif ctx['role'] == 'student':
+            # Student sees exams for their section's subjects
+            section_id = ctx['section_id']
+            rows = conn.execute('''
+                SELECT e.*, s.title as subject_title FROM exams e
+                JOIN subjects s ON e.subject_id = s.id
+                WHERE e.is_active = 1 AND (
+                    s.section_id = ? OR e.sections LIKE ?
+                )
+                ORDER BY e.created_at DESC
+            ''', (section_id, f'%{section_id}%')).fetchall()
+        else:
+            conn.close()
+            return jsonify([])
+
+        result = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d['sections'] = json.loads(d.get('sections', '[]'))
+            except:
+                d['sections'] = []
+            # Get attempt status for students
+            if ctx['role'] == 'student':
+                attempt = conn.execute(
+                    'SELECT id, started_at, submitted_at, score, is_submitted FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
+                    (d['id'], ctx['user_id'])
+                ).fetchone()
+                d['attempt'] = dict(attempt) if attempt else None
+            # Question count
+            qcount = conn.execute('SELECT COUNT(*) FROM exam_questions WHERE exam_id = ?', (d['id'],)).fetchone()
+            d['question_count'] = qcount[0] if qcount else 0
+            result.append(d)
+
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams', methods=['POST'])
+@require_role('teacher', 'super_admin', 'section_admin', 'head_dept')
+def create_exam():
+    """Create a new exam with questions."""
+    ctx = get_user_context()
+    data = request.json
+    title = data.get('title', '').strip()
+    subject_id = data.get('subject_id')
+    duration = int(data.get('duration_minutes', 60))
+    sections = json.dumps(data.get('sections', []))
+    questions = data.get('questions', [])
+
+    if not title or not subject_id:
+        return jsonify({'error': 'Title and subject are required'}), 400
+    if len(questions) < 1:
+        return jsonify({'error': 'At least 1 question required'}), 400
+
+    try:
+        conn = get_db()
+        conn.execute(
+            'INSERT INTO exams (title, subject_id, teacher_id, duration_minutes, sections) VALUES (?, ?, ?, ?, ?)',
+            (title, subject_id, ctx['user_id'], duration, sections)
+        )
+        exam_id_row = conn.execute('SELECT last_insert_rowid() as id').fetchone()
+        exam_id = exam_id_row['id'] if exam_id_row else None
+
+        if exam_id:
+            for idx, q in enumerate(questions):
+                conn.execute(
+                    '''INSERT INTO exam_questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_answer, question_order)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (exam_id, q.get('question_text', ''), q.get('option_a', ''), q.get('option_b', ''),
+                     q.get('option_c', ''), q.get('option_d', ''), q.get('correct_answer', 'a'), idx)
+                )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'exam_id': exam_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>', methods=['GET'])
+def get_exam(exam_id):
+    """Get exam details. Students get shuffled questions without correct answers."""
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = get_db()
+    try:
+        exam = conn.execute('SELECT e.*, s.title as subject_title FROM exams e JOIN subjects s ON e.subject_id = s.id WHERE e.id = ?', (exam_id,)).fetchone()
+        if not exam:
+            conn.close()
+            return jsonify({'error': 'Exam not found'}), 404
+
+        exam_dict = dict(exam)
+        try:
+            exam_dict['sections'] = json.loads(exam_dict.get('sections', '[]'))
+        except:
+            exam_dict['sections'] = []
+
+        questions = conn.execute(
+            'SELECT * FROM exam_questions WHERE exam_id = ? ORDER BY question_order',
+            (exam_id,)
+        ).fetchall()
+        q_list = [dict(q) for q in questions]
+
+        if ctx['role'] == 'student':
+            import random
+            # Shuffle questions
+            random.shuffle(q_list)
+            # Shuffle options per question
+            for q in q_list:
+                options = [
+                    {'key': 'a', 'text': q['option_a']},
+                    {'key': 'b', 'text': q['option_b']},
+                    {'key': 'c', 'text': q['option_c']},
+                    {'key': 'd', 'text': q['option_d']},
+                ]
+                random.shuffle(options)
+                q['shuffled_options'] = options
+                # Remove correct answer from student view
+                del q['correct_answer']
+
+            # Check attempt
+            attempt = conn.execute(
+                'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
+                (exam_id, ctx['user_id'])
+            ).fetchone()
+            exam_dict['attempt'] = dict(attempt) if attempt else None
+        else:
+            exam_dict['questions'] = q_list
+
+        if ctx['role'] == 'student':
+            exam_dict['questions'] = q_list
+
+        conn.close()
+        return jsonify(exam_dict)
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>/start', methods=['POST'])
+@require_role('student', 'super_admin')
+def start_exam(exam_id):
+    """Start or resume an exam attempt."""
+    ctx = get_user_context()
+    conn = get_db()
+    try:
+        exam = conn.execute('SELECT * FROM exams WHERE id = ? AND is_active = 1', (exam_id,)).fetchone()
+        if not exam:
+            conn.close()
+            return jsonify({'error': 'Exam not found or not active'}), 404
+
+        existing = conn.execute(
+            'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
+            (exam_id, ctx['user_id'])
+        ).fetchone()
+
+        if existing and existing['is_submitted']:
+            conn.close()
+            return jsonify({'error': 'Already submitted this exam', 'attempt': dict(existing)}), 400
+
+        if not existing:
+            q_count = conn.execute('SELECT COUNT(*) FROM exam_questions WHERE exam_id = ?', (exam_id,)).fetchone()
+            total = q_count[0] if q_count else 0
+            conn.execute(
+                'INSERT INTO exam_attempts (exam_id, student_id, total_questions) VALUES (?, ?, ?)',
+                (exam_id, ctx['user_id'], total)
+            )
+            conn.commit()
+            attempt = conn.execute(
+                'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
+                (exam_id, ctx['user_id'])
+            ).fetchone()
+        else:
+            attempt = existing
+
+        conn.close()
+        return jsonify({'success': True, 'attempt': dict(attempt)})
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>/submit', methods=['POST'])
+@require_role('student', 'super_admin')
+def submit_exam(exam_id):
+    """Submit exam answers and auto-grade."""
+    ctx = get_user_context()
+    data = request.json
+    answers = data.get('answers', {})  # {question_id: selected_key}
+
+    conn = get_db()
+    try:
+        attempt = conn.execute(
+            'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
+            (exam_id, ctx['user_id'])
+        ).fetchone()
+
+        if not attempt:
+            conn.close()
+            return jsonify({'error': 'No active attempt found'}), 404
+
+        if attempt['is_submitted']:
+            conn.close()
+            return jsonify({'error': 'Already submitted'}), 400
+
+        # Auto-grade: compare submitted answers to correct answers
+        questions = conn.execute(
+            'SELECT id, correct_answer FROM exam_questions WHERE exam_id = ?',
+            (exam_id,)
+        ).fetchall()
+
+        correct_count = 0
+        total = len(questions)
+        for q in questions:
+            q_id = str(q['id'])
+            if answers.get(q_id, '').lower() == q['correct_answer'].lower():
+                correct_count += 1
+
+        score = round((correct_count / total * 100), 1) if total > 0 else 0
+        answers_json = json.dumps(answers)
+
+        conn.execute('''
+            UPDATE exam_attempts
+            SET answers = ?, score = ?, total_questions = ?, submitted_at = CURRENT_TIMESTAMP, is_submitted = 1
+            WHERE exam_id = ? AND student_id = ?
+        ''', (answers_json, score, total, exam_id, ctx['user_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'score': score, 'correct': correct_count, 'total': total})
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>/results', methods=['GET'])
+def get_exam_results(exam_id):
+    """Instructor: get all student results. Student: get only their own."""
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = get_db()
+    try:
+        exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
+        if not exam:
+            conn.close()
+            return jsonify({'error': 'Exam not found'}), 404
+
+        if ctx['role'] == 'student':
+            attempt = conn.execute(
+                'SELECT ea.*, e.title as exam_title, e.duration_minutes FROM exam_attempts ea JOIN exams e ON ea.exam_id = e.id WHERE ea.exam_id = ? AND ea.student_id = ?',
+                (exam_id, ctx['user_id'])
+            ).fetchone()
+            conn.close()
+            return jsonify({'my_result': dict(attempt) if attempt else None})
+        else:
+            attempts = conn.execute('''
+                SELECT ea.*, u.full_name, u.email
+                FROM exam_attempts ea
+                JOIN users u ON ea.student_id = u.id
+                WHERE ea.exam_id = ?
+                ORDER BY ea.score DESC
+            ''', (exam_id,)).fetchall()
+            results = []
+            for a in attempts:
+                d = dict(a)
+                d['student_name'] = d.get('full_name') or d.get('email', 'Unknown')
+                results.append(d)
+            conn.close()
+            return jsonify({'results': results, 'exam': dict(exam)})
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>/feedback', methods=['POST'])
+@require_role('teacher', 'super_admin', 'head_dept', 'section_admin')
+def add_exam_feedback(exam_id):
+    """Add optional feedback to a student's exam attempt."""
+    data = request.json
+    student_id = data.get('student_id')
+    feedback = data.get('feedback', '').strip()
+
+    if not student_id or not feedback:
+        return jsonify({'error': 'student_id and feedback required'}), 400
+
+    conn = get_db()
+    try:
+        conn.execute(
+            'UPDATE exam_attempts SET feedback = ? WHERE exam_id = ? AND student_id = ?',
+            (feedback, exam_id, student_id)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/exams/<int:exam_id>', methods=['DELETE'])
+@require_role('teacher', 'super_admin', 'head_dept')
+def delete_exam(exam_id):
+    ctx = get_user_context()
+    conn = get_db()
+    try:
+        exam = conn.execute('SELECT * FROM exams WHERE id = ?', (exam_id,)).fetchone()
+        if not exam:
+            conn.close()
+            return jsonify({'error': 'Exam not found'}), 404
+        if ctx['role'] == 'teacher' and exam['teacher_id'] != ctx['user_id']:
+            conn.close()
+            return jsonify({'error': 'Unauthorized'}), 403
+        conn.execute('DELETE FROM exams WHERE id = ?', (exam_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
 
