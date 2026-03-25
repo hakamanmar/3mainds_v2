@@ -12,6 +12,7 @@ const pageModules = {
     '/change-password': () => import('/pages/PasswordChangePage.js'),
     '/viewer': () => import('/pages/ViewerPage.js'),
     '/assignment/submissions': () => import('/pages/AssignmentDetailsPage.js'),
+    '/results': () => import('/pages/MyResultsPage.js'),
 };
 
 class Router {
@@ -248,7 +249,8 @@ class Router {
             // === STUDENT: View-only ===
             } else if (user.role === 'student') {
                 links = `
-                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>`;
+                    <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
+                    <button class="btn btn-ghost" data-path="/results"><i class="ph ph-medal"></i><span>نتائجي</span></button>`;
             }
 
             navHtml += `
