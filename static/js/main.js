@@ -299,7 +299,6 @@ class Router {
 }
 
 window.router = new Router();
-window.router.resolve();
 window.toggleLang = () => {
     i18n.lang = i18n.lang === 'ar' ? 'en' : 'ar';
     window.location.reload();
