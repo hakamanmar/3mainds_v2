@@ -136,9 +136,9 @@ export default async function ExamTakePage(params) {
             </div>
 
             <style>
-                .exam-option:hover { border-color:#6366f1; background:#f5f3ff; }
-                .exam-option.selected { border-color:#6366f1; background:#f5f3ff; }
-                .exam-option.selected .opt-indicator { background:#6366f1; border-color:#6366f1; box-shadow:inset 0 0 0 4px #fff; }
+                .exam-option:hover { border-color:var(--primary); background:var(--primary-light); }
+                .exam-option.selected { border-color:var(--primary); background:var(--primary-light); }
+                .exam-option.selected .opt-indicator { background:var(--primary); border-color:var(--primary); box-shadow:inset 0 0 0 4px var(--surface); }
                 #timer-box.warning { background:linear-gradient(135deg,#ef4444,#dc2626) !important; animation: pulse 1s infinite; }
                 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
             </style>
