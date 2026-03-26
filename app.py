@@ -644,7 +644,9 @@ ensure_schema()
 # ─── Root Files (PWA & Branding) ─────────────────────────────
 @app.route('/manifest.json')
 def serve_manifest():
-    return send_from_directory(os.getcwd(), 'manifest.json')
+    response = send_from_directory(os.getcwd(), 'manifest.json')
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
 
 @app.route('/sw.js')
 def serve_sw():
