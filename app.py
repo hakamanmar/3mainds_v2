@@ -1471,8 +1471,10 @@ def upload_file():
 @app.route('/uploads/<path:filename>')
 @limiter.limit("500 per hour")
 def uploaded_file(filename):
-    """Serve uploaded files from the correct directory, supporting subpaths."""
-    # No secure_filename here on the whole path because it strips slashes
+    """Serve uploaded files. On Vercel, local files are ephemeral — try to serve if exists, else return 404."""
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found. This file may have been stored on ephemeral server storage and is no longer available. Please re-upload the file.'}), 404
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/api/assignments', methods=['GET'])
