@@ -22,9 +22,14 @@
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#4f46e5">
+    <!-- Apple PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="3Minds">
+    <link rel="apple-touch-icon" href="/static/img/icon-512.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/img/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/img/icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
 </head>
 
 <body>
@@ -70,13 +75,13 @@
         <div id="toast-container"></div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=4.4"></script>
+    <script type="module" src="/static/js/main.js?v=4.5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('SW Registered', reg))
-                    .catch(err => console.log('SW Registration failed', err));
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(reg => console.log('[PWA] SW v10 Registered', reg.scope))
+                    .catch(err => console.warn('[PWA] SW failed:', err));
             });
         }
     </script>
