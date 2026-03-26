@@ -266,13 +266,13 @@ def init_db():
 
     # --- Migration Helper: Check schema compatibility ---
     # On Vercel, if critical tables are missing, perform a clean reset.
-    # This helps with schema migrations on serverless environments where old files might persist.
-    if IS_VERCEL:
+    # CRITICAL: We ONLY do this for local SQLite. External DBs (Turso) are persistent and MUST NOT be reset automatically.
+    if IS_VERCEL and (not USE_TURSO):
         try:
             # Avoid repeated drops — only check once on startup
             c.execute('SELECT id FROM users LIMIT 1')
         except Exception:
-            print("[DB] Critical tables missing or damaged — Re-initializing schema...")
+            print("[DB] Critical tables missing or damaged — Re-initializing local schema...")
             for tbl in ['user_devices', 'subjects','users','lessons','announcements','attendance_records','attendance_sessions','enrollments','assignments','submissions','sections', 'user_sections', 'instructor_courses', 'submission_grades']:
                 try:
                     c.execute(f'DROP TABLE IF EXISTS {tbl}')
@@ -964,6 +964,28 @@ def get_lessons(subject_id):
     conn.close()
     return jsonify([dict(l) for l in lessons])
 
+def upload_file_to_external(file):
+    """Refined helper to upload files to Catbox for persistent hosting on Vercel."""
+    try:
+        # Reposition stream to start if needed (though usually okay here)
+        response = requests.post(
+            'https://catbox.moe/user/api.php', 
+            data={'reqtype': 'fileupload'}, 
+            files={'fileToUpload': (file.filename, file.stream, getattr(file, 'mimetype', 'application/octet-stream'))},
+            timeout=20 # Extra time for large files
+        )
+        if response.status_code == 200 and response.text.startswith('http'):
+            return response.text.strip()
+    except Exception as e:
+        print(f"[STORAGE] External upload failed, falling back to local: {e}")
+
+    # Fallback to local /tmp (ephemeral but works as last resort)
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'bin'
+    secure_name = f"{uuid.uuid4().hex}.{ext}"
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
+    return f"/uploads/{secure_name}"
+
 @app.route('/api/admin/add-lesson', methods=['POST'])
 @limiter.limit("30 per hour")
 @require_role('teacher', 'section_admin', 'super_admin')
@@ -989,10 +1011,8 @@ def add_lesson():
             return jsonify({'error': 'غير مصرح لك بالإضافة لهذه المادة'}), 403
         conn.close()
 
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        secure_name = f"{uuid.uuid4().hex}.{ext}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
-        url = f"/uploads/{secure_name}"
+        # Use our refined external upload helper
+        url = upload_file_to_external(file)
     else:
         data = request.json or {}
         subject_id = data.get('subject_id')
@@ -1442,22 +1462,9 @@ def upload_file():
          return jsonify({'error': 'File type not allowed. Supported: PDF, Images, Videos, Audio, Docs.'}), 403
     
     try:
-        # Uploading file automatically and for free to Catbox.moe
-        # Catbox.moe allows up to 200MB, no sign up required, completely free.
-        # It's an API widely used specifically for bypassing ephemeral storage limits on platforms like Vercel.
-        
-        response = requests.post(
-            'https://catbox.moe/user/api.php', 
-            data={'reqtype': 'fileupload'}, 
-            files={'fileToUpload': (file.filename, file.stream, getattr(file, 'mimetype', 'application/octet-stream'))}
-        )
-        
-        if response.status_code == 200 and response.text.startswith('http'):
-            # The API returns the raw direct link to the uploaded file
-            secure_url = response.text
-            return jsonify({'success': True, 'url': secure_url, 'filename': file.filename})
-        else:
-            return jsonify({'error': 'Free cloud upload failed.'}), 500
+        secure_url = upload_file_to_external(file)
+        # Check if it actually returned an external URL or fallback
+        return jsonify({'success': True, 'url': secure_url, 'filename': file.filename})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2088,6 +2095,28 @@ def attendance_end(session_id):
         "UPDATE attendance_sessions SET status='ended', ended_at=CURRENT_TIMESTAMP WHERE id=?",
         (session_id,)
     )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/attendance/sessions/<int:session_id>', methods=['DELETE'])
+@require_role('teacher', 'super_admin', 'section_admin')
+def delete_attendance_session(session_id):
+    ctx = get_user_context()
+    conn = get_db()
+    # Check if session exists and instructor owns it or is admin
+    session = conn.execute('SELECT s.id, b.instructor_id, b.section_id FROM attendance_sessions s JOIN subjects b ON s.subject_id = b.id WHERE s.id = ?', (session_id,)).fetchone()
+    
+    if not session:
+        conn.close()
+        return jsonify({'error': 'Session not found'}), 404
+        
+    if ctx['role'] != 'super_admin' and session['instructor_id'] != ctx['user_id'] and session['section_id'] != ctx['section_id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    # Delete the session (cascade handles records)
+    conn.execute('DELETE FROM attendance_sessions WHERE id = ?', (session_id,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
