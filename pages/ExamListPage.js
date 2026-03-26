@@ -114,8 +114,9 @@ export default async function ExamListPage(params) {
             `}
         </div>
         <style>
-            .exam-list-card { display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:18px;padding:1.25rem 1.5rem;gap:1rem;transition:all 0.2s; }
+            .exam-list-card { display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.25rem 1.5rem;gap:1rem;transition:all 0.2s; }
             .exam-list-card:hover { border-color:#6366f1;box-shadow:0 8px 24px rgba(99,102,241,0.08);transform:translateY(-2px); }
+            .btn-view-result, .btn-view-results-instructor { background:var(--surface-2) !important; color:var(--primary) !important; }
         </style>
     `;
 
