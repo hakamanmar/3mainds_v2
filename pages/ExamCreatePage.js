@@ -42,7 +42,7 @@ export default async function ExamCreatePage(params) {
 
             <!-- Exam Info Card -->
             <div class="card" style="padding:1.5rem; margin-bottom:1.5rem; border-radius:20px;">
-                <h3 style="margin-bottom:1.5rem; color:#1e1b4b; display:flex;align-items:center;gap:8px;">
+                <h3 style="margin-bottom:1.5rem; color:var(--text-main); display:flex;align-items:center;gap:8px;">
                     <i class="ph ph-info" style="color:#6366f1;"></i> معلومات الاختبار
                 </h3>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
@@ -67,7 +67,7 @@ export default async function ExamCreatePage(params) {
             <!-- Questions Section -->
             <div class="card" style="padding:1.5rem; margin-bottom:1.5rem; border-radius:20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                    <h3 style="color:#1e1b4b;display:flex;align-items:center;gap:8px;margin:0;">
+                    <h3 style="color:var(--text-main);display:flex;align-items:center;gap:8px;margin:0;">
                         <i class="ph ph-list-numbers" style="color:#6366f1;"></i>
                         الأسئلة (<span id="q-count">0</span>)
                     </h3>
@@ -76,7 +76,7 @@ export default async function ExamCreatePage(params) {
                     </button>
                 </div>
                 <div id="questions-container">
-                    <div style="text-align:center;padding:3rem;color:var(--text-muted);background:#f8fafc;border-radius:16px;border:2px dashed var(--border);">
+                    <div style="text-align:center;padding:3rem;color:var(--text-muted);background:var(--surface-2);border-radius:16px;border:2px dashed var(--border);">
                         <i class="ph ph-exam" style="font-size:3rem;opacity:0.2;"></i>
                         <p style="margin-top:1rem;">اضغط "إضافة سؤال" لبدء إنشاء الاختبار</p>
                     </div>
@@ -92,7 +92,7 @@ export default async function ExamCreatePage(params) {
             </div>
         </div>
         <style>
-            .question-card { border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin-bottom:1rem; background:#fff; position:relative; }
+            .question-card { border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin-bottom:1rem; background:var(--surface); position:relative; }
             .question-card .q-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem; }
             .q-number { width:32px;height:32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.9rem; }
             .option-row { display:grid; grid-template-columns:40px 1fr; gap:10px; align-items:center; margin-bottom:10px; }
@@ -102,7 +102,7 @@ export default async function ExamCreatePage(params) {
             .opt-c { background:#fef3c7;color:#b45309; }
             .opt-d { background:#fce7f3;color:#be185d; }
             .correct-select { display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border); }
-            .correct-btn { padding:6px 16px;border-radius:8px;border:2px solid var(--border);background:#f8fafc;cursor:pointer;font-weight:700;transition:all 0.2s;font-size:0.85rem; }
+            .correct-btn { padding:6px 16px;border-radius:8px;border:2px solid var(--border);background:var(--surface-2);cursor:pointer;font-weight:700;transition:all 0.2s;font-size:0.85rem;color:var(--text-main); }
             .correct-btn.active { border-color:#10b981;background:#ecfdf5;color:#10b981; }
             .delete-q-btn { background:#fef2f2;color:#ef4444;border:none;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s; }
             .delete-q-btn:hover { background:#ef4444;color:#fff; }
@@ -122,7 +122,7 @@ export default async function ExamCreatePage(params) {
                 <div class="q-header">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div class="q-number">${idx + 1}</div>
-                        <span style="font-weight:700;color:#1e1b4b;">سؤال #${idx + 1}</span>
+                        <span style="font-weight:700;color:var(--text-main);">سؤال #${idx + 1}</span>
                     </div>
                     <button class="delete-q-btn" data-delete-q="${idx}" title="حذف السؤال">
                         <i class="ph-bold ph-trash"></i>
@@ -166,7 +166,7 @@ export default async function ExamCreatePage(params) {
         if (!qc) return;
         if (questions.length === 0) {
             qc.innerHTML = `
-                <div style="text-align:center;padding:3rem;color:var(--text-muted);background:#f8fafc;border-radius:16px;border:2px dashed var(--border);">
+                <div style="text-align:center;padding:3rem;color:var(--text-muted);background:var(--surface-2);border-radius:16px;border:2px dashed var(--border);">
                     <i class="ph ph-exam" style="font-size:3rem;opacity:0.2;"></i>
                     <p style="margin-top:1rem;">اضغط "إضافة سؤال" لبدء إنشاء الاختبار</p>
                 </div>`;
