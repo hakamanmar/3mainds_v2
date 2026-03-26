@@ -177,9 +177,14 @@ export default async function AttendancePage(params) {
                                     <div style="font-size: 13px; color: var(--muted);">${new Date(s.started_at).toLocaleString('ar-EG')}</div>
                                 </div>
                             </div>
-                            <div style="text-align: right;">
+                            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
                                 <div style="font-weight: 700; color: var(--blue); font-size: 1.1rem;">${s.attended} <span style="font-weight: 400; font-size: 0.8rem; color: var(--muted);">/ ${s.total_in_section}</span></div>
-                                <div class="tag tag-ok">انتهت</div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <div class="tag tag-ok">انتهت</div>
+                                    <button class="delete-session-btn" data-id="${s.id}" title="حذف الأرشيف" style="background: var(--danger-light); color: var(--danger); border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `).join('')}
@@ -193,7 +198,7 @@ export default async function AttendancePage(params) {
         const s = data.session;
         const html = `
             <div style="direction: rtl; text-align: right;">
-                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
+                <div style="background: var(--surface-2); padding: 20px; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
                     <h2 style="margin-bottom: 10px; color: var(--blue);"><i class="ph ph-bookmark-simple"></i> ${s.subject_title} (${s.subject_code})</h2>
                     <p><strong><i class="ph ph-user-circle"></i> مدرس المادة:</strong> ${s.professor_email}</p>
                     <p><strong><i class="ph ph-calendar-blank"></i> اليوم والتاريخ:</strong> ${new Date(s.started_at).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
@@ -203,21 +208,21 @@ export default async function AttendancePage(params) {
                 <h3 style="margin-bottom: 1rem;"><i class="ph ph-users"></i> قائمة الطلاب الحاضرين (${data.attended.length})</h3>
                 <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
                     <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f1f5f9; position: sticky; top: 0;">
+                        <thead style="background: var(--surface-2); position: sticky; top: 0;">
                             <tr>
-                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">الطالب</th>
-                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">الأسلوب</th>
-                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">وقت التسجيل</th>
-                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">الإجراء</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">الطالب</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">الأسلوب</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">وقت التسجيل</th>
+                                <th style="padding: 12px; text-align: right; border-bottom: 2px solid var(--border);">الإجراء</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${data.attended.map(r => `
                                 <tr>
-                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${r.full_name || r.email}</td>
-                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;"><span class="tag tag-ok">${r.method === 'qr' ? 'بصمة QR' : 'يدوي'}</span></td>
-                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px;">${new Date(r.scanned_at).toLocaleTimeString('ar-EG')}</td>
-                                    <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 12px; border-bottom: 1px solid var(--border); font-weight: 600;">${r.full_name || r.email}</td>
+                                    <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="tag tag-ok">${r.method === 'qr' ? 'بصمة QR' : 'يدوي'}</span></td>
+                                    <td style="padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px;">${new Date(r.scanned_at).toLocaleTimeString('ar-EG')}</td>
+                                    <td style="padding: 12px; border-bottom: 1px solid var(--border);">
                                         <button class="delete-attendee-btn btn-sm" data-session="${id}" data-student="${r.student_id}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;">
                                             <i class="ph ph-trash" style="font-size: 1.2rem;"></i>
                                         </button>
@@ -231,6 +236,33 @@ export default async function AttendancePage(params) {
         `;
         UI.modal('تقرير المحاضرة بالتفصيل', html, null, { large: true });
     }
+
+    // Attach row listeners including capture for delete button
+    container.addEventListener('click', async (e) => {
+        const delBtn = e.target.closest('.delete-session-btn');
+        if (delBtn) {
+            e.stopPropagation();
+            const id = delBtn.dataset.id;
+            const confirmed = await UI.confirm('هل أنت متأكد من حذف سجل المحاضرة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.');
+            if (confirmed) {
+                try {
+                    await api.deleteAttendanceSession(id);
+                    UI.toast('تم حذف السجل بنجاح');
+                    const page = await AttendancePage(params);
+                    container.innerHTML = '';
+                    container.appendChild(page);
+                } catch (err) {
+                    UI.toast(err.message, 'error');
+                }
+            }
+            return;
+        }
+
+        const histItem = e.target.closest('.history-item');
+        if (histItem) {
+            showSessionDetails(histItem.dataset.id);
+        }
+    });
 
     function setupQR() {
         const qrCanvas = container.querySelector('#qr-canvas');
