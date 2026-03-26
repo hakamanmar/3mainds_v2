@@ -109,7 +109,7 @@ const LoginPage = async () => {
                             <span>Supervised by: <strong style="color: #4f46e5;">Dr. Muhaned</strong></span>
                         </div>
                         
-                        <div style="display: flex; justify-content: center; gap: 1rem; flex-direction: row; direction: ltr; font-size: 0.85rem; white-space: nowrap;">
+                        <div style="display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; direction: ltr; font-size: 0.8rem;">
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
                                 <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
                                 Alhakam Anmar
