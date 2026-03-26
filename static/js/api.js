@@ -269,6 +269,12 @@ export const api = {
         });
     },
 
+    async deleteAttendanceSession(sessionId) {
+        return this._fetch(`${API_BASE}/attendance/sessions/${sessionId}`, {
+            method: 'DELETE'
+        });
+    },
+
     // ── Homework / Assignments ──────────────────────────────
     async uploadFile(file) {
         const formData = new FormData();
