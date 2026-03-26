@@ -255,49 +255,52 @@ class Router {
 
         // 2. Install prompt logic
         let deferredPrompt = null;
+        const triggerBtn = document.getElementById('pwa-install-trigger');
 
-        const showInstallUI = () => {
-            // Show header button
-            const triggerBtn = document.getElementById('pwa-install-trigger');
-            if (triggerBtn) {
-                triggerBtn.style.display = 'flex';
-                triggerBtn.addEventListener('click', () => triggerInstall());
-            }
-        };
+        // Force button visibility for testing/onboarding
+        if (triggerBtn) {
+            triggerBtn.style.display = 'flex';
+            triggerBtn.style.color = '#fbbf24'; // Unique color for visibility
+            triggerBtn.addEventListener('click', () => triggerInstall());
+        }
 
         const triggerInstall = async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log('[PWA] Install outcome:', outcome);
                 deferredPrompt = null;
-                // Hide button after install
-                const btn = document.getElementById('pwa-install-trigger');
-                if (btn) btn.style.display = 'none';
+                if (outcome === 'accepted' && triggerBtn) triggerBtn.style.display = 'none';
             } else {
-                // iOS Safari — show manual instructions
-                this.showIOSInstallGuide();
+                // Not ready or iOS
+                const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+                if (isIOS) {
+                    this.showIOSInstallGuide();
+                } else {
+                    UI.toast('يرجى الانتظار ثواني أو استخدام خيار "التثبيت" من إعدادات المتصفح في الأعلى', 'info');
+                }
             }
         };
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            showInstallUI();
+            if (triggerBtn) {
+                triggerBtn.style.display = 'flex';
+                triggerBtn.style.color = 'var(--primary)'; // Success color
+            }
         });
 
         window.addEventListener('appinstalled', () => {
             deferredPrompt = null;
-            const btn = document.getElementById('pwa-install-trigger');
-            if (btn) btn.style.display = 'none';
-            console.log('[PWA] App installed!');
+            if (triggerBtn) triggerBtn.style.display = 'none';
+            UI.toast('تم تثبيت تطبيق 3Minds بنجاح!', 'success');
         });
 
-        // iOS detection — show install button always on iOS (no beforeinstallprompt)
+        // iOS detection
         const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
         const isInStandaloneMode = ('standalone' in navigator) && navigator.standalone;
-        if (isIOS && !isInStandaloneMode) {
-            setTimeout(() => showInstallUI(), 2000);
+        if (isIOS && !isInStandaloneMode && triggerBtn) {
+            triggerBtn.style.display = 'flex';
         }
     }
 
