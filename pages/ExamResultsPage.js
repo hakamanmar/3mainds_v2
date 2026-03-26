@@ -47,16 +47,16 @@ export default async function ExamResultsPage(params) {
                         <i class="ph ph-arrow-right"></i> رجوع
                     </button>
                     <div class="card" style="padding:2.5rem;border-radius:24px;text-align:center;border-top:6px solid ${scoreColor};">
-                        <div style="font-size:0.9rem;font-weight:700;color:${scoreColor};background:${scoreColor}15;padding:6px 16px;border-radius:8px;display:inline-block;margin-bottom:1.5rem;">
+                        <div style="font-size:0.9rem;font-weight:700;color:${scoreColor};background:${scoreColor}22;padding:6px 16px;border-radius:8px;display:inline-block;margin-bottom:1.5rem;">
                             ${scoreLabel}
                         </div>
-                        <h2 style="font-size:1.5rem;color:#1e1b4b;">نتيجتك في الاختبار</h2>
-                        <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:2rem;">${result.exam_title || ''}</div>
+                        <h2 style="font-size:1.5rem;color:var(--text-main);">${result.exam_title || ''}</h2>
+                        <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:2rem;">نتيجتك في الاختبار</div>
 
                         <!-- Score Circle -->
                         <div style="position:relative;width:160px;height:160px;margin:0 auto 2rem;">
                             <svg viewBox="0 0 36 36" style="width:160px;height:160px;transform:rotate(-90deg);">
-                                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="2.5"/>
+                                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--border)" stroke-width="2.5"/>
                                 <circle cx="18" cy="18" r="15.9155" fill="none" stroke="${scoreColor}" stroke-width="2.5"
                                     stroke-dasharray="${score} ${100 - score}" stroke-linecap="round"/>
                             </svg>
@@ -67,22 +67,22 @@ export default async function ExamResultsPage(params) {
                         </div>
 
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;">
-                            <div style="background:#f8fafc;border-radius:14px;padding:1rem;">
-                                <div style="font-size:1.5rem;font-weight:800;color:#1e1b4b;">${result.total_questions}</div>
+                            <div style="background:var(--surface-2);border-radius:14px;padding:1rem;">
+                                <div style="font-size:1.5rem;font-weight:800;color:var(--text-main);">${result.total_questions}</div>
                                 <div style="font-size:0.8rem;color:var(--text-muted);">إجمالي الأسئلة</div>
                             </div>
-                            <div style="background:#ecfdf5;border-radius:14px;padding:1rem;">
-                                <div style="font-size:1.5rem;font-weight:800;color:#10b981;">${Math.round(score * result.total_questions / 100)}</div>
+                            <div style="background:${scoreColor}15;border-radius:14px;padding:1rem;">
+                                <div style="font-size:1.5rem;font-weight:800;color:${scoreColor};">${Math.round(score * result.total_questions / 100)}</div>
                                 <div style="font-size:0.8rem;color:var(--text-muted);">إجابات صحيحة</div>
                             </div>
                         </div>
 
                         ${result.feedback ? `
-                            <div style="background:#f8fafc;border:1px solid var(--border);border-radius:16px;padding:1.25rem;text-align:right;margin-bottom:1.5rem;">
-                                <div style="font-size:0.8rem;font-weight:700;color:#64748b;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:1.25rem;text-align:right;margin-bottom:1.5rem;">
+                                <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
                                     <i class="ph-fill ph-chat-centered-text"></i> ملاحظات الأستاذ
                                 </div>
-                                <p style="margin:0;color:#334155;line-height:1.6;">${result.feedback}</p>
+                                <p style="margin:0;color:var(--text-main);line-height:1.6;">${result.feedback}</p>
                             </div>
                         ` : `
                             <div style="background:#fef3c7;border-radius:14px;padding:1rem;margin-bottom:1.5rem;font-size:0.9rem;color:#b45309;font-weight:700;">
