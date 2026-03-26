@@ -1,4 +1,5 @@
-const CACHE_NAME = '3minds-v8'; // Explicitly excluding /api/ from cache to fix stale dashboard lists
+/* sw.js - 3Minds PWA Service Worker with Push Notifications */
+const CACHE_NAME = '3minds-v10';
 const ASSETS = [
     '/',
     '/static/css/style.css',
@@ -7,94 +8,108 @@ const ASSETS = [
     '/static/js/ui.js',
     '/static/js/i18n.js',
     '/static/img/icon-192.png',
-    '/static/img/icon-512.png'
+    '/static/img/icon-512.png',
+    '/manifest.json'
 ];
 
-// Install: Cache core assets and activate immediately
+// ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS);
-        })
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS).catch(() => {}))
     );
 });
 
-// Activate: Cleanup old caches
+// ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-            );
-        })
+        caches.keys().then((keys) =>
+            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        )
     );
     return self.clients.claim();
 });
 
-// Fetch: Smart caching for offline access
+// ── Fetch: Smart caching ──────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // CRITICAL: Exclusion list to ensure real-time data for API and Auth
-    const isApi = url.pathname.startsWith('/api/') || 
-                  url.pathname.startsWith('/login') || 
-                  url.pathname.startsWith('/logout');
+    // Never cache API calls, auth, or uploads (real-time data)
+    const skip = url.pathname.startsWith('/api/') ||
+                 url.pathname.startsWith('/login') ||
+                 url.pathname.startsWith('/logout') ||
+                 url.pathname.startsWith('/uploads/') ||
+                 event.request.method !== 'GET';
+    if (skip) return;
 
-    if (isApi) return; // Let browser handle API calls without SW interference
-
-    // Dynamic caching for lectures (PDFs, Images, etc.) in the /uploads/ folder
-    if (url.pathname.startsWith('/uploads/')) {
-        event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                if (cachedResponse) return cachedResponse;
-
-                return fetch(event.request).then((networkResponse) => {
-                    return caches.open(CACHE_NAME).then((cache) => {
-                        // Only cache if successful response
-                        if (networkResponse.status === 200) {
-                            cache.put(event.request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                });
-            })
-        );
-        return;
-    }
-
-    // Default: Stale-While-Revalidate for shell assets
+    // Stale-while-revalidate for app shell
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            if (response) {
-                // Return cached version but fetch update in background
-                fetch(event.request).then(newRes => {
-                    if (newRes.status === 200) {
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, newRes));
-                    }
-                });
-                return response;
-            }
-            return fetch(event.request);
+        caches.match(event.request).then((cached) => {
+            const network = fetch(event.request).then((res) => {
+                if (res.status === 200) {
+                    caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone()));
+                }
+                return res;
+            }).catch(() => cached);
+            return cached || network;
         })
     );
 });
 
-// Push Notification Listener
+// ── Push Notification ──────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.json() : { title: 'تنبيه جديد', body: 'لديك إشعار من منصة 3Minds' };
+    let data = { title: 'منصة 3Minds', body: 'لديك إشعار جديد', url: '/' };
+    try {
+        if (event.data) data = { ...data, ...event.data.json() };
+    } catch (e) {}
+
     const options = {
         body: data.body,
         icon: '/static/img/icon-192.png',
         badge: '/static/img/icon-192.png',
-        vibrate: [100, 50, 100],
-        data: { url: data.url || '/' }
+        image: data.image || undefined,
+        vibrate: [200, 100, 200],
+        tag: data.tag || 'notif-' + Date.now(),
+        renotify: true,
+        requireInteraction: data.requireInteraction || false,
+        dir: 'rtl',
+        lang: 'ar',
+        data: { url: data.url || '/', type: data.type || 'general' },
+        actions: [
+            { action: 'open', title: 'فتح المنصة' },
+            { action: 'dismiss', title: 'إغلاق' }
+        ]
     };
+
     event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-// Notification Click Listener
+// ── Notification Click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(clients.openWindow(event.notification.data.url));
+    if (event.action === 'dismiss') return;
+
+    const targetUrl = event.notification.data?.url || '/';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            // Focus existing tab if open
+            for (const client of clientList) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    client.focus();
+                    client.navigate(targetUrl);
+                    return;
+                }
+            }
+            // Otherwise open a new tab
+            return clients.openWindow(targetUrl);
+        })
+    );
+});
+
+// ── Background Sync (future use) ───────────────────────────────────────────────
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'sync-attendance') {
+        // Placeholder for future offline attendance sync
+        console.log('[SW] Background sync triggered:', event.tag);
+    }
 });
