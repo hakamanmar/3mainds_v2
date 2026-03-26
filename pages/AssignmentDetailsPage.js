@@ -116,13 +116,13 @@ export default async function AssignmentDetailsPage(params) {
                                <p style="margin-top:1rem;">لم يتم رفع أي ملفات حتى الآن</p>
                            </div>`
                         : data.submitted.map(s => `
-                            <div class="submission-item" style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem; border:1px solid var(--border); border-radius:20px; gap:1rem; transition:all 0.2s; background:#fff;">
+                            <div class="submission-item" style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem; border:1px solid var(--border); border-radius:20px; gap:1rem; transition:all 0.2s; background:var(--surface);">
                                 <div style="display:flex; align-items:center; gap:1rem; min-width:0; flex:1;">
                                     <div style="width:50px; height:50px; background:linear-gradient(135deg, #10b981, #059669); border-radius:14px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:1.3rem; flex-shrink:0; box-shadow:0 4px 12px rgba(16,185,129,0.2);">
                                         ${(s.student_name || 'ط').charAt(0).toUpperCase()}
                                     </div>
                                     <div style="min-width:0;">
-                                        <div style="font-weight:700; color:#1e1b4b; font-size:1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.student_name}</div>
+                                        <div style="font-weight:700; color:var(--text-main); font-size:1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.student_name}</div>
                                         <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px; display:flex; gap:12px; align-items:center;">
                                             <span><i class="ph ph-envelope"></i> ${s.email}</span>
                                             <span><i class="ph ph-calendar"></i> ${s.submitted_at ? new Date(s.submitted_at).toLocaleString('ar-EG') : 'N/A'}</span>
@@ -137,7 +137,7 @@ export default async function AssignmentDetailsPage(params) {
                                 </div>
                                 <div style="display:flex; gap:0.75rem; align-items:center;">
                                     ${s.file_url ? `
-                                        <a href="${s.file_url}" target="_blank" class="glass-btn" title="معاينة الملف" style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:#f1f5f9; color:#4f46e5;">
+                                        <a href="${s.file_url}" target="_blank" class="glass-btn" title="معاينة الملف" style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:var(--surface-2); color:#4f46e5;">
                                             <i class="ph ph-file-pdf" style="font-size:1.4rem;"></i>
                                         </a>` : ''}
                                     <button class="btn btn-primary grade-btn" 
@@ -168,7 +168,7 @@ export default async function AssignmentDetailsPage(params) {
                                <p style="font-weight:700; margin-top:1rem;">ممتاز! اكتملت جميع التسليمات</p>
                            </div>`
                         : data.not_submitted.map(s => `
-                            <div style="display:flex; align-items:center; gap:1rem; padding:1rem; border-radius:16px; background:#fff; border:1px solid var(--border);">
+                            <div style="display:flex; align-items:center; gap:1rem; padding:1rem; border-radius:16px; background:var(--surface); border:1px solid var(--border);">
                                 <div style="width:40px; height:40px; background:#fef2f2; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:#ef4444; font-size:1rem; flex-shrink:0;">
                                     ${(s.full_name || 'ط').charAt(0).toUpperCase()}
                                 </div>
