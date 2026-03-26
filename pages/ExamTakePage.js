@@ -47,9 +47,11 @@ export default async function ExamTakePage(params) {
         if (!exam || !exam.questions) throw new Error('فشل تحميل أسئلة الاختبار');
 
         // Calculate remaining time
-        const startedAt = new Date(attempt.started_at).getTime();
-        const durationMs = exam.duration_minutes * 60 * 1000;
-        const endTime = startedAt + durationMs;
+        // Fix for cross-browser date parsing (especially Safari/iOS)
+        const dateStr = attempt.started_at.includes(' ') ? attempt.started_at.replace(' ', 'T') + 'Z' : attempt.started_at;
+        const startedAt = new Date(dateStr).getTime();
+        const duration = parseInt(exam.duration_minutes) || 60;
+        const endTime = startedAt + (duration * 60 * 1000);
         const now = Date.now();
         const remainingMs = Math.max(endTime - now, 0);
 
