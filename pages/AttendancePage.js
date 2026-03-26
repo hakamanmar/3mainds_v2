@@ -301,7 +301,7 @@ export default async function AttendancePage(params) {
 
                 if (data.attended.length > 0) {
                     listContainer.innerHTML = data.attended.map(r => `
-                        <div class="attendance-row" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border); background: #fff; margin-bottom: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: slideInUp 0.3s ease;" data-name="${r.full_name || ''}" data-email="${r.email || ''}">
+                        <div class="attendance-row" style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border); background: var(--surface); margin-bottom: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: slideInUp 0.3s ease;" data-name="${r.full_name || ''}" data-email="${r.email || ''}">
                             <div class="user-avatar" style="width: 45px; height: 45px; border-radius: 12px; background: var(--blue-bg); color: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; border: 2px solid var(--blue-light);">
                                 ${(r.full_name || r.email).charAt(0).toUpperCase()}
                             </div>
