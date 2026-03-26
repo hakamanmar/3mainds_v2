@@ -253,14 +253,12 @@ class Router {
             }, 5000);
         }
 
-        // 2. Install prompt logic
+        // 2. Install prompt logic 
         let deferredPrompt = null;
         const triggerBtn = document.getElementById('pwa-install-trigger');
 
-        // Force button visibility for testing/onboarding
         if (triggerBtn) {
             triggerBtn.style.display = 'flex';
-            triggerBtn.style.color = '#fbbf24'; // Unique color for visibility
             triggerBtn.addEventListener('click', () => triggerInstall());
         }
 
@@ -271,37 +269,63 @@ class Router {
                 deferredPrompt = null;
                 if (outcome === 'accepted' && triggerBtn) triggerBtn.style.display = 'none';
             } else {
-                // Not ready or iOS
-                const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-                if (isIOS) {
-                    this.showIOSInstallGuide();
-                } else {
-                    UI.toast('يرجى الانتظار ثواني أو استخدام خيار "التثبيت" من إعدادات المتصفح في الأعلى', 'info');
-                }
+                // Show custom elegant guide modal
+                this.showInstallGuide();
             }
         };
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            if (triggerBtn) {
-                triggerBtn.style.display = 'flex';
-                triggerBtn.style.color = 'var(--primary)'; // Success color
-            }
+            if (triggerBtn) triggerBtn.style.color = '#10b981'; // Ready color
         });
 
         window.addEventListener('appinstalled', () => {
             deferredPrompt = null;
             if (triggerBtn) triggerBtn.style.display = 'none';
-            UI.toast('تم تثبيت تطبيق 3Minds بنجاح!', 'success');
+            UI.toast('تم تثبيت تطبيق 3Minds!', 'success');
         });
 
-        // iOS detection
+        // Trigger Guide on iOS manually
         const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
         const isInStandaloneMode = ('standalone' in navigator) && navigator.standalone;
-        if (isIOS && !isInStandaloneMode && triggerBtn) {
-            triggerBtn.style.display = 'flex';
+        if (isIOS && !isInStandaloneMode && triggerBtn) triggerBtn.style.display = 'flex';
+    }
+
+    showInstallGuide() {
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const modal = document.createElement('div');
+        modal.id = 'pwa-guide-modal';
+        modal.style = "position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);";
+        
+        let instructions = '';
+        if (isIOS) {
+            instructions = `
+                <div style="text-align:right;color:var(--text-main);">
+                    <p style="margin-bottom:1rem;">1. اضغط على أيقونة <strong>المشاركة</strong> <i class="ph-bold ph-export"></i> في شريط Safari.</p>
+                    <p>2. اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong> من القائمة.</p>
+                </div>`;
+        } else {
+            instructions = `
+                <div style="text-align:right;color:var(--text-main);">
+                    <p style="margin-bottom:1rem;">1. اضغط على <strong>النقاط الثلاث (⋮)</strong> في المتصفح.</p>
+                    <p style="margin-bottom:1rem;">2. ابحث عن خيار <strong>"تثبيت التطبيق"</strong> أو <strong>"Install App"</strong>.</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);">* إذا كنت تستخدم الكمبيوتر، فستجد أيقونة تثبيت صغيرة في شريط العنوان بالأعلى.</p>
+                </div>`;
         }
+
+        modal.innerHTML = `
+            <div class="card" style="max-width:400px;width:100%;padding:2rem;position:relative;animation:popIn 0.3s cubic-bezier(0.18,0.89,0.32,1.28);">
+                <button onclick="this.closest('#pwa-guide-modal').remove()" style="position:absolute;top:15px;left:15px;background:none;border:none;font-size:1.5rem;color:var(--text-muted);cursor:pointer;">✕</button>
+                <div style="text-align:center;margin-bottom:1.5rem;">
+                    <img src="/static/img/icon-192.png" style="width:72px;height:72px;border-radius:18px;box-shadow:0 8px 16px rgba(0,0,0,0.2);">
+                    <h2 style="margin:1rem 0 0.5rem;font-size:1.4rem;">تثبيت تطبيق 3Minds</h2>
+                </div>
+                ${instructions}
+                <button onclick="this.closest('#pwa-guide-modal').remove()" class="btn btn-primary" style="width:100%;margin-top:1.5rem;padding:0.9rem;">فهمت!</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
     }
 
     showIOSInstallGuide() {
