@@ -2368,14 +2368,16 @@ def attendance_active_for_me():
         return jsonify({'active': False})
         
     conn = get_db()
-    # Find any active session belonging to a subject in the student's section 
-    # BUT exclude if the student has already registered for it
+    # Find active session in student's section, exclude if already registered OR if older than 2 hours
     session = conn.execute('''
         SELECT s.*, subj.title as subject_title, subj.color as subject_color
         FROM attendance_sessions s
         JOIN subjects subj ON s.subject_id = subj.id
         LEFT JOIN attendance_records ar ON ar.session_id = s.id AND ar.student_id = ?
-        WHERE subj.section_id = ? AND s.status = 'active' AND ar.id IS NULL
+        WHERE subj.section_id = ? 
+          AND s.status = 'active' 
+          AND ar.id IS NULL
+          AND s.started_at > datetime('now', '-120 minutes')
         ORDER BY s.started_at DESC LIMIT 1
     ''', (ctx['user_id'], sid)).fetchone()
     conn.close()
