@@ -107,11 +107,16 @@ export default async function ExamTakePage(params) {
                                 <p style="margin:0;font-size:1.05rem;font-weight:600;line-height:1.6;padding-top:4px;">${q.question_text}</p>
                             </div>
                             <div style="display:grid;gap:10px;">
-                                ${q.shuffled_options.map(opt => `
+                                ${(q.shuffled_options || [
+                                    {key: 'a', text: q.option_a},
+                                    {key: 'b', text: q.option_b},
+                                    {key: 'c', text: q.option_c},
+                                    {key: 'd', text: q.option_d}
+                                ]).map(opt => `
                                     <label class="exam-option" data-q="${q.id}" data-key="${opt.key}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--border);border-radius:14px;cursor:pointer;transition:all 0.15s;font-weight:500;">
                                         <input type="radio" name="q-${q.id}" value="${opt.key}" style="display:none;" />
                                         <div class="opt-indicator" style="width:22px;height:22px;border:2px solid var(--border);border-radius:50%;flex-shrink:0;transition:all 0.15s;"></div>
-                                        <span>${opt.text}</span>
+                                        <span>${opt.text || '(خيار فارغ)'}</span>
                                     </label>
                                 `).join('')}
                             </div>
