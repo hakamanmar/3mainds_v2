@@ -729,8 +729,9 @@ textarea:focus {
 }
 
 .badge-light {
-    background: #f1f5f9;
-    color: var(--muted);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
 }
 
 /* --- Login Page Styles --- */
