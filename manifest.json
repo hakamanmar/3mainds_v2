@@ -1,11 +1,17 @@
 {
-    "name": "3Minds Academic Platform",
+    "name": "3Minds - المنصة الأكاديمية",
     "short_name": "3Minds",
-    "description": "The next generation academic platform for management and attendance.",
+    "description": "منصة أكاديمية متكاملة لإدارة الحضور والمواد الدراسية والاختبارات",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
+    "orientation": "portrait-primary",
+    "background_color": "#0f0e2b",
     "theme_color": "#4f46e5",
+    "lang": "ar",
+    "dir": "rtl",
+    "categories": ["education", "productivity"],
+    "screenshots": [],
     "icons": [
         {
             "src": "/static/img/icon-192.png",
@@ -18,6 +24,28 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any"
+        },
+        {
+            "src": "/static/img/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "الرئيسية",
+            "short_name": "الرئيسية",
+            "description": "الصفحة الرئيسية",
+            "url": "/home",
+            "icons": [{ "src": "/static/img/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "الحضور",
+            "short_name": "حضور",
+            "description": "تسجيل الحضور",
+            "url": "/attendance",
+            "icons": [{ "src": "/static/img/icon-192.png", "sizes": "192x192" }]
         }
     ]
 }
