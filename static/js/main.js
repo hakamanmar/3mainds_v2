@@ -164,22 +164,25 @@ class Router {
         try {
             let lastRead = 0;
             try { lastRead = parseInt(localStorage.getItem('notif_last_read') || '0'); } catch(e){}
-            
+
+            // Track which notification IDs we already sent as browser push
+            let sentIds = [];
+            try { sentIds = JSON.parse(localStorage.getItem('notif_sent_ids') || '[]'); } catch(e){}
+
             // Get section from user or localStorage
             let sectionId = user.section_id;
             try { if (!sectionId) sectionId = localStorage.getItem('selected_section'); } catch(e){}
             if (!sectionId) return;
 
-            // Fetch recent announcements
+            // Fetch announcements
             const res = await fetch(`/api/announcements?section_id=${sectionId}&t=${Date.now()}`, {
-                credentials: 'include',
-                headers: { 'X-Device-ID': localStorage.getItem('device_id') || '' }
+                credentials: 'include'
             });
             if (!res.ok) return;
             const data = await res.json();
             const announcements = Array.isArray(data) ? data : (data.announcements || []);
 
-            // Find new items since last read
+            // New items = newer than lastRead timestamp
             const newItems = announcements.filter(a => {
                 const t = new Date(a.created_at).getTime();
                 return t > lastRead;
@@ -187,44 +190,55 @@ class Router {
 
             if (newItems.length === 0) return;
 
-            // Show badge
+            // Show in-app badge
             const badge = document.getElementById('notif-badge');
             if (badge) badge.style.display = 'flex';
 
-            // Update drawer list
+            // Update drawer list (always refresh with latest)
             const list = document.getElementById('notif-list');
             if (list) {
-                const html = newItems.map(a => `
-                    <div class="notif-item unread" style="padding:0.85rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;border-right:3px solid #4f46e5;">
-                        <div style="font-weight:700;font-size:0.9rem;color:var(--text-main);margin-bottom:3px;">
+                list.innerHTML = newItems.map(a => `
+                    <div class="notif-item unread" style="padding:0.85rem 1rem;border-bottom:1px solid var(--border);position:relative;border-right:3px solid #4f46e5;">
+                        <div style="font-weight:700;font-size:0.9rem;color:var(--text-main);margin-bottom:3px;padding-left:1.5rem;">
                             <i class="ph ph-megaphone" style="color:#4f46e5;"></i> ${a.title || 'إعلان جديد'}
                         </div>
-                        <div style="font-size:0.8rem;color:var(--text-muted);">${(a.content || '').substring(0,80)}${(a.content||'').length>80?'...':''}</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);">${(a.content || '').substring(0,100)}${(a.content||'').length>100?'...':''}</div>
                         <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">${new Date(a.created_at).toLocaleString('ar-EG')}</div>
+                        <button onclick="this.closest('.notif-item').remove(); if(!document.querySelector('.notif-item')) document.getElementById('notif-badge').style.display='none';"
+                            style="position:absolute;top:8px;left:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;">✕</button>
                     </div>
                 `).join('');
-                list.innerHTML = html || '<p class="empty-msg">لا توجد إشعارات جديدة</p>';
             }
 
-            // Browser push notification for the newest item
-            if (newItems.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
-                const newest = newItems[0];
-                const reg = await navigator.serviceWorker.ready;
-                reg.showNotification(`🔔 ${newest.title || 'إعلان جديد'} - 3Minds`, {
-                    body: (newest.content || '').substring(0, 100),
-                    icon: '/static/img/icon-192.png',
-                    badge: '/static/img/icon-192.png',
-                    vibrate: [200, 100, 200],
-                    dir: 'rtl',
-                    lang: 'ar',
-                    tag: `notif-${newest.id || Date.now()}`,
-                    renotify: false,
-                    data: { url: '/home' },
-                    actions: [
-                        { action: 'open', title: 'فتح المنصة' },
-                        { action: 'dismiss', title: 'إغلاق' }
-                    ]
-                });
+            // ── Browser push notification ──────────────────────────────────────
+            // Only notify for items we haven't already sent a browser notification for
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const unsent = newItems.filter(a => a.id && !sentIds.includes(String(a.id)));
+
+                for (const item of unsent) {
+                    const reg = await navigator.serviceWorker.ready;
+                    await reg.showNotification(`🔔 ${item.title || 'إعلان جديد'} — 3Minds`, {
+                        body: (item.content || '').substring(0, 120),
+                        icon: '/static/img/icon-192.png',
+                        badge: '/static/img/icon-192.png',
+                        vibrate: [200, 100, 200],
+                        dir: 'rtl',
+                        lang: 'ar',
+                        tag: `notif-${item.id}`,   // same tag = replaces duplicate
+                        renotify: false,            // do NOT re-vibrate if same tag
+                        data: { url: '/home' },
+                        actions: [
+                            { action: 'open', title: 'فتح المنصة' },
+                            { action: 'dismiss', title: 'تجاهل' }
+                        ]
+                    });
+                    // Record this ID as sent so we never send it again
+                    sentIds.push(String(item.id));
+                }
+
+                // Keep only last 100 sent IDs to avoid localStorage bloat
+                if (sentIds.length > 100) sentIds = sentIds.slice(-100);
+                try { localStorage.setItem('notif_sent_ids', JSON.stringify(sentIds)); } catch(e){}
             }
         } catch(e) {
             // Silently fail - notifications are non-critical
