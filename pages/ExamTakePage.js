@@ -79,9 +79,9 @@ export default async function ExamTakePage(params) {
 
         container.innerHTML = `
             <!-- Sticky Timer Header -->
-            <div id="exam-header" style="position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <div id="exam-header" style="position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <div>
-                    <div style="font-weight:800;font-size:1.1rem;color:#1e1b4b;">${exam.title}</div>
+                    <div style="font-weight:800;font-size:1.1rem;color:var(--text-main);">${exam.title}</div>
                     <div style="font-size:0.8rem;color:var(--text-muted);">أجب على <strong>${totalQ}</strong> سؤال</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:1.5rem;">
@@ -101,7 +101,7 @@ export default async function ExamTakePage(params) {
                 <!-- Questions -->
                 <div id="questions-area">
                     ${exam.questions.map((q, idx) => `
-                        <div class="exam-question-card" id="q-card-${q.id}" style="background:#fff;border:1px solid var(--border);border-radius:20px;padding:1.5rem;margin-bottom:1.25rem;transition:all 0.2s;">
+                        <div class="exam-question-card" id="q-card-${q.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:1.5rem;margin-bottom:1.25rem;transition:all 0.2s;">
                             <div style="display:flex;gap:12px;margin-bottom:1.25rem;">
                                 <div style="width:36px;height:36px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;flex-shrink:0;">${idx + 1}</div>
                                 <p style="margin:0;font-size:1.05rem;font-weight:600;line-height:1.6;padding-top:4px;">${q.question_text}</p>
