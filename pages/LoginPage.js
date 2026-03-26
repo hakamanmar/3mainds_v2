@@ -112,7 +112,7 @@ const LoginPage = async () => {
                         <div style="display: flex; justify-content: center; gap: 1rem; flex-direction: row; direction: ltr; font-size: 0.85rem; white-space: nowrap;">
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
                                 <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
-                                Alhakam
+                                Alhakam Anmar
                             </span>
                             <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
                                 <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
