@@ -181,7 +181,7 @@ export default async function ExamResultsPage(params) {
                     </div>
                 </div>
                 <style>
-                    .result-row { display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border:1px solid var(--border);border-radius:14px;background:#fff;gap:1rem;transition:all 0.2s; }
+                    .result-row { display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border:1px solid var(--border);border-radius:14px;background:var(--surface);gap:1rem;transition:all 0.2s; }
                     .result-row:hover { border-color:#6366f1;box-shadow:0 4px 12px rgba(99,102,241,0.06); }
                 </style>`;
 
