@@ -135,7 +135,7 @@ export default async function CommitteePage(params) {
             <style>
                 .alerts-board-container { max-height: 400px; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 12px; }
                 .alerts-badge { background: var(--red); color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
-                .alert-card-premium { display: flex; background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: transform 0.2s; }
+                .alert-card-premium { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: transform 0.2s; }
                 .alert-card-premium:hover { transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 .alert-status-pillar { width: 6px; flex-shrink: 0; }
                 .alert-content-main { flex: 1; padding: 12px 15px; }
@@ -149,7 +149,7 @@ export default async function CommitteePage(params) {
                 .alert-percentage { text-align: right; }
                 .alert-percentage .p-val { font-size: 1.1rem; font-weight: 900; color: var(--text-main); display: block; line-height: 1; }
                 .alert-percentage .p-lbl { font-size: 0.6rem; color: var(--muted); font-weight: 700; text-transform: uppercase; }
-                .alert-progress-bg { height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+                .alert-progress-bg { height: 6px; background: var(--surface-2); border-radius: 10px; overflow: hidden; }
                 .alert-progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-out; }
             </style>
 
