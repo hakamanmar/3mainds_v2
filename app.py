@@ -2588,34 +2588,28 @@ def get_exam(exam_id):
         ).fetchall()
         q_list = [dict(q) for q in questions]
 
-        if ctx['role'] == 'student':
+        # Generate shuffled options for students (taking) and admins (previewing)
+        member_roles = ['student', 'super_admin', 'section_admin', 'head_dept', 'teacher']
+        if ctx['role'] in member_roles:
             import random
-            # Shuffle questions
-            random.shuffle(q_list)
-            # Shuffle options per question
+            # Optional: Stable shuffle if you want for student attempts?
+            # For now, random on every fetch is fine for taking.
             for q in q_list:
                 options = [
-                    {'key': 'a', 'text': q['option_a']},
-                    {'key': 'b', 'text': q['option_b']},
-                    {'key': 'c', 'text': q['option_c']},
-                    {'key': 'd', 'text': q['option_d']},
+                    {'key': 'a', 'text': q.get('option_a', '')},
+                    {'key': 'b', 'text': q.get('option_b', '')},
+                    {'key': 'c', 'text': q.get('option_c', '')},
+                    {'key': 'd', 'text': q.get('option_d', '')},
                 ]
                 random.shuffle(options)
                 q['shuffled_options'] = options
-                # Remove correct answer from student view
-                del q['correct_answer']
+                
+                # Students shouldn't see correct answers
+                if ctx['role'] == 'student':
+                    if 'correct_answer' in q:
+                        del q['correct_answer']
 
-            # Check attempt
-            attempt = conn.execute(
-                'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
-                (exam_id, ctx['user_id'])
-            ).fetchone()
-            exam_dict['attempt'] = dict(attempt) if attempt else None
-        else:
-            exam_dict['questions'] = q_list
-
-        if ctx['role'] == 'student':
-            exam_dict['questions'] = q_list
+        exam_dict['questions'] = q_list
 
         conn.close()
         return jsonify(exam_dict)
