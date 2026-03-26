@@ -232,67 +232,84 @@ class Router {
     }
 
     initPWA() {
-        // 1. Request push notification permission
+        // 1. Request notification permission (after 5s)
         if ('Notification' in window && Notification.permission === 'default') {
-            // Ask after a short delay to avoid immediately prompting on page load
             setTimeout(() => {
-                Notification.requestPermission().then(permission => {
-                    console.log('[PWA] Notification permission:', permission);
-                });
+                Notification.requestPermission();
             }, 5000);
         }
 
-        // 2. Install prompt ("Add to Home Screen")
+        // 2. Install prompt logic
         let deferredPrompt = null;
+
+        const showInstallUI = () => {
+            // Show header button
+            const triggerBtn = document.getElementById('pwa-install-trigger');
+            if (triggerBtn) {
+                triggerBtn.style.display = 'flex';
+                triggerBtn.addEventListener('click', () => triggerInstall());
+            }
+        };
+
+        const triggerInstall = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('[PWA] Install outcome:', outcome);
+                deferredPrompt = null;
+                // Hide button after install
+                const btn = document.getElementById('pwa-install-trigger');
+                if (btn) btn.style.display = 'none';
+            } else {
+                // iOS Safari — show manual instructions
+                this.showIOSInstallGuide();
+            }
+        };
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-
-            // Show a subtle install banner after 10 seconds
-            setTimeout(() => {
-                if (!deferredPrompt) return;
-                const user = auth.getUser();
-                if (!user) return; // Only show when logged in
-
-                // Create install banner
-                const banner = document.createElement('div');
-                banner.id = 'pwa-install-banner';
-                banner.innerHTML = `
-                    <div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;
-                        background:linear-gradient(135deg,#4f46e5,#7c3aed);
-                        color:#fff;padding:0.85rem 1.5rem;border-radius:16px;
-                        display:flex;align-items:center;gap:0.75rem;
-                        box-shadow:0 8px 32px rgba(79,70,229,0.4);
-                        animation:slideUp 0.4s ease;max-width:340px;width:90%;">
-                        <img src="/static/img/icon-192.png" style="width:36px;height:36px;border-radius:8px;">
-                        <div style="flex:1;">
-                            <div style="font-weight:700;font-size:0.9rem;">ثبّت منصة 3Minds</div>
-                            <div style="font-size:0.75rem;opacity:0.85;">استخدمها كتطبيق على جهازك</div>
-                        </div>
-                        <button id="pwa-install-btn" style="background:rgba(255,255,255,0.2);border:none;color:#fff;
-                            padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.85rem;">ثبّت</button>
-                        <button id="pwa-dismiss-btn" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:1.2rem;">✕</button>
-                    </div>
-                `;
-                document.body.appendChild(banner);
-
-                document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        await deferredPrompt.userChoice;
-                        deferredPrompt = null;
-                    }
-                    banner.remove();
-                });
-                document.getElementById('pwa-dismiss-btn')?.addEventListener('click', () => banner.remove());
-            }, 10000);
+            showInstallUI();
         });
 
-        // 3. Handle app installed event
         window.addEventListener('appinstalled', () => {
-            console.log('[PWA] App installed!');
             deferredPrompt = null;
+            const btn = document.getElementById('pwa-install-trigger');
+            if (btn) btn.style.display = 'none';
+            console.log('[PWA] App installed!');
         });
+
+        // iOS detection — show install button always on iOS (no beforeinstallprompt)
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const isInStandaloneMode = ('standalone' in navigator) && navigator.standalone;
+        if (isIOS && !isInStandaloneMode) {
+            setTimeout(() => showInstallUI(), 2000);
+        }
+    }
+
+    showIOSInstallGuide() {
+        const overlay = document.createElement('div');
+        overlay.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:1rem;">
+                <div style="background:var(--surface);border-radius:20px 20px 16px 16px;padding:1.5rem;max-width:380px;width:100%;text-align:center;direction:rtl;animation:slideUp 0.3s ease;">
+                    <img src="/static/img/icon-192.png" style="width:60px;height:60px;border-radius:14px;margin-bottom:1rem;">
+                    <h3 style="margin:0 0 0.5rem;color:var(--text-main);">تثبيت تطبيق 3Minds</h3>
+                    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.25rem;">اتبع الخطوات التالية لتثبيت التطبيق على شاشتك الرئيسية:</p>
+                    <div style="background:var(--surface-2);border-radius:12px;padding:1rem;text-align:right;margin-bottom:1rem;">
+                        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;color:var(--text-main);">
+                            <span style="background:#4f46e5;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;">1</span>
+                            اضغط على زر <strong>المشاركة</strong> <i class="ph ph-export" style="color:#4f46e5;"></i> في شريط Safari
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.75rem;color:var(--text-main);">
+                            <span style="background:#4f46e5;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;">2</span>
+                            اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>
+                        </div>
+                    </div>
+                    <button onclick="this.closest('[style]').remove()" style="width:100%;background:#4f46e5;color:#fff;border:none;padding:0.85rem;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;">فهمت!</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
     }
 
     navigate(path) {
