@@ -1192,8 +1192,8 @@ def get_users():
     # We will fetch all users first, then attach multiple sections
     if ctx['role'] in ['super_admin', 'head_dept']:
         if sid:
-            # Show users of the section PLUS global roles
-            # Also need to check if they belong to this section via user_sections
+            # Explicitly filtering by a specific section (sid is provided)
+            # Find users who have this as primary_section OR are mapped in user_sections
             users = conn.execute('''
                 SELECT DISTINCT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
@@ -1203,6 +1203,7 @@ def get_users():
                 ORDER BY u.role DESC, u.email ASC
             ''', (sid, sid)).fetchall()
         else:
+            # NO FILTER (All Sections): Show absolutely everyone across the entire university
             users = conn.execute('''
                 SELECT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
                 (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
@@ -1210,7 +1211,7 @@ def get_users():
                 ORDER BY u.role DESC, u.email ASC
             ''').fetchall()
     else:
-        # Section Admin only sees users of their section
+        # Section Admins are still restricted to their section for security
         users = conn.execute('''
             SELECT DISTINCT u.id, u.email, u.full_name, u.role, u.section_id as primary_section, u.created_at,
             (SELECT COUNT(*) FROM user_devices ud WHERE ud.user_id = u.id) as device_count
