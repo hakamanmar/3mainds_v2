@@ -16,17 +16,15 @@ const HomePage = async () => {
             fetch('/api/attendance/active-for-me').then(r => r.json()).catch(() => ({ active: false }))
         ]);
         
-        subjects = results[0].status === 'fulfilled' ? results[0].value : [];
-        announcements = results[1].status === 'fulfilled' ? results[1].value : [];
+        subjects = results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [];
+        announcements = results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : [];
         const attendanceData = results[2].status === 'fulfilled' ? results[2].value : { active: false };
         
-        if (attendanceData.active) activeAttendance = attendanceData.session;
+        if (attendanceData && attendanceData.active) activeAttendance = attendanceData.session;
     } catch (e) {
         console.error('[Offline/Network] Error in HomePage:', e);
-        // If we are offline, we don't show the red error box, we just let the page be empty/cached
-        if (!navigator.onLine) {
-            // Keep empty arrays, results will come from SW Cache if available
-        } else {
+        subjects = []; announcements = [];
+        if (navigator.onLine) {
             return `<div class="error-state">
                 <i class="ph ph-warning-circle"></i>
                 <h3>${i18n.t('error') || 'Error'}</h3>
