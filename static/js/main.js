@@ -246,6 +246,20 @@ class Router {
     }
 
     initPWA() {
+        // 0. Offline/Online Banner Logic
+        const banner = document.getElementById('offline-banner');
+        const updateOnlineStatus = () => {
+            if (navigator.onLine) {
+                if (banner) banner.style.display = 'none';
+            } else {
+                if (banner) banner.style.display = 'flex';
+            }
+        };
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus(); // Check initial state
+
         // 1. Request notification permission (after 5s)
         if ('Notification' in window && Notification.permission === 'default') {
             setTimeout(() => {
