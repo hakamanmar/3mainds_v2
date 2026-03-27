@@ -1,6 +1,6 @@
-/* sw.js - 3Minds PWA - Global Offline Support v14 */
-const SHELL_CACHE = '3minds-shell-v14';
-const DATA_CACHE  = '3minds-data-v3';
+/* sw.js - 3Minds PWA - Full Cache Reset v15 */
+const SHELL_CACHE = '3minds-shell-v15';
+const DATA_CACHE  = '3minds-data-v4';
 
 // ── App Shell + CDNs (Critical for boot) ──────────────────────
 const SHELL_ASSETS = [
