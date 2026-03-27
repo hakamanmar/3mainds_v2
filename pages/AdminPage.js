@@ -177,9 +177,7 @@ const AdminPage = async () => {
                                             <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
                                                 <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
                                                 <span class="badge badge-primary">${i18n.t(u.primary_section)}</span>
-                                                ${(u.sections && u.sections.length > 0) 
-                                                    ? u.sections.map(s => (s !== u.primary_section) ? `<span class="badge badge-light">${i18n.t(s)}</span>` : '').join('')
-                                                    : ''}
+                                                ${(u.sections && u.sections.length > 1) ? `<span class="badge badge-outline">+${u.sections.length - 1}</span>` : ''}
                                                  <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
                                                       <i class="ph ph-devices"></i> ${u.device_count || 0}/3
                                                  </span>
