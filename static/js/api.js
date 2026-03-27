@@ -92,7 +92,8 @@ export const api = {
 
     // ── Sections ──────────────────────────────────────────────
     async getSections() {
-        return this._fetch(`${API_BASE}/sections`);
+        const res = await this._fetch(`${API_BASE}/sections`);
+        return Array.isArray(res) ? res : (res.sections || []);
     },
     getSelectedSection() {
         try { return localStorage.getItem('selected_section'); } catch (e) { return null; }
