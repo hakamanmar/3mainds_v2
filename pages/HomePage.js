@@ -10,22 +10,30 @@ const HomePage = async () => {
     let activeAttendance = null;
 
     try {
-        const results = await Promise.all([
+        const results = await Promise.allSettled([
             api.getSubjects(),
             api.getAnnouncements(),
-            fetch('/api/attendance/active-for-me').then(r => r.json())
+            fetch('/api/attendance/active-for-me').then(r => r.json()).catch(() => ({ active: false }))
         ]);
-        subjects = results[0];
-        announcements = results[1];
-        if (results[2].active) activeAttendance = results[2].session;
+        
+        subjects = results[0].status === 'fulfilled' ? results[0].value : [];
+        announcements = results[1].status === 'fulfilled' ? results[1].value : [];
+        const attendanceData = results[2].status === 'fulfilled' ? results[2].value : { active: false };
+        
+        if (attendanceData.active) activeAttendance = attendanceData.session;
     } catch (e) {
-        console.error(e);
-        return `<div class="error-state">
-            <i class="ph ph-warning-circle"></i>
-            <h3>${i18n.t('error') || 'Error'}</h3>
-            <p>${e.message}</p>
-            <button class="btn btn-primary" onclick="window.location.reload()">${i18n.t('refresh_now') || 'Retry'}</button>
-        </div>`;
+        console.error('[Offline/Network] Error in HomePage:', e);
+        // If we are offline, we don't show the red error box, we just let the page be empty/cached
+        if (!navigator.onLine) {
+            // Keep empty arrays, results will come from SW Cache if available
+        } else {
+            return `<div class="error-state">
+                <i class="ph ph-warning-circle"></i>
+                <h3>${i18n.t('error') || 'Error'}</h3>
+                <p>${e.message}</p>
+                <button class="btn btn-primary" onclick="window.location.reload()">${i18n.t('refresh_now') || 'Retry'}</button>
+            </div>`;
+        }
     }
 
     const user = auth.getUser();
