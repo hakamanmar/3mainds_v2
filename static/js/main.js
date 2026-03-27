@@ -15,6 +15,7 @@ const pageModules = {
     '/results': () => import('/pages/MyResultsPage.js'),
     '/exams': () => import('/pages/ExamListPage.js'),
     '/exams/create': () => import('/pages/ExamCreatePage.js'),
+    '/sections-mgmt': () => import('/pages/SectionManagementPage.js'),
 };
 
 class Router {
@@ -468,6 +469,7 @@ class Router {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-shield-star"></i><span>${i18n.t('high_control')}</span></button>
+                    <button class="btn btn-ghost" data-path="/sections-mgmt"><i class="ph ph-handshake"></i><span>إدارة الشعب</span></button>
                     <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
@@ -477,6 +479,7 @@ class Router {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
                     <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-eye"></i><span>مراقبة الأقسام</span></button>
+                    <button class="btn btn-ghost" data-path="/sections-mgmt"><i class="ph ph-handshake"></i><span>إدارة الشعب</span></button>
                     <button class="btn btn-ghost" data-path="/committee"><i class="ph ph-chart-line"></i><span>${i18n.t('high_committee')}</span></button>
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
