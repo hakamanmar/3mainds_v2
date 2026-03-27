@@ -30,9 +30,34 @@
     <link rel="apple-touch-icon" sizes="192x192" href="/static/img/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/static/img/icon-512.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+
+    <style>
+        /* Offline Banner Style */
+        #offline-banner {
+            display: none;
+            background: linear-gradient(to right, #fbbf24, #f59e0b);
+            color: #000;
+            text-align: center;
+            padding: 8px 15px;
+            font-size: 13px;
+            font-weight: 700;
+            z-index: 999999;
+            width: 100%;
+            position: sticky;
+            top: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+    </style>
 </head>
 
 <body>
+    <div id="offline-banner">
+        <i class="ph ph-wifi-slash"></i>
+        <span>أنت تعمل الآن في وضع الأوفلاين - يمكنك تصفح ما فُتح مسبقاً</span>
+    </div>
     <div id="app" class="app-container">
         <header class="main-header">
             <a href="/" class="logo cyber-logo" data-path="/">
