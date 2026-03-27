@@ -1,115 +1,174 @@
-/* sw.js - 3Minds PWA - Professional Offline Mechanism (v11) */
-const CACHE_NAME = '3minds-offline-v11';
-const DATA_CACHE_NAME = '3minds-data-v2';
+/* sw.js - 3Minds PWA - Full Offline Support v12 */
+const SHELL_CACHE = '3minds-shell-v12';
+const DATA_CACHE  = '3minds-data-v3';
 
-const ASSETS = [
+// ── App Shell: Everything needed to boot the app from zero internet ──────────
+const SHELL_ASSETS = [
     '/',
+    '/manifest.json',
     '/static/css/style.css',
+    '/static/css/variables.css',
     '/static/js/main.js',
     '/static/js/api.js',
     '/static/js/ui.js',
     '/static/js/i18n.js',
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
-    '/manifest.json'
+
+    // All page modules
+    '/pages/SectionSelectionPage.js',
+    '/pages/LoginPage.js',
+    '/pages/HomePage.js',
+    '/pages/SubjectPage.js',
+    '/pages/ViewerPage.js',
+    '/pages/AdminPage.js',
+    '/pages/AttendancePage.js',
+    '/pages/CommitteePage.js',
+    '/pages/AssignmentDetailsPage.js',
+    '/pages/MyResultsPage.js',
+    '/pages/ExamListPage.js',
+    '/pages/ExamCreatePage.js',
+    '/pages/ExamTakePage.js',
+    '/pages/ExamResultsPage.js',
+    '/pages/PasswordChangePage.js',
 ];
 
-// ── Install ──────────────────────────────────────────────────────────────────
+// ── Install: Cache full app shell ─────────────────────────────────────────────
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS).catch(err => console.error('Cache addAll error', err)))
+        caches.open(SHELL_CACHE).then((cache) =>
+            cache.addAll(SHELL_ASSETS).catch((err) => {
+                console.warn('[SW] Some assets failed to cache:', err);
+            })
+        )
     );
 });
 
-// ── Activate ─────────────────────────────────────────────────────────────────
+// ── Activate: Remove old caches ───────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(keys.filter(k => k !== CACHE_NAME && k !== DATA_CACHE_NAME).map(k => caches.delete(k)))
+            Promise.all(
+                keys
+                    .filter(k => k !== SHELL_CACHE && k !== DATA_CACHE)
+                    .map(k => caches.delete(k))
+            )
         )
     );
-    return self.clients.claim();
+    self.clients.claim();
 });
 
-// ── Fetch: The Heart of Offline Support ──────────────────────────────────────
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // 1. Skip auth and sensitive actions
-    if (url.pathname.includes('/login') || url.pathname.includes('/logout') || event.request.method !== 'GET') {
-        return;
-    }
+    // Skip non-GET and login/logout routes
+    if (event.request.method !== 'GET') return;
+    if (url.pathname === '/login' || url.pathname === '/logout') return;
 
-    // 2. Handle File Caching (Catbox, local uploads, docs)
-    // Caching shared files, PDFs, images, etc. to make them work offline after first open
-    const isFile = url.pathname.match(/\.(pdf|jpg|jpeg|png|gif|webp|mp4|mp3|wav|docx|pptx)$/i) || 
-                   url.hostname === 'files.catbox.moe' ||
-                   url.pathname.startsWith('/uploads/');
+    // ── 1. Files (PDFs, images, videos, Catbox) ─── Cache First ──────────────
+    const isMediaFile =
+        /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|wav|ogg|docx|pptx|xlsx)$/i.test(url.pathname) ||
+        url.hostname === 'files.catbox.moe';
 
-    if (isFile) {
+    if (isMediaFile || url.pathname.startsWith('/uploads/')) {
         event.respondWith(
             caches.match(event.request).then((cached) => {
                 if (cached) return cached;
-                
-                return fetch(event.request).then((response) => {
-                    if (!response || response.status !== 200) return response;
-                    
-                    const responseToCache = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
-                    });
-                    return response;
-                }).catch(() => caches.match(event.request));
-            })
-        );
-        return;
-    }
 
-    // 3. Handle API Data (Subjects, Lessons, etc.)
-    // Strategy: Stale-While-Revalidate (Show cached while fetching fresh)
-    if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
-        event.respondWith(
-            caches.open(DATA_CACHE_NAME).then((cache) => {
-                return cache.match(event.request).then((cachedResponse) => {
-                    const fetchPromise = fetch(event.request).then((networkResponse) => {
-                        if (networkResponse.status === 200) {
-                            cache.put(event.request, networkResponse.clone());
+                return fetch(event.request)
+                    .then((response) => {
+                        if (response && response.status === 200) {
+                            const clone = response.clone();
+                            caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
                         }
-                        return networkResponse;
-                    }).catch(() => cachedResponse); // Fallback to cache on network fail
-
-                    return cachedResponse || fetchPromise;
-                });
+                        return response;
+                    })
+                    .catch(() => cached); // Return cached version if network fails
             })
         );
         return;
     }
 
-    // 4. Default Strategy: Network First for App Shell
+    // ── 2. API Calls ─── Stale-While-Revalidate (show data immediately) ───────
+    // Skip attendance & login APIs (must be real-time)
+    const skipApi = url.pathname.includes('/attendance') ||
+                    url.pathname.includes('/session') ||
+                    url.pathname.includes('/qr');
+
+    if (url.pathname.startsWith('/api/') && !skipApi) {
+        event.respondWith(
+            caches.open(DATA_CACHE).then((cache) =>
+                cache.match(event.request).then((cached) => {
+                    const networkFetch = fetch(event.request)
+                        .then((response) => {
+                            if (response && response.status === 200) {
+                                cache.put(event.request, response.clone());
+                            }
+                            return response;
+                        })
+                        .catch(() => cached); // Offline: return stale cache
+
+                    return cached || networkFetch; // Return cache immediately if available
+                })
+            )
+        );
+        return;
+    }
+
+    // ── 3. App Shell & Pages ─── Cache First, fallback to network ─────────────
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+
+            return fetch(event.request)
+                .then((response) => {
+                    if (response && response.status === 200) {
+                        const clone = response.clone();
+                        caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Last resort: return root page for navigation requests
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('/');
+                    }
+                });
+        })
     );
 });
 
-// ── Push Notification Listener ──────────────────────────────────────────────
+// ── Push Notifications ────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-    let data = { title: 'منصة 3Minds', body: 'لديك إشعار جديد' };
-    try { if (event.data) data = event.data.json(); } catch (e) {}
-    
+    let data = { title: 'منصة 3Minds', body: 'لديك إشعار جديد', url: '/' };
+    try { if (event.data) data = { ...data, ...event.data.json() }; } catch (e) {}
+
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: data.body,
             icon: '/static/img/icon-192.png',
             badge: '/static/img/icon-192.png',
+            vibrate: [200, 100, 200],
             dir: 'rtl',
             lang: 'ar',
-            data: { url: data.url || '/' }
+            tag: 'notif-' + Date.now(),
+            data: { url: data.url }
         })
     );
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
+    if (event.action === 'dismiss') return;
+    const target = event.notification.data?.url || '/';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+            for (const client of list) {
+                if ('focus' in client) { client.focus(); client.navigate(target); return; }
+            }
+            clients.openWindow(target);
+        })
+    );
 });
