@@ -53,7 +53,7 @@ self.addEventListener('fetch', (event) => {
         fetch(event.request)
             .then((res) => {
                 // If we got a valid response, cache it
-                if (res.status === 200) {
+                if (res.status === 200 || res.status === 0) {
                     const clone = res.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, clone);
@@ -62,8 +62,9 @@ self.addEventListener('fetch', (event) => {
                 return res;
             })
             .catch(() => {
-                // If network fails (OFFLINE), return from cache immediately
-                return caches.match(event.request);
+                // FALLBACK: Match from cache. IMPORTANT: Use ignoreSearch:true 
+                // to match URLs even if they have different timestamps (_=123)
+                return caches.match(event.request, { ignoreSearch: true });
             })
     );
 });
