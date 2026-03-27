@@ -156,10 +156,10 @@ const SubjectPage = async (params) => {
                                         </div>
                                         <div class="row-right">
                                             <div class="row-actions">
-                                                <button data-path="/viewer?url=${encodedUrl}&name=${encodedName}" 
-                                                        class="glass-action-btn view" title="${i18n.t('view')}">
+                                                <a href="${item.url}" target="_blank" 
+                                                   class="glass-action-btn view" title="${i18n.t('view')}">
                                                     <i class="ph-bold ph-eye"></i>
-                                                </button>
+                                                </a>
                                                 <a href="${item.url}" target="_blank" 
                                                    class="glass-action-btn download" title="${i18n.t('download')}">
                                                     <i class="ph-bold ph-download-simple"></i>
