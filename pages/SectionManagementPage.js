@@ -1,3 +1,7 @@
+import { api, auth } from '/static/js/api.js';
+import { i18n } from '/static/js/i18n.js';
+import { UI } from '/static/js/ui.js';
+
 const SectionManagementPage = async () => {
     const user = auth.getUser();
     if (!['super_admin', 'head_dept'].includes(user.role)) {
