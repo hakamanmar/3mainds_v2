@@ -1,10 +1,10 @@
 /* SectionManagementPage.js - 3Minds Platform - Global Elite Dashboard V3 */
-import { api, auth } from '/static/js/api.js';
+import { api as SectionApi, auth as SectionAuth } from '/static/js/api.js';
 import { i18n } from '/static/js/i18n.js';
 import { UI } from '/static/js/ui.js';
 
 const SectionManagementPage = async () => {
-    const user = auth.getUser();
+    const user = SectionAuth.getUser();
     if (!['super_admin', 'head_dept'].includes(user.role)) {
         return `<div class="forbidden-page"><h1>403</h1><p>غير مصرح بالدخول</p></div>`;
     }
@@ -86,7 +86,7 @@ SectionManagementPage.init = async () => {
 
     const fetchInit = async () => {
         try {
-            const data = await api._fetch('/api/admin/section-mgmt-init');
+            const data = await SectionApi._fetch('/api/admin/section-mgmt-init');
             const sections = data.sections || [];
             const countsMap = data.counts || {};
             totalStudentsText.innerText = data.total_students || 0;
@@ -123,7 +123,7 @@ SectionManagementPage.init = async () => {
         currentId = sid;
         viewport.innerHTML = '<div class="v3-loader"><i class="ph ph-circle-notch spin"></i><p>جاري تحديث السجلات...</p></div>';
         try {
-            const res = await api._fetch(`/api/admin/section-students?section_id=${sid}`);
+            const res = await SectionApi._fetch(`/api/admin/section-students?section_id=${sid}`);
             allStudents = res.students || [];
             activeLabel.innerText = `طلاب شعبة ${sid}`;
             renderTable(allStudents);
@@ -183,7 +183,7 @@ SectionManagementPage.init = async () => {
     const showStudentProfile = async (studentId) => {
         UI.toast('جاري تحميل السجل الأكاديمي...', 'info');
         try {
-            const res = await api._fetch(`/api/admin/student-profile?student_id=${studentId}&_=${Date.now()}`);
+            const res = await SectionApi._fetch(`/api/admin/student-profile?student_id=${studentId}&_=${Date.now()}`);
             const { student, performance: perf, attendance, assignments, exams } = res;
             await UI.modal(`السجل الأكاديمي: ${student.full_name}`, `
                 <div class="v3-profile-modal">
@@ -223,7 +223,7 @@ SectionManagementPage.init = async () => {
     };
 
     const showTransferModal = async (studentId, name, currentSection) => {
-        const data = await api._fetch('/api/admin/section-mgmt-init');
+        const data = await SectionApi._fetch('/api/admin/section-mgmt-init');
         const sections = data.sections || [];
         await UI.modal('المجلد الإداري: نقل آمن', `
             <div class="v3-modal-body">
@@ -239,7 +239,7 @@ SectionManagementPage.init = async () => {
         `, async () => {
             const sid = document.getElementById('v3-new-sid').value;
             try {
-                const res = await api._fetch('/api/admin/transfer-student', { method: 'POST', body: JSON.stringify({ student_id: studentId, new_section_ids: [sid] }) });
+                const res = await SectionApi._fetch('/api/admin/transfer-student', { method: 'POST', body: JSON.stringify({ student_id: studentId, new_section_ids: [sid] }) });
                 if (res.success) { UI.toast('تم النقل بنجاح', 'success'); loadStudents(currentId); return true; }
             } catch (err) { UI.toast(err.message, 'error'); return false; }
         });
