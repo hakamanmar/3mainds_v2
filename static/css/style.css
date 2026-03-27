@@ -1997,24 +1997,24 @@ textarea:focus {
 .v3-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .v3-table th { padding: 1.5rem 3rem; text-align: right; background: rgba(var(--background-rgb), 0.5); font-weight: 800; font-size: 0.9rem; color: var(--text-muted); }
 .v3-table td { padding: 1.5rem 3rem; border-bottom: 1px solid var(--border); transition: all 0.2s; }
-.v3-table tr:hover td { background: rgba(37, 99, 235, 0.05); }
+.v3-table tr:hover td { background: rgba(var(--primary-rgb), 0.05); }
 
 .v3-user { display: flex; align-items: center; gap: 1.25rem; }
 .v3-avatar { 
-    width: 52px; height: 52px; background: linear-gradient(45deg, #2563eb, #7c3aed); 
+    width: 52px; height: 52px; background: linear-gradient(45deg, var(--primary), var(--secondary)); 
     color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; 
-    font-weight: 800; font-size: 1.4rem; box-shadow: 0 5px 15px rgba(37, 99, 235, 0.2);
+    font-weight: 800; font-size: 1.4rem; box-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.2);
 }
 .v3-u-info h4 { font-weight: 800; margin-bottom: 2px; }
 .v3-u-info span { font-size: 0.8rem; color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 6px; }
 
 .v3-transfer-btn {
-    background: #2563eb; color: white; border: none; padding: 10px 22px; 
+    background: var(--primary); color: white; border: none; padding: 10px 22px; 
     border-radius: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px;
-    cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
 }
 
-.v3-transfer-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(37, 99, 235, 0.3); }
+.v3-transfer-btn:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(var(--primary-rgb), 0.3); }
 
 @media (max-width: 1024px) {
     .mgmt-v3-header { padding: 2.5rem; }
