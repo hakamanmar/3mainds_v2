@@ -1,8 +1,7 @@
-/* sw.js - 3Minds PWA - iPhone Specialized v18 */
-const SHELL_CACHE = '3minds-shell-v18';
-const DATA_CACHE  = '3minds-data-v7';
+/* sw.js - 3Minds PWA - Universal Recovery v20 */
+const CACHE_NAME = '3minds-v20';
 
-const SHELL_ASSETS = [
+const ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
@@ -14,12 +13,10 @@ const SHELL_ASSETS = [
     '/static/js/i18n.js',
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
-    
-    // CDNs
     'https://unpkg.com/@phosphor-icons/web@2.0.3',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-
-    // All page scripts
+    
+    // Page Scripts
     '/pages/SectionSelectionPage.js',
     '/pages/LoginPage.js',
     '/pages/HomePage.js',
@@ -39,63 +36,45 @@ const SHELL_ASSETS = [
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
-    event.waitUntil(
-        caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS))
-    );
+    event.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(keys.filter(k => ![SHELL_CACHE, DATA_CACHE].includes(k)).map(k => caches.delete(k)))
-        )
-    );
+    event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
     self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // CRITICAL for iPhone: Do NOT intercept external navigations
-    // This fixed the "forever loading" issue on iOS when opening Catbox links
-    if (event.request.mode === 'navigate' && url.origin !== location.origin) {
-        return; 
-    }
-
-    if (event.request.method !== 'GET') return;
-    if (url.pathname.includes('/login') || url.pathname.includes('/logout')) return;
-
-    // 1. API Data
-    if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
-        event.respondWith(
-            caches.open(DATA_CACHE).then((cache) => {
-                return cache.match(event.request, { ignoreSearch: true }).then((cached) => {
-                    const network = fetch(event.request).then((res) => {
-                        if (res && res.status === 200) cache.put(event.request, res.clone());
-                        return res;
-                    }).catch(() => cached);
-                    return cached || network;
-                });
-            })
-        );
+    // 1. Bypass External (Catbox, etc.)
+    if (url.origin !== location.origin) {
+        if (url.hostname === 'unpkg.com' || url.hostname.includes('fonts')) {
+            // Serve these from cache if available
+            event.respondWith(caches.match(event.request).then(res => res || fetch(event.request)));
+        }
         return;
     }
 
-    // 2. Local Assets & Media (Cache First)
+    // 2. Ignore non-GET
+    if (event.request.method !== 'GET' || url.pathname.includes('/login')) return;
+
+    // 3. Main Fetch Strategy
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then((cached) => {
             const network = fetch(event.request).then((res) => {
-                if (res && res.status === 200 && (url.origin === location.origin || url.hostname === 'unpkg.com')) {
+                if (res && res.status === 200) {
                     const clone = res.clone();
-                    caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
+                    caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
                 }
                 return res;
-            }).catch(() => cached);
-
-            // Fallback for navigation requests when offline
-            if (!cached && event.request.mode === 'navigate') {
-                return caches.match('/', { ignoreSearch: true });
-            }
+            }).catch(() => {
+                // IF NETWORK FAILS & IT'S A LOCAL PAGE REQUEST -> ALWAYS RETURN ROOT SHELL
+                if (event.request.mode === 'navigate' || (url.origin === location.origin && !url.pathname.includes('.'))) {
+                    return caches.match('/', { ignoreSearch: true });
+                }
+                return cached;
+            });
 
             return cached || network;
         })
