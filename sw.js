@@ -1,8 +1,8 @@
-/* sw.js - 3Minds PWA - Full Offline Support v13 (Stable) */
-const SHELL_CACHE = '3minds-shell-v13';
+/* sw.js - 3Minds PWA - Global Offline Support v14 */
+const SHELL_CACHE = '3minds-shell-v14';
 const DATA_CACHE  = '3minds-data-v3';
 
-// ── App Shell assets ──────────────────────────────────────────
+// ── App Shell + CDNs (Critical for boot) ──────────────────────
 const SHELL_ASSETS = [
     '/',
     '/manifest.json',
@@ -14,7 +14,12 @@ const SHELL_ASSETS = [
     '/static/js/i18n.js',
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
+    
+    // External Assets (Icons & Fonts)
+    'https://unpkg.com/@phosphor-icons/web@2.0.3', 
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
 
+    // Essential Pages
     '/pages/SectionSelectionPage.js',
     '/pages/LoginPage.js',
     '/pages/HomePage.js',
@@ -22,7 +27,6 @@ const SHELL_ASSETS = [
     '/pages/ViewerPage.js',
     '/pages/AdminPage.js',
     '/pages/AttendancePage.js',
-    '/pages/CommitteePage.js',
     '/pages/AssignmentDetailsPage.js',
     '/pages/MyResultsPage.js',
     '/pages/ExamListPage.js',
@@ -30,6 +34,7 @@ const SHELL_ASSETS = [
     '/pages/ExamTakePage.js',
     '/pages/ExamResultsPage.js',
     '/pages/PasswordChangePage.js',
+    '/pages/CommitteePage.js'
 ];
 
 // ── Install ───────────────────────────────────────────────────
@@ -47,7 +52,7 @@ self.addEventListener('activate', (event) => {
             Promise.all(keys.filter(k => ![SHELL_CACHE, DATA_CACHE].includes(k)).map(k => caches.delete(k)))
         )
     );
-    self.clients.claim();
+    self.clients.claim(); // Take control of page immediately
 });
 
 // ── Fetch ─────────────────────────────────────────────────────
@@ -56,12 +61,15 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     if (['/login', '/logout'].some(p => url.pathname.includes(p))) return;
 
-    // ── 1. Media & Files (Cache First) ────────────────────────
-    const isMedia = url.hostname === 'files.catbox.moe' || 
-                    url.pathname.startsWith('/uploads/') ||
-                    /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|docx|pptx|xlsx)$/i.test(url.pathname);
+    // ── 1. Media & External CDNs ──────────────────────────────
+    const isMediaOrCDN = url.hostname === 'files.catbox.moe' || 
+                         url.hostname === 'unpkg.com' ||
+                         url.hostname.includes('fonts.googleapis.com') ||
+                         url.hostname.includes('fonts.gstatic.com') ||
+                         url.pathname.startsWith('/uploads/') ||
+                        /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|docx|pptx|xlsx)$/i.test(url.pathname);
 
-    if (isMedia) {
+    if (isMediaOrCDN) {
         event.respondWith(
             caches.match(event.request, { ignoreSearch: true }).then((cached) => {
                 return cached || fetch(event.request).then((res) => {
@@ -92,10 +100,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── 3. App Shell & Page Scripts (Cache First, Ignore Version) ───
+    // ── 3. Application Shell & Logic (Global Navigation Handling) 
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then((cached) => {
             if (cached) return cached;
+            
             return fetch(event.request).then((res) => {
                 if (res.status === 200) {
                     const clone = res.clone();
@@ -103,7 +112,11 @@ self.addEventListener('fetch', (event) => {
                 }
                 return res;
             }).catch(() => {
-                if (event.request.mode === 'navigate') return caches.match('/', { ignoreSearch: true });
+                // IMPORTANT: If we are offline and it's a page navigation (e.g., /home, /subject/1)
+                // Always return our main cached shell (index.html)
+                if (event.request.mode === 'navigate') {
+                    return caches.match('/', { ignoreSearch: true });
+                }
             });
         })
     );
