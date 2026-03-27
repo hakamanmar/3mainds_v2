@@ -1368,7 +1368,12 @@ def add_user():
             
     except Exception as e:
         if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
-            return jsonify({'error': 'هذا البريد الإلكتروني مسجّل مسبقاً'}), 400
+                  counts = conn.execute('''
+            SELECT section_id, COUNT(*) as count 
+            FROM users 
+            WHERE role = 'student' AND section_id IS NOT NULL
+            GROUP BY section_id
+        ''').fetchall()({'success': True})
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
@@ -1418,13 +1423,13 @@ def section_mgmt_init():
         sections = [dict(r) for r in sections_rows]
         
         # Get counts per section (optimized)
-        counts = conn.execute('''
-            SELECT section_id, COUNT(*) as count 
-            FROM users 
-            WHERE role = "student" 
-            GROUP BY section_id
-        ''').fetchall()
-        counts_map = {r['section_id']: r['count'] for r in counts}
+        counts = conn.execute(
+            "SELECT section_id, COUNT(*) as cnt FROM users "
+            "WHERE role = 'student' AND section_id IS NOT NULL "
+            "GROUP BY section_id"
+        ).fetchall()
+        counts_map = {r['section_id']: r['cnt'] for r in counts}
+
         
         return jsonify({
             'sections': sections,
