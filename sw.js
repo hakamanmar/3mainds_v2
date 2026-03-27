@@ -1,5 +1,7 @@
-/* sw.js - 3Minds PWA Service Worker with Push Notifications */
-const CACHE_NAME = '3minds-v10';
+/* sw.js - 3Minds PWA - Professional Offline Mechanism (v11) */
+const CACHE_NAME = '3minds-offline-v11';
+const DATA_CACHE_NAME = '3minds-data-v2';
+
 const ASSETS = [
     '/',
     '/static/css/style.css',
@@ -16,7 +18,7 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS).catch(() => {}))
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS).catch(err => console.error('Cache addAll error', err)))
     );
 });
 
@@ -24,92 +26,90 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+            Promise.all(keys.filter(k => k !== CACHE_NAME && k !== DATA_CACHE_NAME).map(k => caches.delete(k)))
         )
     );
     return self.clients.claim();
 });
 
-// ── Fetch: Smart caching ──────────────────────────────────────────────────────
+// ── Fetch: The Heart of Offline Support ──────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Never cache API calls, auth, or uploads (real-time data)
-    const skip = url.pathname.startsWith('/api/') ||
-                 url.pathname.startsWith('/login') ||
-                 url.pathname.startsWith('/logout') ||
-                 url.pathname.startsWith('/uploads/') ||
-                 event.request.method !== 'GET';
-    if (skip) return;
+    // 1. Skip auth and sensitive actions
+    if (url.pathname.includes('/login') || url.pathname.includes('/logout') || event.request.method !== 'GET') {
+        return;
+    }
 
-    // Stale-while-revalidate for app shell
+    // 2. Handle File Caching (Catbox, local uploads, docs)
+    // Caching shared files, PDFs, images, etc. to make them work offline after first open
+    const isFile = url.pathname.match(/\.(pdf|jpg|jpeg|png|gif|webp|mp4|mp3|wav|docx|pptx)$/i) || 
+                   url.hostname === 'files.catbox.moe' ||
+                   url.pathname.startsWith('/uploads/');
+
+    if (isFile) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                if (cached) return cached;
+                
+                return fetch(event.request).then((response) => {
+                    if (!response || response.status !== 200) return response;
+                    
+                    const responseToCache = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseToCache);
+                    });
+                    return response;
+                }).catch(() => caches.match(event.request));
+            })
+        );
+        return;
+    }
+
+    // 3. Handle API Data (Subjects, Lessons, etc.)
+    // Strategy: Stale-While-Revalidate (Show cached while fetching fresh)
+    if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
+        event.respondWith(
+            caches.open(DATA_CACHE_NAME).then((cache) => {
+                return cache.match(event.request).then((cachedResponse) => {
+                    const fetchPromise = fetch(event.request).then((networkResponse) => {
+                        if (networkResponse.status === 200) {
+                            cache.put(event.request, networkResponse.clone());
+                        }
+                        return networkResponse;
+                    }).catch(() => cachedResponse); // Fallback to cache on network fail
+
+                    return cachedResponse || fetchPromise;
+                });
+            })
+        );
+        return;
+    }
+
+    // 4. Default Strategy: Network First for App Shell
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            const network = fetch(event.request).then((res) => {
-                if (res.status === 200) {
-                    caches.open(CACHE_NAME).then(c => c.put(event.request, res.clone()));
-                }
-                return res;
-            }).catch(() => cached);
-            return cached || network;
+        fetch(event.request).catch(() => caches.match(event.request))
+    );
+});
+
+// ── Push Notification Listener ──────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+    let data = { title: 'منصة 3Minds', body: 'لديك إشعار جديد' };
+    try { if (event.data) data = event.data.json(); } catch (e) {}
+    
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: '/static/img/icon-192.png',
+            badge: '/static/img/icon-192.png',
+            dir: 'rtl',
+            lang: 'ar',
+            data: { url: data.url || '/' }
         })
     );
 });
 
-// ── Push Notification ──────────────────────────────────────────────────────────
-self.addEventListener('push', (event) => {
-    let data = { title: 'منصة 3Minds', body: 'لديك إشعار جديد', url: '/' };
-    try {
-        if (event.data) data = { ...data, ...event.data.json() };
-    } catch (e) {}
-
-    const options = {
-        body: data.body,
-        icon: '/static/img/icon-192.png',
-        badge: '/static/img/icon-192.png',
-        image: data.image || undefined,
-        vibrate: [200, 100, 200],
-        tag: data.tag || 'notif-' + Date.now(),
-        renotify: true,
-        requireInteraction: data.requireInteraction || false,
-        dir: 'rtl',
-        lang: 'ar',
-        data: { url: data.url || '/', type: data.type || 'general' },
-        actions: [
-            { action: 'open', title: 'فتح المنصة' },
-            { action: 'dismiss', title: 'إغلاق' }
-        ]
-    };
-
-    event.waitUntil(self.registration.showNotification(data.title, options));
-});
-
-// ── Notification Click ─────────────────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    if (event.action === 'dismiss') return;
-
-    const targetUrl = event.notification.data?.url || '/';
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // Focus existing tab if open
-            for (const client of clientList) {
-                if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    client.focus();
-                    client.navigate(targetUrl);
-                    return;
-                }
-            }
-            // Otherwise open a new tab
-            return clients.openWindow(targetUrl);
-        })
-    );
-});
-
-// ── Background Sync (future use) ───────────────────────────────────────────────
-self.addEventListener('sync', (event) => {
-    if (event.tag === 'sync-attendance') {
-        // Placeholder for future offline attendance sync
-        console.log('[SW] Background sync triggered:', event.tag);
-    }
+    event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
 });
