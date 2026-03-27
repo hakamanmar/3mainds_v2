@@ -143,15 +143,8 @@
                 setTimeout(() => loader.remove(), 500);
              }
         });
-        // Emergency Force Unregister for University-wide Cache Clearing
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for(let registration of registrations) {
-                    registration.unregister();
-                    console.log('[PWA] Unregistered for critical sync');
-                }
-            });
-        }
+        // Emergency Force Unregister REMOVED to restore Offline Capability
+        /* SW logic is now managed by the system automatically */
     </script>
 </body>
 
