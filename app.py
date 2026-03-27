@@ -1501,9 +1501,9 @@ def transfer_student():
             if sid:
                 conn.execute('INSERT INTO user_sections (user_id, section_id) VALUES (?, ?)', (student_id, sid))
                 
-        # 3. Add an internal log entry (System Record)
+        # 3. Add an internal log entry (System Record of Transfer)
         conn.execute('INSERT INTO announcements (content, section_id, publisher_id) VALUES (?, ?, ?)',
-                     (f"نظام: تم بنجاح نقل {student['full_name']} إلى شعبة جديدة ({primary_section}).", 'all', get_user_context()['user_id']))
+                     (f"نظام: تم بنجاح نقل {student['full_name']} إلى شعبة جديدة ({primary_section}).", primary_section, get_user_context()['user_id']))
         
         conn.commit()
         return jsonify({'success': True})
