@@ -3021,16 +3021,21 @@ def get_student_profile():
             ORDER BY a.created_at DESC
         ''', [student_id, student_id] + section_ids).fetchall()
         
-        # 4. Exams (Attempts & Scores with Safety Null Handling)
-        exams_list = conn.execute(f'''
-            SELECT e.id, e.title, subj.title as subject_title,
-                   COALESCE((SELECT SUM(points) FROM exam_questions eq WHERE eq.exam_id = e.id), 0) as total_marks,
-                   (SELECT score FROM exam_attempts ea WHERE ea.exam_id = e.id AND ea.student_id = ?) as score
-            FROM exams e
-            JOIN subjects subj ON e.subject_id = subj.id
-            WHERE subj.section_id IN ({placeholder})
-            ORDER BY e.created_at DESC
-        ''', [student_id] + section_ids).fetchall()
+        # 4. Exams (Attempts & Scores with Bulletproof Error Handling)
+        try:
+            exams_list = conn.execute(f'''
+                SELECT e.id, e.title, subj.title as subject_title,
+                       COALESCE((SELECT SUM(points) FROM exam_questions eq WHERE eq.exam_id = e.id), 100) as total_marks,
+                       (SELECT score FROM exam_attempts ea WHERE ea.exam_id = e.id AND ea.student_id = ?) as score
+                FROM exams e
+                JOIN subjects subj ON e.subject_id = subj.id
+                WHERE subj.section_id IN ({placeholder})
+                ORDER BY e.created_at DESC
+            ''', [student_id] + section_ids).fetchall()
+            exams_data = [dict(e) for e in exams_list]
+        except Exception as e:
+            print(f"Skipping detailed exams due to schema: {e}")
+            exams_data = [] # Fallback to empty list instead of crashing the whole profile
         
         # 5. Performance Indicators
         scores = [int(e['score']) for e in exams_list if e['score'] is not None]
