@@ -1490,7 +1490,7 @@ def transfer_student():
                 
         # 3. Add an internal log entry (System Record)
         conn.execute('INSERT INTO announcements (content, section_id, publisher_id) VALUES (?, ?, ?)',
-                     (f"نظام: تم بنجاح نقل {student['full_name']} إلى شعبة جديدة ({primary_section}).", 'all', auth_user['id']))
+                     (f"نظام: تم بنجاح نقل {student['full_name']} إلى شعبة جديدة ({primary_section}).", 'all', get_user_context()['id']))
         
         conn.commit()
         return jsonify({'success': True})
