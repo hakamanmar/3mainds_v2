@@ -229,6 +229,9 @@ class TursoHttpConnection:
     def commit(self):
         pass  # Each HTTP call is auto-committed
 
+    def rollback(self):
+        pass
+
     def close(self):
         pass
 
@@ -1403,6 +1406,67 @@ def admin_change_password():
     finally:
         conn.close()
     return jsonify({'success': True})
+
+# ─── Student Section Management ──────────────────────────────────────────
+@app.route('/api/admin/section-students', methods=['GET'])
+@require_role('super_admin', 'head_dept')
+def get_section_students():
+    section_id = request.args.get('section_id')
+    if not section_id:
+        return jsonify({'error': 'Section ID is required'}), 400
+        
+    conn = get_db()
+    students = conn.execute('''
+        SELECT id, email, full_name, role, section_id
+        FROM users
+        WHERE role = 'student' AND (section_id = ? OR id IN (SELECT user_id FROM user_sections WHERE section_id = ?))
+        ORDER BY full_name ASC
+    ''', (section_id, section_id)).fetchall()
+    conn.close()
+    
+    return jsonify({'students': [dict(s) for s in students]})
+
+@app.route('/api/admin/transfer-student', methods=['POST'])
+@require_role('super_admin', 'head_dept')
+def transfer_student():
+    data = request.json or {}
+    student_id = data.get('student_id')
+    new_section_ids = data.get('new_section_ids', []) # Supports single or multiple
+    
+    if not student_id or not new_section_ids:
+        return jsonify({'error': 'Student ID and at least one new section ID are required'}), 400
+
+    conn = get_db()
+    try:
+        # Check if student exists
+        student = conn.execute('SELECT id, full_name FROM users WHERE id = ? AND role = "student"', (student_id,)).fetchone()
+        if not student:
+             return jsonify({'error': 'الطالب غير موجود'}), 404
+
+        # Primary section is the first one in the list
+        primary_section = new_section_ids[0]
+        
+        # 1. Update primary section_id in users table
+        conn.execute('UPDATE users SET section_id = ? WHERE id = ?', (primary_section, student_id))
+        
+        # 2. Clear old sections and add new ones (Safe Membership Transfer)
+        conn.execute('DELETE FROM user_sections WHERE user_id = ?', (student_id,))
+        for sid in new_section_ids:
+            if sid:
+                conn.execute('INSERT INTO user_sections (user_id, section_id) VALUES (?, ?)', (student_id, sid))
+                
+        # 3. Add an internal log entry in announcements (as a record)
+        conn.execute('INSERT INTO announcements (content, section_id, publisher_id) VALUES (?, ?, ?)',
+                     (f"نظام: تم نقل الطالب ({student['full_name']}) إلى شعبة جديدة.", 'all', get_user_context()['id']))
+        
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 def reset_device():
     data = request.json
     user_id = data.get('user_id')
