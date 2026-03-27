@@ -171,9 +171,14 @@ SectionManagementPage.init = async () => {
                             </td>
                             <td><div class="v3-email">${s.email}</div></td>
                             <td class="text-center">
-                                <button class="v3-transfer-btn" data-id="${s.id}" data-name="${s.full_name}" data-current="${s.section_id}">
-                                    <i class="ph-bold ph-paper-plane-tilt"></i> نقل الطالب
-                                </button>
+                                <div style="display:flex; gap:0.5rem; justify-content:center;">
+                                    <button class="v3-profile-btn" data-id="${s.id}">
+                                        <i class="ph-bold ph-identification-card"></i> عرض الملف
+                                    </button>
+                                    <button class="v3-transfer-btn" data-id="${s.id}" data-name="${s.full_name}" data-current="${s.section_id}">
+                                        <i class="ph-bold ph-paper-plane-tilt"></i> نقل الطالب
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
@@ -184,6 +189,96 @@ SectionManagementPage.init = async () => {
         document.querySelectorAll('.v3-transfer-btn').forEach(btn => {
             btn.onclick = () => showTransferModal(btn.dataset.id, btn.dataset.name, btn.dataset.current);
         });
+
+        document.querySelectorAll('.v3-profile-btn').forEach(btn => {
+            btn.onclick = () => showStudentProfile(btn.dataset.id);
+        });
+    };
+
+    const showStudentProfile = async (studentId) => {
+        UI.toast('جاري تحميل السجل الأكاديمي...', 'info');
+        try {
+            const data = await api._fetch(`/api/admin/student-profile?student_id=${studentId}`);
+            const student = data.student;
+            const perf = data.performance;
+            const attendance = data.attendance;
+
+            await UI.modal(`الملف الأكاديمي: ${student.full_name}`, `
+                <div class="v3-profile-modal">
+                    <!-- Top Ribbon: Performance -->
+                    <div class="profile-hero">
+                        <div class="perf-badge ${perf.indicator}">${perf.indicator}</div>
+                        <div class="student-main">
+                            <h2>${student.full_name}</h2>
+                            <p>${student.email} • طالب</p>
+                            <div class="sec-tags">
+                                ${student.sections.map(s => `<span class="tag">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="profile-stats">
+                        <div class="stat-box">
+                            <span class="val">${attendance.percentage}%</span>
+                            <span class="lbl">نسبة الحضور</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="val">${perf.average}</span>
+                            <span class="lbl">معدل الدرجات</span>
+                        </div>
+                         <div class="stat-box">
+                            <span class="val">${data.assignments.filter(a => a.grade).length}</span>
+                            <span class="lbl">مهام مقيمة</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-tabs-content">
+                        <!-- Attendance Detail -->
+                        <div class="profile-section">
+                            <h3><i class="ph ph-calendar-check"></i> ملخص الحضور والغياب</h3>
+                            <div class="attendance-bar">
+                                <div class="bar-fill" style="width: ${attendance.percentage}%"></div>
+                            </div>
+                            <div class="attendance-legend">
+                                <span><b>${attendance.present}</b> محاضرة حضور</span>
+                                <span><b>${attendance.absent}</b> غياب</span>
+                            </div>
+                        </div>
+
+                        <!-- Assignments & Exams -->
+                        <div class="profile-cols">
+                            <div class="profile-col">
+                                <h3><i class="ph ph-notebook"></i> الواجبات والمهام</h3>
+                                <div class="mini-list">
+                                    ${data.assignments.length === 0 ? '<p class="empty">لا يوجد مهام</p>' : 
+                                      data.assignments.map(a => `
+                                        <div class="mini-item">
+                                            <span class="title">${a.title}</span>
+                                            <span class="badge ${a.grade ? 'graded' : 'pending'}">${a.grade || (a.submitted_at ? 'بانتظار التقييم' : 'غير مسلم')}</span>
+                                        </div>
+                                      `).join('')}
+                                </div>
+                            </div>
+                            <div class="profile-col">
+                                <h3><i class="ph ph-exam"></i> نتائج الاختبارات</h3>
+                                <div class="mini-list">
+                                    ${data.exams.length === 0 ? '<p class="empty">لا يوجد اختبارات</p>' :
+                                      data.exams.map(e => `
+                                        <div class="mini-item">
+                                            <span class="title">${e.title}</span>
+                                            <span class="score">${e.score !== null ? `<b>${e.score}</b> / ${e.total_marks}` : 'لم يؤدَ'}</span>
+                                        </div>
+                                      `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `, null, { maxWidth: '800px' });
+        } catch (err) {
+            UI.toast('فشل جلب الملف: ' + err.message, 'error');
+        }
     };
 
     const showTransferModal = async (studentId, name, currentSection) => {
