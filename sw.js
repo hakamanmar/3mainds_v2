@@ -57,11 +57,15 @@ self.addEventListener('fetch', (event) => {
                 .then((res) => {
                     if (res.status === 200) {
                         const clone = res.clone();
+                        console.log('[PWA] Caching Fresh Data:', url.pathname);
                         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                     }
                     return res;
                 })
-                .catch(() => caches.match(event.request))
+                .catch(() => {
+                    console.warn('[PWA] Offline Mode: Serving from Cache:', url.pathname);
+                    return caches.match(event.request);
+                })
         );
         return;
     }
