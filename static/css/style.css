@@ -1856,7 +1856,7 @@ textarea:focus {
 }
 
 .mgmt-v3-header {
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    background: var(--primary-gradient);
     border-radius: 30px;
     padding: 3.5rem;
     color: white;
@@ -1865,7 +1865,7 @@ textarea:focus {
     align-items: center;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 30px 60px -15px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 30px 60px -15px rgba(49, 46, 129, 0.4);
     margin-bottom: 3rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1913,11 +1913,11 @@ textarea:focus {
     overflow: hidden;
 }
 
-.v3-stat-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: var(--shadow-xl); border-color: #2563eb; }
+.v3-stat-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: var(--shadow-xl); border-color: var(--primary); }
 .v3-stat-card .icon-wrap { 
     width: 64px; height: 64px; 
-    background: rgba(37, 99, 235, 0.1); 
-    color: #2563eb; 
+    background: var(--primary-light); 
+    color: var(--primary); 
     border-radius: 18px; 
     display: flex; 
     align-items: center; 
@@ -1957,8 +1957,8 @@ textarea:focus {
     gap: 4px;
 }
 
-.v3-sec-btn:hover { border-color: #2563eb; color: #2563eb; background: rgba(37, 99, 235, 0.05); }
-.v3-sec-btn.active { background: #2563eb; border-color: #2563eb; color: white; box-shadow: 0 15px 30px -10px rgba(37, 99, 235, 0.4); }
+.v3-sec-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.v3-sec-btn.active { background: var(--primary); border-color: var(--primary); color: white; box-shadow: var(--primary-shadow); }
 
 .v3-sec-btn .s-name { font-size: 1.1rem; font-weight: 800; }
 .v3-sec-btn .s-count { font-size: 0.85rem; opacity: 0.7; font-weight: 600; }
@@ -1981,7 +1981,7 @@ textarea:focus {
 }
 
 .v3-active-title { display: flex; align-items: center; gap: 15px; }
-.v3-active-title i { font-size: 1.8rem; color: #2563eb; }
+.v3-active-title i { font-size: 1.8rem; color: var(--primary); }
 .v3-active-title span { font-size: 1.5rem; font-weight: 800; }
 
 .v3-search-wrap { position: relative; width: 380px; }
@@ -1991,7 +1991,7 @@ textarea:focus {
     font-size: 1rem; font-family: inherit; font-weight: 600; color: var(--text-main);
     transition: all 0.3s;
 }
-.v3-search-wrap input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.1); }
+.v3-search-wrap input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 5px var(--primary-light); }
 .v3-search-wrap i { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.3rem; }
 
 .v3-table { width: 100%; border-collapse: separate; border-spacing: 0; }
