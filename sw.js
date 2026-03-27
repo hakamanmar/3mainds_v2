@@ -1,16 +1,17 @@
-/* sw.js - 3Minds PWA - Global Elite Update v30 (Ultra Smooth & Instant) */
-const CACHE_NAME = '3minds-v30'; // Changing name forces total cache purge
-
+const CACHE_NAME = '3minds-v35'; // Purge cache globally for bug fix
 const ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/logo.png',
     '/static/css/style.css',
     '/static/js/main.js',
     '/static/js/api.js',
     '/static/js/ui.js',
     '/static/js/i18n.js',
-    '/pages/SectionManagementPage.js' // Added the new page to cache
+    '/pages/AdminPage.js',
+    '/pages/HomePage.js',
+    '/pages/SectionManagementPage.js'
 ];
 
 self.addEventListener('install', (event) => {
