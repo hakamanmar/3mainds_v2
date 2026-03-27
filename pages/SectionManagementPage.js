@@ -77,7 +77,11 @@ SectionManagementPage.init = async () => {
             globalCountText.innerText = data.total_students || 0;
 
             if (sections.length === 0) {
-                selectorContainer.innerHTML = '<p class="error-inline">لا توجد أقسام مسجلة في النظام حالياً.</p>';
+                selectorContainer.innerHTML = `
+                    <div class="empty-sync-state">
+                        <i class="ph ph-mask-sad"></i>
+                        <p>لا توجد شعب دراسية مضافة حالياً. يرجى إضافة شعب من لوحة التحكم العامة.</p>
+                    </div>`;
                 return;
             }
 
@@ -87,7 +91,7 @@ SectionManagementPage.init = async () => {
                     <button class="section-pill-btn" data-id="${s.id}">
                         <div class="pill-icon"><i class="ph-bold ph-presentation-chart"></i></div>
                         <div class="pill-info">
-                            <span class="p-name">${s.name || s.id}</span>
+                            <span class="p-name">شعبة ${s.name || s.id}</span>
                             <span class="p-count">${count} طالب</span>
                         </div>
                     </button>
