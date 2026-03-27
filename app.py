@@ -3023,7 +3023,8 @@ def get_student_profile():
         
         # 4. Exams (Attempts & Scores)
         exams_list = conn.execute(f'''
-            SELECT e.id, e.title, subj.title as subject_title, e.total_marks,
+            SELECT e.id, e.title, subj.title as subject_title,
+                   (SELECT SUM(points) FROM exam_questions eq WHERE eq.exam_id = e.id) as total_marks,
                    (SELECT score FROM exam_attempts ea WHERE ea.exam_id = e.id AND ea.student_id = ?) as score
             FROM exams e
             JOIN subjects subj ON e.subject_id = subj.id
