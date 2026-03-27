@@ -1408,6 +1408,34 @@ def admin_change_password():
     return jsonify({'success': True})
 
 # ─── Student Section Management ──────────────────────────────────────────
+@app.route('/api/admin/section-mgmt-init', methods=['GET'])
+@require_role('super_admin', 'head_dept')
+def section_mgmt_init():
+    conn = get_db()
+    try:
+        # Get all sections
+        sections_rows = conn.execute('SELECT id, name FROM sections').fetchall()
+        sections = [dict(r) for r in sections_rows]
+        
+        # Get counts per section (optimized)
+        counts = conn.execute('''
+            SELECT section_id, COUNT(*) as count 
+            FROM users 
+            WHERE role = "student" 
+            GROUP BY section_id
+        ''').fetchall()
+        counts_map = {r['section_id']: r['count'] for r in counts}
+        
+        return jsonify({
+            'sections': sections,
+            'counts': counts_map,
+            'total_students': sum(counts_map.values())
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route('/api/admin/section-students', methods=['GET'])
 @require_role('super_admin', 'head_dept')
 def get_section_students():
