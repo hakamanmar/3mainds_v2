@@ -2951,14 +2951,15 @@ def delete_exam(exam_id):
 @app.after_request
 def add_header(response):
     """
-    Force browser to not cache critical files. This completely solves
-    the "Ctrl+Shift+R" issue by bypassing native browser HTTP caching
-    for HTML, JS, CSS files, and API endpoints. 
+    Optimized Caching for Performance and Accuracy.
+    Static files (JS/CSS) get a short cache (10 min) to feel fast.
+    Index and API responses are NEVER cached to ensure instant updates.
     """
-    if request.path == '/' or request.path.endswith('.html') or request.path.endswith('.js') or request.path.endswith('.css') or request.path.startswith('/api/'):
+    if request.path == '/' or request.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+    else:
+        # Cache JS/CSS/Images/Fonts for 10 minutes to make the site snap-fast
+        response.headers['Cache-Control'] = 'public, max-age=600'
     return response
 
 if __name__ == '__main__':
