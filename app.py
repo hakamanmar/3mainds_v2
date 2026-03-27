@@ -2961,6 +2961,101 @@ def add_header(response):
         # Cache JS/CSS/Images/Fonts for 10 minutes to make the site snap-fast
         response.headers['Cache-Control'] = 'public, max-age=600'
     return response
+# ─── STUDENT PROFILE VIEW (ADMIN ONLY) ──────────────────────────
+@app.route('/api/admin/student-profile', methods=['GET'])
+@require_role('super_admin', 'head_dept')
+def get_student_profile():
+    student_id = request.args.get('student_id')
+    if not student_id:
+        return jsonify({'error': 'Student ID required'}), 400
+    
+    conn = get_db()
+    try:
+        # 1. Basic Info & Sections
+        user_row = conn.execute('''
+            SELECT u.id, u.full_name, u.email, u.role, u.section_id as primary_section
+            FROM users u WHERE u.id = ? AND u.role = 'student'
+        ''', (student_id,)).fetchone()
+        
+        if not user_row:
+            return jsonify({'error': 'Student not found'}), 404
+        user = dict(user_row)
+        
+        # Get all sections they belong to
+        sections = conn.execute('SELECT section_id FROM user_sections WHERE user_id = ?', (student_id,)).fetchall()
+        user['sections'] = [s['section_id'] for s in sections]
+        if user['primary_section'] not in user['sections']:
+             user['sections'].append(user['primary_section'])
+             
+        section_ids = user['sections']
+        placeholder = ', '.join(['?'] * len(section_ids))
+        
+        # 2. Attendance Summary
+        # Total sessions in student's sections
+        total_sessions = conn.execute(f'''
+            SELECT COUNT(*) FROM attendance_sessions s
+            JOIN subjects subj ON s.subject_id = subj.id
+            WHERE subj.section_id IN ({placeholder})
+        ''', section_ids).fetchone()[0]
+        
+        # Student's presence
+        present_count = conn.execute('''
+            SELECT COUNT(*) FROM attendance_records WHERE student_id = ?
+        ''', (student_id,)).fetchone()[0]
+        
+        attendance = {
+            'total': total_sessions,
+            'present': present_count,
+            'absent': max(0, total_sessions - present_count),
+            'percentage': round((present_count / total_sessions * 100), 1) if total_sessions > 0 else 0
+        }
+        
+        # 3. Assignments (Tasks & Grades)
+        assignments_list = conn.execute(f'''
+            SELECT a.id, a.title, subj.title as subject_title, a.due_date,
+                   (SELECT s.submitted_at FROM submissions s WHERE s.assignment_id = a.id AND s.student_id = ?) as submitted_at,
+                   (SELECT grade FROM submissions s WHERE s.assignment_id = a.id AND s.student_id = ?) as grade
+            FROM assignments a
+            JOIN subjects subj ON a.subject_id = subj.id
+            WHERE subj.section_id IN ({placeholder})
+            ORDER BY a.created_at DESC
+        ''', [student_id, student_id] + section_ids).fetchall()
+        
+        # 4. Exams (Attempts & Scores)
+        exams_list = conn.execute(f'''
+            SELECT e.id, e.title, subj.title as subject_title, e.total_marks,
+                   (SELECT score FROM exam_attempts ea WHERE ea.exam_id = e.id AND ea.student_id = ?) as score
+            FROM exams e
+            JOIN subjects subj ON e.subject_id = subj.id
+            WHERE subj.section_id IN ({placeholder})
+            ORDER BY e.created_at DESC
+        ''', [student_id] + section_ids).fetchall()
+        
+        # 5. Performance Indicators
+        scores = [int(e['score']) for e in exams_list if e['score'] is not None]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        
+        indicator = "ضعيف"
+        if avg_score >= 85: indicator = "ممتاز"
+        elif avg_score >= 70: indicator = "جيد جداً"
+        elif avg_score >= 50: indicator = "جيد"
+        elif avg_score > 0: indicator = "متوسط"
+        
+        return jsonify({
+            'student': user,
+            'attendance': attendance,
+            'assignments': [dict(a) for a in assignments_list],
+            'exams': [dict(e) for e in exams_list],
+            'performance': {
+                'average': round(avg_score, 1),
+                'indicator': indicator
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
