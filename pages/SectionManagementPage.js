@@ -1,4 +1,4 @@
-/* SectionManagementPage.js - 3Minds Platform - Premium Dashboard v2 */
+/* SectionManagementPage.js - 3Minds Platform - Global Elite Dashboard V3 */
 import { api, auth } from '/static/js/api.js';
 import { i18n } from '/static/js/i18n.js';
 import { UI } from '/static/js/ui.js';
@@ -10,47 +10,70 @@ const SectionManagementPage = async () => {
     }
 
     return `
-        <div class="mgmt-dashboard-v2 animate-in">
-            <!-- Glass Header -->
-            <div class="mgmt-hero">
-                <div class="hero-left">
-                    <div class="hero-icon"><i class="ph-duotone ph-circles-four"></i></div>
-                    <div class="hero-text">
-                        <h1>إدارة الأقسام والطلاب</h1>
-                        <p>نظام النقل الآمن والحماية الشاملة للبيانات التاريخية.</p>
+        <div class="mgmt-dashboard-v3 animate-in">
+            <!-- Global Elite Header -->
+            <div class="mgmt-v3-header">
+                <div class="bg-pattern"></div>
+                <div class="header-meta">
+                    <h1>إدارة الكتل والأقسام</h1>
+                    <p>المجلد الأكاديمي الشامل لتوزيع وتنسيق سجلات الطلاب.</p>
+                    <div class="header-badges">
+                        <span class="premium-pill">نظام النقل الآمن مفعّل</span>
+                        <span class="premium-pill">مزامنة البيانات حية</span>
                     </div>
                 </div>
-                <div class="hero-stats">
-                    <div class="stat-card">
-                        <span class="label">إجمالي الطلاب</span>
-                        <span class="value" id="global-total-students">0</span>
+                <div class="header-visual">
+                    <!-- Statistics could go here too if needed -->
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="mgmt-v3-grid">
+                <div class="v3-stat-card">
+                    <div class="icon-wrap"><i class="ph-duotone ph-users-three"></i></div>
+                    <div class="info">
+                        <span class="val" id="v3-total-students">0</span>
+                        <span class="lbl">إجمالي الطلاب</span>
+                    </div>
+                </div>
+                <div class="v3-stat-card">
+                    <div class="icon-wrap" style="color:#10b981; background:rgba(16,185,129,0.1);"><i class="ph-duotone ph-check-circle"></i></div>
+                    <div class="info">
+                        <span class="val" id="v3-active-sections">0</span>
+                        <span class="lbl">الشعب المفعلة</span>
+                    </div>
+                </div>
+                <div class="v3-stat-card">
+                    <div class="icon-wrap" style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="ph-duotone ph-arrows-left-right"></i></div>
+                    <div class="info">
+                        <span class="val">آمن</span>
+                        <span class="lbl">حالة النقل</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Top Horizontal Sections Selector -->
-            <div class="section-selector-row" id="section-selector-list">
-                <div class="selector-skeleton"></div>
-            </div>
+            <!-- Horizontal Glass Navigation -->
+            <nav class="section-glass-nav" id="v3-nav-list">
+                <div class="nav-skeleton" style="width:100px; height:60px; background:var(--border); border-radius:15px;"></div>
+            </nav>
 
             <!-- Main Listing Area -->
-            <div class="mgmt-card-full">
-                <div class="card-header-v3">
-                    <div class="active-info">
-                        <i class="ph ph-hash"></i>
-                        <span id="active-sec-label">اختر شعبة للبدء</span>
-                        <div class="badge-mini" id="sec-count">0</div>
+            <div class="mgmt-v3-main">
+                <div class="v3-table-header">
+                    <div class="v3-active-title">
+                        <i class="ph-bold ph-hash"></i>
+                        <span id="v3-active-label">اختر شعبة للتنقل</span>
                     </div>
-                    <div class="search-bubble">
+                    <div class="v3-search-wrap">
                         <i class="ph ph-magnifying-glass"></i>
-                        <input type="text" id="student-search-v2" placeholder="بحث سريع في هذه الشعبة...">
+                        <input type="text" id="v3-search-input" placeholder="ابحث بصيغة (الاسم أو البريد)...">
                     </div>
                 </div>
 
-                <div id="students-viewport" class="viewport-v2">
-                    <div class="welcome-guide">
-                        <i class="ph ph-cursor-click"></i>
-                        <p>يرجى النقر على إحدى الشعب في الأعلى لاستعراض الطلاب وإدارة عمليات النقل.</p>
+                <div id="v3-viewport" class="v3-container">
+                    <div class="v3-empty-state">
+                        <i class="ph-duotone ph-fingerprint"></i>
+                        <p>بانتظار تحديد الشعبة الدراسية لعرض السجلات...</p>
                     </div>
                 </div>
             </div>
@@ -59,103 +82,97 @@ const SectionManagementPage = async () => {
 };
 
 SectionManagementPage.init = async () => {
-    const selectorContainer = document.getElementById('section-selector-list');
-    const viewport = document.getElementById('students-viewport');
-    const activeLabel = document.getElementById('active-sec-label');
-    const activeCount = document.getElementById('sec-count');
-    const globalCountText = document.getElementById('global-total-students');
-    const searchInput = document.getElementById('student-search-v2');
+    const navList = document.getElementById('v3-nav-list');
+    const viewport = document.getElementById('v3-viewport');
+    const activeLabel = document.getElementById('v3-active-label');
+    const totalStudentsText = document.getElementById('v3-total-students');
+    const activeSectionsText = document.getElementById('v3-active-sections');
+    const searchInput = document.getElementById('v3-search-input');
 
     let allStudents = [];
-    let currentActiveIdx = null;
+    let currentId = null;
 
-    const fetchInitialData = async () => {
+    const fetchInit = async () => {
         try {
             const data = await api._fetch('/api/admin/section-mgmt-init');
             const sections = data.sections || [];
             const countsMap = data.counts || {};
-            globalCountText.innerText = data.total_students || 0;
+            
+            totalStudentsText.innerText = data.total_students || 0;
+            activeSectionsText.innerText = sections.length;
 
             if (sections.length === 0) {
-                selectorContainer.innerHTML = `
-                    <div class="empty-sync-state">
-                        <i class="ph ph-mask-sad"></i>
-                        <p>لا توجد شعب دراسية مضافة حالياً. يرجى إضافة شعب من لوحة التحكم العامة.</p>
-                    </div>`;
+                navList.innerHTML = `<p style="padding:1rem; color:var(--text-muted);">لا توجد شعب مسجلة حالياً.</p>`;
                 return;
             }
 
-            selectorContainer.innerHTML = sections.map(s => {
+            navList.innerHTML = sections.map(s => {
                 const count = countsMap[s.id] || 0;
                 return `
-                    <button class="section-pill-btn" data-id="${s.id}">
-                        <div class="pill-icon"><i class="ph-bold ph-presentation-chart"></i></div>
-                        <div class="pill-info">
-                            <span class="p-name">شعبة ${s.name || s.id}</span>
-                            <span class="p-count">${count} طالب</span>
-                        </div>
+                    <button class="v3-sec-btn" data-id="${s.id}">
+                        <span class="s-name">شعبة ${s.name || s.id}</span>
+                        <span class="s-count">${count} طالب</span>
                     </button>
                 `;
             }).join('');
 
-            document.querySelectorAll('.section-pill-btn').forEach(btn => {
+            document.querySelectorAll('.v3-sec-btn').forEach(btn => {
                 btn.onclick = () => {
-                    document.querySelectorAll('.section-pill-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.v3-sec-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     loadStudents(btn.dataset.id);
                 };
             });
 
         } catch (err) {
-            selectorContainer.innerHTML = `<div class="error-v2">حدث خطأ: ${err.message}</div>`;
+            navList.innerHTML = `<div class="error-msg">فشل الجلب: ${err.message}</div>`;
         }
     };
 
     const loadStudents = async (sid) => {
-        currentActiveIdx = sid;
-        viewport.innerHTML = '<div class="loader-v3"><div class="spin"></div><p>جاري مزامنة بيانات الطلاب...</p></div>';
+        currentId = sid;
+        viewport.innerHTML = '<div class="v3-loader"><i class="ph ph-circle-notch spin"></i><p>جاري تحديث السجلات...</p></div>';
         try {
             const res = await api._fetch(`/api/admin/section-students?section_id=${sid}`);
             allStudents = res.students || [];
-            activeLabel.innerText = `شعبة ${sid}`;
-            activeCount.innerText = allStudents.length;
+            activeLabel.innerText = `طلاب شعبة ${sid}`;
             renderTable(allStudents);
         } catch (err) {
-            viewport.innerHTML = `<p class="error-msg-v2">فشل تحميل البيانات: ${err.message}</p>`;
+            viewport.innerHTML = `<div class="error-msg">${err.message}</div>`;
         }
     };
 
     const renderTable = (list) => {
         if (list.length === 0) {
-            viewport.innerHTML = `<div class="empty-state-v3"><i class="ph ph-folder-open"></i><p>لا يوجد طلاب حالياً في هذه الشعبة.</p></div>`;
+            viewport.innerHTML = `<div class="v3-empty-state"><i class="ph ph-folder-open"></i><p>لا يوجد طلاب حالياً في هذه الشعبة.</p></div>`;
             return;
         }
 
         viewport.innerHTML = `
-            <table class="premium-mgmt-table animate-in">
+            <table class="v3-table">
                 <thead>
                     <tr>
-                        <th class="align-r">الطالب</th>
-                        <th class="align-r">البريد</th>
-                        <th class="text-center">الإجراء</th>
+                        <th>الملف الشخصي</th>
+                        <th>البريد الإلكتروني</th>
+                        <th class="text-center">إجراءات إدارية</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${list.map(s => `
                         <tr>
                             <td>
-                                <div class="student-cell">
-                                    <div class="s-avatar">${s.full_name.charAt(0)}</div>
-                                    <div class="s-name-wrap">
-                                        <div class="s-full-name">${s.full_name}</div>
-                                        <div class="s-role">طالب رسمي</div>
+                                <div class="v3-user">
+                                    <div class="v3-avatar">${s.full_name.charAt(0)}</div>
+                                    <div class="v3-u-info">
+                                        <h4>${s.full_name}</h4>
+                                        <span>تفعيل قياسي</span>
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="s-email">${s.email}</span></td>
+                            <td><div class="v3-email">${s.email}</div></td>
                             <td class="text-center">
-                                <button class="btn-modern-transfer" data-id="${s.id}" data-name="${s.full_name}" data-current="${s.section_id}">
-                                    <i class="ph-bold ph-shuffle"></i> نقل القسم
+                                <button class="v3-transfer-btn" data-id="${s.id}" data-name="${s.full_name}" data-current="${s.section_id}">
+                                    <i class="ph-bold ph-paper-plane-tilt"></i> نقل الطالب
                                 </button>
                             </td>
                         </tr>
@@ -164,7 +181,7 @@ SectionManagementPage.init = async () => {
             </table>
         `;
 
-        document.querySelectorAll('.btn-modern-transfer').forEach(btn => {
+        document.querySelectorAll('.v3-transfer-btn').forEach(btn => {
             btn.onclick = () => showTransferModal(btn.dataset.id, btn.dataset.name, btn.dataset.current);
         });
     };
@@ -173,36 +190,35 @@ SectionManagementPage.init = async () => {
         const data = await api._fetch('/api/admin/section-mgmt-init');
         const sections = data.sections || [];
 
-        await UI.modal('النقل الآمن للطلاب', `
-            <div class="transfer-v2-body">
-                <div class="transfer-user-preview">
-                    <div class="p-avatar">${name.charAt(0)}</div>
-                    <div class="p-details">
-                        <div class="p-name">${name}</div>
-                        <div class="p-current">الشعبة الحالية: <b>${currentSection}</b></div>
+        await UI.modal('المجلد الإداري: نقل آمن', `
+            <div class="v3-modal-body">
+                <div class="v3-transfer-card">
+                    <div class="v3-avatar-lg">${name.charAt(0)}</div>
+                    <div class="v3-u-meta">
+                        <h3>${name}</h3>
+                        <p>الموقع الحالي: <b>شعبة ${currentSection}</b></p>
                     </div>
                 </div>
-                <div class="pwa-divider"></div>
-                <div class="form-group-v3">
-                    <label>تحويل إلى الشعبة</label>
-                    <select id="new-sec-target" class="v3-select">
+                <div class="form-group" style="margin-top:2rem;">
+                    <label style="font-weight:800; display:block; margin-bottom:10px;">الشعبة الدراسية الجديدة</label>
+                    <select id="v3-new-sid" class="v3-select" style="width:100%; padding:15px; border-radius:15px; border:2px solid var(--border); font-family:inherit; font-weight:800; background:var(--background); color:var(--text-main);">
                         ${sections.map(s => `<option value="${s.id}" ${s.id === currentSection ? 'disabled' : ''}>شعبة ${s.name || s.id}</option>`).join('')}
                     </select>
                 </div>
-                <div class="safety-checkpoint">
+                <div class="v3-safety-tip" style="background:rgba(37,99,235,0.1); color:#2563eb; padding:15px; border-radius:12px; margin-top:20px; font-weight:700; font-size:0.9rem; display:flex; gap:10px; align-items:center;">
                     <i class="ph-fill ph-shield-check"></i>
-                    <span>سيتم الحفاظ على أرشيف الحضور والدرجات فور النقل.</span>
+                    <span>تشفير النقل مفعّل: سيتم سحب الصلاحيات الحالية تلقائياً.</span>
                 </div>
             </div>
         `, async () => {
-            const newSid = document.getElementById('new-sec-target').value;
+            const newSid = document.getElementById('v3-new-sid').value;
             try {
                 const res = await api._fetch('/api/admin/transfer-student', {
                     method: 'POST', body: JSON.stringify({ student_id: studentId, new_section_ids: [newSid] })
                 });
                 if (res.success) {
-                    UI.toast('تمت عملية النقل بنجاح عالي', 'success');
-                    loadStudents(currentActiveIdx);
+                    UI.toast('تمت عملية النقل بنجاح إداري عالٍ', 'success');
+                    loadStudents(currentId);
                     return true;
                 }
             } catch (err) { UI.toast(err.message, 'error'); return false; }
@@ -215,7 +231,7 @@ SectionManagementPage.init = async () => {
         renderTable(filtered);
     };
 
-    fetchInitialData();
+    fetchInit();
 };
 
 export default SectionManagementPage;
