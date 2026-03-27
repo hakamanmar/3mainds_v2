@@ -1472,25 +1472,25 @@ def transfer_student():
     conn = get_db()
     try:
         # Check if student exists
-        student = conn.execute('SELECT id, full_name FROM users WHERE id = ? AND role = "student"', (student_id,)).fetchone()
+        student = conn.execute("SELECT id, full_name FROM users WHERE id = ? AND role = 'student'", (student_id,)).fetchone()
         if not student:
              return jsonify({'error': 'الطالب غير موجود'}), 404
 
-        # Primary section is the first one in the list
-        primary_section = new_section_ids[0]
+        # Primary section is the first one in the list (Safe Transfer)
+        primary_section = str(new_section_ids[0])
         
-        # 1. Update primary section_id in users table
+        # 1. Update primary section_id in users table (This makes it show up in General Mgmt)
         conn.execute('UPDATE users SET section_id = ? WHERE id = ?', (primary_section, student_id))
         
-        # 2. Clear old sections and add new ones (Safe Membership Transfer)
+        # 2. Clear old sections and add new ones (Safe Membership Transfer - for student access)
         conn.execute('DELETE FROM user_sections WHERE user_id = ?', (student_id,))
         for sid in new_section_ids:
             if sid:
                 conn.execute('INSERT INTO user_sections (user_id, section_id) VALUES (?, ?)', (student_id, sid))
                 
-        # 3. Add an internal log entry in announcements (as a record)
+        # 3. Add an internal log entry (System Record)
         conn.execute('INSERT INTO announcements (content, section_id, publisher_id) VALUES (?, ?, ?)',
-                     (f"نظام: تم نقل الطالب ({student['full_name']}) إلى شعبة جديدة.", 'all', get_user_context()['id']))
+                     (f"نظام: تم بنجاح نقل {student['full_name']} إلى شعبة جديدة ({primary_section}).", 'all', auth_user['id']))
         
         conn.commit()
         return jsonify({'success': True})
