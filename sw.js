@@ -1,11 +1,10 @@
-/* sw.js - 3Minds PWA - Standard Offline v16 (Optimized for iOS) */
-const SHELL_CACHE = '3minds-shell-v16';
-const DATA_CACHE  = '3minds-data-v5';
+/* sw.js - 3Minds PWA - Stable Offline v17 (Universal Support) */
+const SHELL_CACHE = '3minds-shell-v17';
+const DATA_CACHE  = '3minds-data-v6';
 
-// ── Critical Shell Assets ─────────────────────────────────────
 const SHELL_ASSETS = [
     '/',
-    '/index.html', // Added for iOS explicit matching
+    '/index.html',
     '/manifest.json',
     '/static/css/style.css',
     '/static/css/variables.css',
@@ -16,11 +15,11 @@ const SHELL_ASSETS = [
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
     
-    // External Resources
+    // External
     'https://unpkg.com/@phosphor-icons/web@2.0.3',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
 
-    // All possible page imports (Pre-cached for instant offline boot)
+    // Essential Pages
     '/pages/SectionSelectionPage.js',
     '/pages/LoginPage.js',
     '/pages/HomePage.js',
@@ -38,7 +37,7 @@ const SHELL_ASSETS = [
     '/pages/CommitteePage.js'
 ];
 
-// ── Install: Cache fast ───────────────────────────────────────
+// ──────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
@@ -46,52 +45,22 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// ── Activate: Old Cache Cleanup ───────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(keys.filter(k => ![SHELL_CACHE, DATA_CACHE].includes(k)).map(k => caches.delete(k)))
+            Promise.all(keys.filter(k => k !== SHELL_CACHE && k !== DATA_CACHE).map(k => caches.delete(k)))
         )
     );
     self.clients.claim();
 });
 
-// ── Fetch: Smart Handling ─────────────────────────────────────
+// ──────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
-
-    // Skip non-GET / non-app requests
     if (event.request.method !== 'GET') return;
     if (url.pathname.includes('/login') || url.pathname.includes('/logout')) return;
 
-    // ── 1. App Shell Caching (Cache-First) ────────────────────
-    // Always serve from cache first for shell files (CSS, JS, Icons)
-    const isShellAsset = SHELL_ASSETS.some(asset => url.pathname.endsWith(asset) || url.href === asset);
-    
-    // ── 2. Media / External Assets (Cache-First w/ Network Update)
-    const isMedia = url.hostname === 'files.catbox.moe' || 
-                    url.hostname === 'unpkg.com' ||
-                    url.hostname.includes('fonts.googleapis.com') ||
-                    url.hostname.includes('gstatic.com') ||
-                    url.pathname.startsWith('/uploads/') ||
-                    /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|docx|pptx|xlsx)$/i.test(url.pathname);
-
-    if (isShellAsset || isMedia) {
-        event.respondWith(
-            caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-                return cached || fetch(event.request).then((res) => {
-                    if (res && res.status === 200) {
-                        const clone = res.clone();
-                        caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
-                    }
-                    return res;
-                }).catch(() => cached);
-            })
-        );
-        return;
-    }
-
-    // ── 3. API Data (Stale-While-Revalidate) ──────────────────
+    // 1. API Data (Stale-While-Revalidate)
     if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
         event.respondWith(
             caches.open(DATA_CACHE).then((cache) => {
@@ -107,12 +76,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── 4. Global Navigation Fallback (CRITICAL FOR iOS) ──────
-    // If we are navigating to ANY page (/home, /subject/1) and offline, return root.
+    // 2. Everything else (Cache First + Fallback to /)
     event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match('/', { ignoreSearch: true }) || 
-                   caches.match('/index.html', { ignoreSearch: true });
+        caches.match(event.request, { ignoreSearch: true }).then((cached) => {
+            return cached || fetch(event.request).then((res) => {
+                // If fetching a local/CDN asset successfully, cache it
+                if (res && res.status === 200) {
+                    const clone = res.clone();
+                    caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
+                }
+                return res;
+            }).catch(() => {
+                // EXCEPTION: If request is a page/navigate, always return '/'
+                if (event.request.mode === 'navigate' || url.origin === location.origin) {
+                    return caches.match('/', { ignoreSearch: true }) || caches.match('/index.html');
+                }
+            });
         })
     );
 });
