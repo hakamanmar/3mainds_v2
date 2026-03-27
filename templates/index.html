@@ -106,23 +106,12 @@
 
     <script type="module" src="/static/js/main.js?v=6.0"></script>
     <script>
-        let refreshing = false;
+        // Emergency Force Unregister for University-wide Cache Clearing
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?build=30', { scope: '/' })
-                    .then(reg => {
-                        console.log('[PWA] Platform v30 Sync Active');
-                        reg.update(); // Check for actual changes
-                    })
-                    .catch(e => console.error('[PWA] SW Error:', e));
-            });
-
-            // If a new Service Worker is activated, reload to apply changes instantly
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
-                    refreshing = true;
-                    console.log('[PWA] New version detected! Reloading for university-wide sync...');
-                    window.location.reload();
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('[PWA] Unregistered for critical sync');
                 }
             });
         }
