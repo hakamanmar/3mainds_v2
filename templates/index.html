@@ -104,12 +104,16 @@
         <div id="toast-container"></div>
     </div>
 
-    <script type="module" src="/static/js/main.js?v=4.5"></script>
+    <script type="module" src="/static/js/main.js?v=4.6"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(reg => console.log('[PWA] SW v10 Registered', reg.scope))
+                    .then(reg => {
+                        console.log('[PWA] SW v12 Registered', reg.scope);
+                        // Force update check on each page load
+                        reg.update();
+                    })
                     .catch(err => console.warn('[PWA] SW failed:', err));
             });
         }
