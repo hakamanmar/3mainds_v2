@@ -1,6 +1,6 @@
-/* sw.js - 3Minds PWA - Stable Offline v17 (Universal Support) */
-const SHELL_CACHE = '3minds-shell-v17';
-const DATA_CACHE  = '3minds-data-v6';
+/* sw.js - 3Minds PWA - iPhone Specialized v18 */
+const SHELL_CACHE = '3minds-shell-v18';
+const DATA_CACHE  = '3minds-data-v7';
 
 const SHELL_ASSETS = [
     '/',
@@ -15,11 +15,11 @@ const SHELL_ASSETS = [
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
     
-    // External
+    // CDNs
     'https://unpkg.com/@phosphor-icons/web@2.0.3',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
 
-    // Essential Pages
+    // All page scripts
     '/pages/SectionSelectionPage.js',
     '/pages/LoginPage.js',
     '/pages/HomePage.js',
@@ -37,7 +37,6 @@ const SHELL_ASSETS = [
     '/pages/CommitteePage.js'
 ];
 
-// ──────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
@@ -48,19 +47,25 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(keys.filter(k => k !== SHELL_CACHE && k !== DATA_CACHE).map(k => caches.delete(k)))
+            Promise.all(keys.filter(k => ![SHELL_CACHE, DATA_CACHE].includes(k)).map(k => caches.delete(k)))
         )
     );
     self.clients.claim();
 });
 
-// ──────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // CRITICAL for iPhone: Do NOT intercept external navigations
+    // This fixed the "forever loading" issue on iOS when opening Catbox links
+    if (event.request.mode === 'navigate' && url.origin !== location.origin) {
+        return; 
+    }
+
     if (event.request.method !== 'GET') return;
     if (url.pathname.includes('/login') || url.pathname.includes('/logout')) return;
 
-    // 1. API Data (Stale-While-Revalidate)
+    // 1. API Data
     if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
         event.respondWith(
             caches.open(DATA_CACHE).then((cache) => {
@@ -76,22 +81,23 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. Everything else (Cache First + Fallback to /)
+    // 2. Local Assets & Media (Cache First)
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-            return cached || fetch(event.request).then((res) => {
-                // If fetching a local/CDN asset successfully, cache it
-                if (res && res.status === 200) {
+            const network = fetch(event.request).then((res) => {
+                if (res && res.status === 200 && (url.origin === location.origin || url.hostname === 'unpkg.com')) {
                     const clone = res.clone();
                     caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
                 }
                 return res;
-            }).catch(() => {
-                // EXCEPTION: If request is a page/navigate, always return '/'
-                if (event.request.mode === 'navigate' || url.origin === location.origin) {
-                    return caches.match('/', { ignoreSearch: true }) || caches.match('/index.html');
-                }
-            });
+            }).catch(() => cached);
+
+            // Fallback for navigation requests when offline
+            if (!cached && event.request.mode === 'navigate') {
+                return caches.match('/', { ignoreSearch: true });
+            }
+
+            return cached || network;
         })
     );
 });
