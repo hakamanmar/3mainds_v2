@@ -18,8 +18,15 @@ const AdminPage = async () => {
         isCloud = uRes.is_cloud || false;
         announcements = aRes;
         stats = stRes;
-    } catch (e) {
-        return `<div class="error-state"><i class="ph ph-warning-circle"></i><h3>${i18n.t('error')}</h3><p>${e.message}</p></div>`;
+
+        // Defensive check to prevent subjects.map is not a function crash
+        if (!Array.isArray(subjects)) {
+            console.error("Subjects data is not an array:", subjects);
+            subjects = [];
+        }
+    } catch (err) {
+        console.error("Admin Load Error:", err);
+        return `<div class="error-state"><i class="ph ph-warning-circle"></i><h3>${i18n.t('error')}</h3><p>${err.message}</p></div>`;
     }
 
     const user = auth.getUser();
