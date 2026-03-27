@@ -24,21 +24,30 @@ const SubjectPage = async (params) => {
     let assignments = [];
 
     try {
-        const [subRes, assignmentsRes] = await Promise.all([
+        const [subRes, assignmentsRes] = await Promise.allSettled([
             api.getSubject(id),
             api.getAssignments(id)
         ]);
-        if (subRes) {
-            subject = subRes.subject || {};
-            lessons = subRes.lessons || [];
+        
+        const subData = subRes.status === 'fulfilled' ? subRes.value : null;
+        const assignmentsData = assignmentsRes.status === 'fulfilled' ? assignmentsRes.value : [];
+
+        if (subData) {
+            subject = subData.subject || {};
+            lessons = subData.lessons || [];
         }
-        assignments = assignmentsRes || [];
+        assignments = assignmentsData || [];
+
+        // If even the subject name is missing and we aren't loading, then we show error
+        if (!subject.title && !navigator.onLine) {
+             throw new Error('لم يتم تحميل هذه المادة مسبقاً للعمل بدون إنترنت');
+        }
     } catch (e) {
         return `<div class="error-state">
-            <i class="ph ph-warning-circle"></i>
-            <h3>تعذّر تحميل المادة</h3>
-            <p>${e.message || 'يرجى المحاولة مجدداً'}</p>
-            <button class="btn btn-primary" data-path="/">العودة للرئيسية</button>
+            <i class="ph ph-wifi-slash" style="color:#fbbf24;font-size:3rem;margin-bottom:1rem;"></i>
+            <h3 style="margin-bottom:0.5rem;">أنت غير متصل بالإنترنت</h3>
+            <p style="color:var(--text-muted);margin-bottom:1.5rem;">${e.message || 'هذه الصفحة غير محفوظة حالياً للعمل بدون اتصال.'}</p>
+            <button class="btn btn-primary" data-path="/">تصفح المواد المحفوظة</button>
         </div>`;
     }
 
