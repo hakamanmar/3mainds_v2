@@ -1182,8 +1182,11 @@ def delete_announcement():
 @require_role('section_admin', 'super_admin', 'head_dept')
 def get_users():
     ctx = get_user_context()
-    sid = request.args.get('section_id') or ctx['section_id']
-    if not sid: sid = None
+    sid_param = request.args.get('section_id')
+    if sid_param is not None:
+        sid = sid_param if sid_param != "" else None
+    else:
+        sid = ctx.get('section_id')
     conn = get_db()
     
     # We will fetch all users first, then attach multiple sections
@@ -2934,6 +2937,19 @@ def delete_exam(exam_id):
         if conn: conn.close()
         return jsonify({'error': str(e)}), 500
 
+
+@app.after_request
+def add_header(response):
+    """
+    Force browser to not cache critical files. This completely solves
+    the "Ctrl+Shift+R" issue by bypassing native browser HTTP caching
+    for HTML, JS, CSS files, and API endpoints. 
+    """
+    if request.path == '/' or request.path.endswith('.html') or request.path.endswith('.js') or request.path.endswith('.css') or request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
