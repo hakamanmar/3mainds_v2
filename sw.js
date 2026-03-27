@@ -1,10 +1,11 @@
-/* sw.js - 3Minds PWA - Full Cache Reset v15 */
-const SHELL_CACHE = '3minds-shell-v15';
-const DATA_CACHE  = '3minds-data-v4';
+/* sw.js - 3Minds PWA - Standard Offline v16 (Optimized for iOS) */
+const SHELL_CACHE = '3minds-shell-v16';
+const DATA_CACHE  = '3minds-data-v5';
 
-// ── App Shell + CDNs (Critical for boot) ──────────────────────
+// ── Critical Shell Assets ─────────────────────────────────────
 const SHELL_ASSETS = [
     '/',
+    '/index.html', // Added for iOS explicit matching
     '/manifest.json',
     '/static/css/style.css',
     '/static/css/variables.css',
@@ -15,11 +16,11 @@ const SHELL_ASSETS = [
     '/static/img/icon-192.png',
     '/static/img/icon-512.png',
     
-    // External Assets (Icons & Fonts)
-    'https://unpkg.com/@phosphor-icons/web@2.0.3', 
+    // External Resources
+    'https://unpkg.com/@phosphor-icons/web@2.0.3',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
 
-    // Essential Pages
+    // All possible page imports (Pre-cached for instant offline boot)
     '/pages/SectionSelectionPage.js',
     '/pages/LoginPage.js',
     '/pages/HomePage.js',
@@ -37,7 +38,7 @@ const SHELL_ASSETS = [
     '/pages/CommitteePage.js'
 ];
 
-// ── Install ───────────────────────────────────────────────────
+// ── Install: Cache fast ───────────────────────────────────────
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
@@ -45,35 +46,41 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// ── Activate ──────────────────────────────────────────────────
+// ── Activate: Old Cache Cleanup ───────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
             Promise.all(keys.filter(k => ![SHELL_CACHE, DATA_CACHE].includes(k)).map(k => caches.delete(k)))
         )
     );
-    self.clients.claim(); // Take control of page immediately
+    self.clients.claim();
 });
 
-// ── Fetch ─────────────────────────────────────────────────────
+// ── Fetch: Smart Handling ─────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // Skip non-GET / non-app requests
     if (event.request.method !== 'GET') return;
-    if (['/login', '/logout'].some(p => url.pathname.includes(p))) return;
+    if (url.pathname.includes('/login') || url.pathname.includes('/logout')) return;
 
-    // ── 1. Media & External CDNs ──────────────────────────────
-    const isMediaOrCDN = url.hostname === 'files.catbox.moe' || 
-                         url.hostname === 'unpkg.com' ||
-                         url.hostname.includes('fonts.googleapis.com') ||
-                         url.hostname.includes('fonts.gstatic.com') ||
-                         url.pathname.startsWith('/uploads/') ||
-                        /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|docx|pptx|xlsx)$/i.test(url.pathname);
+    // ── 1. App Shell Caching (Cache-First) ────────────────────
+    // Always serve from cache first for shell files (CSS, JS, Icons)
+    const isShellAsset = SHELL_ASSETS.some(asset => url.pathname.endsWith(asset) || url.href === asset);
+    
+    // ── 2. Media / External Assets (Cache-First w/ Network Update)
+    const isMedia = url.hostname === 'files.catbox.moe' || 
+                    url.hostname === 'unpkg.com' ||
+                    url.hostname.includes('fonts.googleapis.com') ||
+                    url.hostname.includes('gstatic.com') ||
+                    url.pathname.startsWith('/uploads/') ||
+                    /\.(pdf|jpg|jpeg|png|gif|webp|mp4|webm|mp3|docx|pptx|xlsx)$/i.test(url.pathname);
 
-    if (isMediaOrCDN) {
+    if (isShellAsset || isMedia) {
         event.respondWith(
             caches.match(event.request, { ignoreSearch: true }).then((cached) => {
                 return cached || fetch(event.request).then((res) => {
-                    if (res.status === 200) {
+                    if (res && res.status === 200) {
                         const clone = res.clone();
                         caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
                     }
@@ -84,13 +91,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── 2. API Data (Stale-While-Revalidate) ──────────────────
+    // ── 3. API Data (Stale-While-Revalidate) ──────────────────
     if (url.pathname.startsWith('/api/') && !url.pathname.includes('/attendance')) {
         event.respondWith(
             caches.open(DATA_CACHE).then((cache) => {
                 return cache.match(event.request, { ignoreSearch: true }).then((cached) => {
                     const network = fetch(event.request).then((res) => {
-                        if (res.status === 200) cache.put(event.request, res.clone());
+                        if (res && res.status === 200) cache.put(event.request, res.clone());
                         return res;
                     }).catch(() => cached);
                     return cached || network;
@@ -100,24 +107,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── 3. Application Shell & Logic (Global Navigation Handling) 
+    // ── 4. Global Navigation Fallback (CRITICAL FOR iOS) ──────
+    // If we are navigating to ANY page (/home, /subject/1) and offline, return root.
     event.respondWith(
-        caches.match(event.request, { ignoreSearch: true }).then((cached) => {
-            if (cached) return cached;
-            
-            return fetch(event.request).then((res) => {
-                if (res.status === 200) {
-                    const clone = res.clone();
-                    caches.open(SHELL_CACHE).then(c => c.put(event.request, clone));
-                }
-                return res;
-            }).catch(() => {
-                // IMPORTANT: If we are offline and it's a page navigation (e.g., /home, /subject/1)
-                // Always return our main cached shell (index.html)
-                if (event.request.mode === 'navigate') {
-                    return caches.match('/', { ignoreSearch: true });
-                }
-            });
+        fetch(event.request).catch(() => {
+            return caches.match('/', { ignoreSearch: true }) || 
+                   caches.match('/index.html', { ignoreSearch: true });
         })
     );
 });
