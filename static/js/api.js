@@ -43,6 +43,11 @@ export const auth = {
 
 export const api = {
     async _fetch(url, options = {}) {
+        // Handle Offline State gracefully
+        if (!navigator.onLine) {
+            console.warn('[Offline] Using local data for:', url);
+        }
+
         const user = auth.getUser();
         let selectedSection = null;
         let deviceId = null;
@@ -53,34 +58,36 @@ export const api = {
 
         const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
 
-        // Zero Trust: The 'auth_token' cookie is automatically sent by the browser.
-        // It is HttpOnly, so JavaScript cannot access or leak it.
-
-        // Device Binding: Send the device fingerprint for session-to-hardware mapping
         if (deviceId) headers['X-Device-ID'] = deviceId;
-
-        // Legacy headers kept for frontend logic compatibility, but server now relies on Bearer token
         if (user && user.role) headers['X-User-Role'] = user.role;
         const sectionId = (user && user.section_id) || selectedSection;
         if (sectionId) headers['X-Section-ID'] = sectionId;
 
         let finalUrl = url;
-        if (options.method === 'GET' || !options.method) {
+        // Don't append timestamp when offline as it breaks cache matching
+        if (navigator.onLine && (options.method === 'GET' || !options.method)) {
             const separator = finalUrl.includes('?') ? '&' : '?';
             finalUrl += `${separator}t=${Date.now()}`;
         }
 
-        const res = await fetch(finalUrl, { ...options, headers });
-        if (res.status === 401) {
-            // Token expired or invalid
-            auth.logout();
-            return;
+        try {
+            const res = await fetch(finalUrl, { ...options, headers });
+            if (res.status === 401) {
+                auth.logout();
+                return;
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw { status: res.status, message: err.error || err.message || res.statusText };
+            }
+            return res.json();
+        } catch (e) {
+            if (!navigator.onLine) {
+                // Return empty fallback instead of crashing
+                return url.includes('lessons') || url.includes('assignments') ? [] : {};
+            }
+            throw e;
         }
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw { status: res.status, message: err.error || err.message || res.statusText };
-        }
-        return res.json();
     },
 
     // ── Sections ──────────────────────────────────────────────
