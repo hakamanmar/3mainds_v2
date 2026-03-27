@@ -792,7 +792,7 @@ def get_all_sections():
     conn = get_db()
     rows = conn.execute('SELECT * FROM sections').fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    return jsonify({'sections': [dict(r) for r in rows]})
 
 # ─── MY COURSES (Teacher-facing) ──────────────────────────────
 @app.route('/api/my-courses', methods=['GET'])
