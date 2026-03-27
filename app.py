@@ -3021,10 +3021,10 @@ def get_student_profile():
             ORDER BY a.created_at DESC
         ''', [student_id, student_id] + section_ids).fetchall()
         
-        # 4. Exams (Attempts & Scores)
+        # 4. Exams (Attempts & Scores with Safety Null Handling)
         exams_list = conn.execute(f'''
             SELECT e.id, e.title, subj.title as subject_title,
-                   (SELECT SUM(points) FROM exam_questions eq WHERE eq.exam_id = e.id) as total_marks,
+                   COALESCE((SELECT SUM(points) FROM exam_questions eq WHERE eq.exam_id = e.id), 0) as total_marks,
                    (SELECT score FROM exam_attempts ea WHERE ea.exam_id = e.id AND ea.student_id = ?) as score
             FROM exams e
             JOIN subjects subj ON e.subject_id = subj.id
