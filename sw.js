@@ -48,13 +48,17 @@ self.addEventListener('fetch', (event) => {
     // Only handle GET requests and local origin
     if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-    // For JS, CSS and Index -> Network First (Try latest, fallback to cache)
-    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname === '/' || url.pathname === '/index.html') {
+    // For JS, CSS, Index and API Calls -> Network First (Try latest, fallback to cache)
+    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || 
+        url.pathname === '/' || url.pathname === '/index.html' || 
+        url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(event.request)
                 .then((res) => {
-                    const clone = res.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    if (res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    }
                     return res;
                 })
                 .catch(() => caches.match(event.request))
@@ -62,10 +66,17 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For other assets (Images, etc) -> Cache First
+    // For other assets (Images, Fonts, etc) -> Cache First
     event.respondWith(
         caches.match(event.request).then((cached) => {
-            return cached || fetch(event.request);
+            if (cached) return cached;
+            return fetch(event.request).then(res => {
+                if (res.status === 200) {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                }
+                return res;
+            });
         })
     );
 });
