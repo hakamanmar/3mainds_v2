@@ -82,10 +82,7 @@ export const api = {
             }
             return res.json();
         } catch (e) {
-            if (!navigator.onLine) {
-                // Return empty fallback instead of crashing
-                return url.includes('lessons') || url.includes('assignments') ? [] : {};
-            }
+            // Let the Service Worker handle the offline fallback
             throw e;
         }
     },
