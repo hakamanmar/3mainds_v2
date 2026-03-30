@@ -133,8 +133,30 @@
 
     <div id="root"></div>
 
-    <script type="module" src="/static/js/main.js?v=6.5"></script>
+    <script type="module" src="/static/js/main.js?v=9.0"></script>
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('[PWA] New version found! Auto-reloading for university sync...');
+                            window.location.reload();
+                        }
+                    };
+                };
+            });
+
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
+            });
+        }
+        
         // High Speed Launch Experience
         window.addEventListener('load', () => {
              const loader = document.getElementById('platform-loader');
