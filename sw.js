@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v37'; // Global Purge v37
+const CACHE_NAME = '3minds-v40'; // Global Purge v40 (BREAK CACHE TRAP)
 const ASSETS = [
     '/',
     '/index.html',
