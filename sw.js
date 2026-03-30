@@ -28,13 +28,26 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-    // STRATEGY: CACHE-FIRST for Navigation (index.html), Assets, and CSS
-    // This ensures the app OPENS instantly even if totally offline.
-    if (event.request.mode === 'navigate' || 
-        url.pathname.endsWith('.js') || 
-        url.pathname.endsWith('.css') || 
-        url.pathname.endsWith('.png') ||
-        url.pathname === '/logo.png') {
+    // CACHE-FIRST for Navigation (index.html), Assets, and CSS
+    // This ENSURES the app shell itself works even if you start offline from any URL like /home
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            caches.match('/').then((cached) => {
+                return cached || fetch(event.request).then((res) => {
+                    if (res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+                    }
+                    return res;
+                });
+            }).catch(() => caches.match('/')) // DEAD-OFFLINE Fallback to index
+        );
+        return;
+    }
+
+    // Cache-First for static assets to make them instant
+    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || 
+        url.pathname.endsWith('.png') || url.pathname === '/logo.png') {
         event.respondWith(
             caches.match(event.request).then((cached) => {
                 const fetched = fetch(event.request).then((res) => {
@@ -50,7 +63,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // STRATEGY: NETWORK-FIRST for API Data (Students, Subjects, etc)
+    // STRATEGY: NETWORK-FIRST for API Data
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(event.request)
