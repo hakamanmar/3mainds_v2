@@ -101,7 +101,22 @@ export const translations = {
         no_announcements: 'لا توجد إعلانات',
         linked_devices_count: 'الأجهزة',
         head_dept: 'رئيس القسم',
-        scan_attendance: 'تسجيل الحضور (QR)'
+        scan_attendance: 'تسجيل الحضور (QR)',
+        hello: 'مرحباً',
+        welcome_home: 'أهلاً بك في صفحتك الرئيسية',
+        subject: 'مادة',
+        view_lessons: 'عرض الدروس',
+        no_subjects_yet: 'لا توجد مواد دراسية حالياً',
+        subjects_added_soon: 'سيتم إضافة المواد الدراسية الخاصة بك قريباً.',
+        calculating: 'جاري الحساب...',
+        time_ended: 'انتهى الوقت',
+        time_left: 'بقي',
+        day_and: 'يوم و',
+        hour_and: 'ساعة و',
+        minute: 'دقيقة',
+        seconds: 'ثانية',
+        notifications: 'الإشعارات',
+        refresh_now: 'تحديث الآن'
     },
     en: {
         dir: 'ltr',
@@ -205,7 +220,22 @@ export const translations = {
         no_announcements: 'No Announcements',
         linked_devices_count: 'Devices',
         head_dept: 'Head of Department',
-        scan_attendance: 'Scan Attendance (QR)'
+        scan_attendance: 'Scan Attendance (QR)',
+        hello: 'Hello',
+        welcome_home: 'Welcome to your homepage',
+        subject: 'Subject',
+        view_lessons: 'View Lessons',
+        no_subjects_yet: 'No subjects yet',
+        subjects_added_soon: 'Your subjects will be added soon.',
+        calculating: 'Calculating...',
+        time_ended: 'Time Ended',
+        time_left: 'Left:',
+        day_and: 'Day and',
+        hour_and: 'Hour and',
+        minute: 'Minute',
+        seconds: 'Seconds',
+        notifications: 'Notifications',
+        refresh_now: 'Refresh Now'
     }
 };
 
