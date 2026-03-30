@@ -133,21 +133,35 @@
 
     <div id="root"></div>
 
-    <script type="module" src="/static/js/main.js?v=9.0"></script>
+    <script type="module" src="/static/js/main.js?v=11.0"></script>
     <script>
-        if ('serviceWorker' in navigator) {
+        // GLOBAL EMERGENCY PURGE v3 (To fix persistent Edge/PWA caching loop)
+        const PURGE_VERSION = 'v55';
+        if (localStorage.getItem('3minds_purge') !== PURGE_VERSION) {
+            console.warn('[PWA] Critical update detected: Purging old cache...');
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for (let reg of regs) reg.unregister();
+                    localStorage.setItem('3minds_purge', PURGE_VERSION);
+                    window.location.reload(true); // Force clean reload
+                });
+            } else {
+                localStorage.setItem('3minds_purge', PURGE_VERSION);
+                window.location.reload(true);
+            }
+        }
+
+        if ('serviceWorker' in navigator && localStorage.getItem('3minds_purge') === PURGE_VERSION) {
             navigator.serviceWorker.register('/sw.js').then(reg => {
                 reg.onupdatefound = () => {
                     const installingWorker = reg.installing;
                     installingWorker.onstatechange = () => {
                         if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('[PWA] New version found! Auto-reloading for university sync...');
                             window.location.reload();
                         }
                     };
                 };
             });
-
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
