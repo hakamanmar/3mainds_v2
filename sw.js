@@ -28,24 +28,35 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-    // Aggressive Strategy: Network First, then Cache
+    // STRATEGY: STALE-WHILE-REVALIDATE for Static Assets (Images, UI, Files)
+    // This makes it feel INSTANT like Telegram because it loads from cache first
+    if (!url.pathname.startsWith('/api/')) {
+        event.respondWith(
+            caches.match(event.request).then((cachedResponse) => {
+                const fetchedResponse = fetch(event.request).then((networkResponse) => {
+                    if (networkResponse.status === 200) {
+                        const cacheCopy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cacheCopy));
+                    }
+                    return networkResponse;
+                }).catch(() => null); // Fail silently if offline
+
+                return cachedResponse || fetchedResponse;
+            })
+        );
+        return;
+    }
+
+    // STRATEGY: NETWORK-FIRST for API Data
     event.respondWith(
         fetch(event.request)
             .then((res) => {
                 if (res.status === 200) {
                     const clone = res.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        // Store it! We use ignoreSearch later to match
-                        cache.put(event.request, clone);
-                    });
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                 }
                 return res;
             })
-            .catch(() => {
-                // If offline, look in cache. We try a direct match first, then ignoreSearch
-                return caches.match(event.request).then(matched => {
-                    return matched || caches.match(event.request, { ignoreSearch: true });
-                });
-            })
+            .catch(() => caches.match(event.request, { ignoreSearch: true }))
     );
 });
