@@ -137,7 +137,7 @@
     <script>
         // GLOBAL EMERGENCY PURGE v3 (To fix persistent Edge/PWA caching loop)
         const PURGE_VERSION = 'v55';
-        if (localStorage.getItem('3minds_purge') !== PURGE_VERSION) {
+        if (navigator.onLine && localStorage.getItem('3minds_purge') !== PURGE_VERSION) {
             console.warn('[PWA] Critical update detected: Purging old cache...');
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(regs => {
