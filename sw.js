@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v35'; // Purge cache globally for bug fix
+const CACHE_NAME = '3minds-v37'; // Global Purge v37
 const ASSETS = [
     '/',
     '/index.html',
@@ -14,57 +14,38 @@ const ASSETS = [
     '/pages/SectionManagementPage.js'
 ];
 
-self.addEventListener('install', (event) => {
-    // Force the waiting service worker to become the active service worker.
+self.addEventListener('install', (e) => {
     self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS);
-        })
-    );
+    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
-self.addEventListener('activate', (event) => {
-    // Clean up old caches
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        console.log('[PWA] Purging Ancient Cache:', cacheName);
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
-    // Control all pages immediately
+self.addEventListener('activate', (e) => {
+    e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))));
     self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
-
-    // Only handle GET requests and local origin
     if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-    // AGGRESSIVE STRATEGY: Try Network first, but ALWAYS cache and ALWAYS fallback
+    // Aggressive Strategy: Network First, then Cache
     event.respondWith(
         fetch(event.request)
             .then((res) => {
-                // If we got a valid response, cache it
-                if (res.status === 200 || res.status === 0) {
+                if (res.status === 200) {
                     const clone = res.clone();
                     caches.open(CACHE_NAME).then((cache) => {
+                        // Store it! We use ignoreSearch later to match
                         cache.put(event.request, clone);
                     });
                 }
                 return res;
             })
             .catch(() => {
-                // FALLBACK: Match from cache. IMPORTANT: Use ignoreSearch:true 
-                // to match URLs even if they have different timestamps (_=123)
-                return caches.match(event.request, { ignoreSearch: true });
+                // If offline, look in cache. We try a direct match first, then ignoreSearch
+                return caches.match(event.request).then(matched => {
+                    return matched || caches.match(event.request, { ignoreSearch: true });
+                });
             })
     );
 });
