@@ -28,11 +28,30 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (event.request.method !== 'GET' || url.origin !== location.origin) return;
 
-    // STRATEGY: NETWORK-FIRST for Core App Files (JS, CSS, HTML)
-    // This ensures updates are seen IMMEDIATELY without manual refresh.
-    if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || 
-        url.pathname === '/' || url.pathname === '/index.html' || 
-        url.pathname.startsWith('/api/')) {
+    // STRATEGY: CACHE-FIRST for Navigation (index.html), Assets, and CSS
+    // This ensures the app OPENS instantly even if totally offline.
+    if (event.request.mode === 'navigate' || 
+        url.pathname.endsWith('.js') || 
+        url.pathname.endsWith('.css') || 
+        url.pathname.endsWith('.png') ||
+        url.pathname === '/logo.png') {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                const fetched = fetch(event.request).then((res) => {
+                    if (res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    }
+                    return res;
+                }).catch(() => null);
+                return cached || fetched;
+            })
+        );
+        return;
+    }
+
+    // STRATEGY: NETWORK-FIRST for API Data (Students, Subjects, etc)
+    if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(event.request)
                 .then((res) => {
