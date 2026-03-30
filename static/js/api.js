@@ -43,46 +43,53 @@ export const auth = {
 
 export const api = {
     async _fetch(url, options = {}) {
-        // Handle Offline State gracefully
-        if (!navigator.onLine) {
-            console.warn('[Offline] Using local data for:', url);
-        }
-
         const user = auth.getUser();
-        let selectedSection = null;
-        let deviceId = null;
-        try {
-            selectedSection = localStorage.getItem('selected_section');
-            deviceId = localStorage.getItem('device_id');
-        } catch (e) { }
+        let selectedSection = localStorage.getItem('selected_section');
+        let deviceId = localStorage.getItem('device_id');
 
         const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-
         if (deviceId) headers['X-Device-ID'] = deviceId;
         if (user && user.role) headers['X-User-Role'] = user.role;
         const sectionId = (user && user.section_id) || selectedSection;
         if (sectionId) headers['X-Section-ID'] = sectionId;
 
+        const isGet = !options.method || options.method.toUpperCase() === 'GET';
+        const cacheKey = `cache_${url.split('?')[0]}`;
+        
         let finalUrl = url;
-        // Don't append timestamp when offline as it breaks cache matching
-        if (navigator.onLine && (options.method === 'GET' || !options.method)) {
+        if (navigator.onLine && isGet) {
             const separator = finalUrl.includes('?') ? '&' : '?';
             finalUrl += `${separator}t=${Date.now()}`;
         }
 
         try {
             const res = await fetch(finalUrl, { ...options, headers });
-            if (res.status === 401) {
-                auth.logout();
-                return;
-            }
+            
+            if (res.status === 401) { auth.logout(); return; }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw { status: res.status, message: err.error || err.message || res.statusText };
             }
-            return res.json();
+
+            const data = await res.json();
+            // Save to Persistent LocalStorage Cache if it's a GET request
+            if (isGet) {
+                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+            }
+            return data;
         } catch (e) {
-            // Let the Service Worker handle the offline fallback
+            // OFFLINE FALLBACK: Return data from LocalStorage if available
+            if (isGet) {
+                try {
+                    const cachedData = localStorage.getItem(cacheKey);
+                    if (cachedData) {
+                        console.log('[Bulletproof Cache] Serving from LocalStorage:', url);
+                        return JSON.parse(cachedData); 
+                    }
+                } catch(err) {}
+            }
+            // If it's lessons or assignments, return empty array to prevent map errors
+            if (url.includes('lessons') || url.includes('assignments') || url.includes('subjects') || url.includes('users')) return [];
             throw e;
         }
     },
