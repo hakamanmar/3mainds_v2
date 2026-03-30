@@ -152,7 +152,8 @@
         }
 
         if ('serviceWorker' in navigator && localStorage.getItem('3minds_purge') === PURGE_VERSION) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
+            // REGISTER THE NEW v2 SERVICE WORKER (Definitive Fix)
+            navigator.serviceWorker.register('/sw-v2.js').then(reg => {
                 reg.onupdatefound = () => {
                     const installingWorker = reg.installing;
                     installingWorker.onstatechange = () => {
