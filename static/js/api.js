@@ -389,5 +389,17 @@ export const api = {
     },
     async getMessageViews(msgId) {
         return this._fetch(`${API_BASE}/chat/messages/${msgId}/views`);
+    },
+    async getGroupMembers(sectionId) {
+        return this._fetch(`${API_BASE}/chat/groups/${sectionId}/members`);
+    },
+    async toggleChatLock(sectionId) {
+        return this._fetch(`${API_BASE}/chat/groups/${sectionId}/toggle-lock`, { method: 'POST' });
+    },
+    async renameGroup(sectionId, name) {
+        return this._fetch(`${API_BASE}/chat/groups/${sectionId}/rename`, {
+            method: 'PUT',
+            body: JSON.stringify({ name })
+        });
     }
 };
