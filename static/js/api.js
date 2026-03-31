@@ -380,5 +380,14 @@ export const api = {
     },
     async getMyChatGroups() {
         return this._fetch(`${API_BASE}/chat/my-groups`);
+    },
+    async markChatMessageRead(messageIds) {
+        return this._fetch(`${API_BASE}/chat/mark-read`, {
+            method: 'POST',
+            body: JSON.stringify({ message_ids: messageIds })
+        });
+    },
+    async getMessageViews(msgId) {
+        return this._fetch(`${API_BASE}/chat/messages/${msgId}/views`);
     }
 };
