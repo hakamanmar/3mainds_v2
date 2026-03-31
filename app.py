@@ -87,8 +87,8 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; "
         "font-src 'self' data: https://fonts.gstatic.com https://unpkg.com; "
         "img-src 'self' data: blob: https:; "
-        "media-src 'self' blob:; "
-        "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"
+        "media-src 'self' blob: https://raw.githubusercontent.com https://files.catbox.moe; "
+        "connect-src 'self' https: https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"
     )
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
@@ -1142,6 +1142,11 @@ def proxy_download():
     mode = request.args.get('mode', 'attachment') # attachment or inline
     if not url: return "Missing URL", 400
     
+    # 🚨 SECURITY SHIELD: Prevent SSRF (Only allow trusted storage domains)
+    allowed_domains = ['raw.githubusercontent.com', 'files.catbox.moe', 'res.cloudinary.com']
+    if not any(domain in url for domain in allowed_domains):
+        return "Unauthorized external domain", 403
+    
     try:
         # Spoof a real browser to avoid connection being aborted by hosts like Catbox
         headers_to_source = {
@@ -1709,6 +1714,9 @@ def transfer_student():
     finally:
         conn.close()
 
+@app.route('/api/admin/reset-device', methods=['POST'])
+@limiter.limit("20 per hour")
+@require_role('super_admin', 'section_admin', 'head_dept')
 def reset_device():
     data = request.json
     user_id = data.get('user_id')
