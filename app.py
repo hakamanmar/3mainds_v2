@@ -572,6 +572,21 @@ def init_db():
         c.executemany('INSERT INTO subjects (title, description, code, color, section_id) VALUES (?, ?, ?, ?, ?)', subjects)
         print("[DB] DEMO SUBJECTS SEEDED")
 
+    # ─── POWER SYNC: Fix Legacy Users ─────────────────────────
+    # Force-link users who might have section names as strings instead of IDs
+    sync_map = {
+        'أ صباحي': 'A_MORNING',
+        'ب صباحي': 'B_MORNING',
+        'أ مسائي': 'A_EVENING',
+        'ب مسائي': 'B_EVENING',
+        'A Morning': 'A_MORNING',
+        'B Morning': 'B_MORNING',
+        'A Evening': 'A_EVENING',
+        'B Evening': 'B_EVENING'
+    }
+    for name, sid in sync_map.items():
+        c.execute("UPDATE users SET section_id = ? WHERE section_id LIKE ? AND role = 'student'", (sid, f'%{name}%'))
+    
     conn.commit()
     conn.close()
 
