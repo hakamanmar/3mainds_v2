@@ -44,6 +44,7 @@ class Router {
         this.initTheme();
         this.initNotifications();
         this.initPWA();
+        this.initPush(); // Initialize Web Push VAPID sistema
         this.updateNav();
         this.resolve();
     }
@@ -306,7 +307,59 @@ class Router {
         // Trigger Guide on iOS manually
         const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
         const isInStandaloneMode = ('standalone' in navigator) && navigator.standalone;
-        if (isIOS && !isInStandaloneMode && triggerBtn) triggerBtn.style.display = 'flex';
+        if (isIOS && !isInStandaloneMode && triggerBtn) {
+            triggerBtn.style.display = 'flex';
+            // Also notify that push needs PWA on iOS
+            setTimeout(() => {
+                 UI.toast('للإشعارات على الآيفون: أضف التطبيق للشاشة الرئيسية', 'warning');
+            }, 8000);
+        }
+    }
+
+    async initPush() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.log('[PUSH] Web Push not supported in this browser.');
+            return;
+        }
+
+        try {
+            const user = auth.getUser();
+            if (!user) return;
+
+            // Wait for sw to be ready
+            const registration = await navigator.serviceWorker.ready;
+            
+            // Check current subscription
+            let subscription = await registration.pushManager.getSubscription();
+            
+            if (!subscription) {
+                // Request Public Key
+                const { publicKey } = await import('/static/js/api.js').then(m => m.api.getPushPublicKey());
+                
+                // Subscribe
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: this.urlBase64ToUint8Array(publicKey)
+                });
+                
+                // Send to server
+                await import('/static/js/api.js').then(m => m.api.subscribePush(subscription));
+                console.log('[PUSH] Subscribed successfully!');
+            }
+        } catch (err) {
+            console.error('[PUSH] Failed to subscribe:', err);
+        }
+    }
+
+    urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
     }
 
     showInstallGuide() {
@@ -520,10 +573,12 @@ class Router {
                 <div class="nav-links-container">
                     ${links}
                 </div>
-                <button class="btn btn-primary logout-btn" data-action="logout" style="margin-top:auto;">
-                    <i class="ph ph-sign-out"></i>
-                    <span>${i18n.t('logout')}</span>
-                </button>
+                <div class="mobile-only-logout" style="padding: 1rem; margin-top: auto; border-top: 1px solid var(--border);">
+                    <button class="btn btn-danger logout-btn" data-action="logout" style="width: 100%; justify-content: center; background: #ef4444; color: white; border: none; padding: 0.85rem; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                        <i class="ph-bold ph-sign-out"></i>
+                        <span>${i18n.t('logout')}</span>
+                    </button>
+                </div>
             `;
         } else {
             navHtml += `
