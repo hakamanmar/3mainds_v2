@@ -1079,11 +1079,15 @@ def get_lessons(subject_id):
 def upload_file_to_external(file):
     """Securely uploads files to Cloudinary for permanent hosting and instant student previews."""
     try:
-        # Determine resource type (image, video, or raw for PDF/Docs)
-        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        # Determine resource type
+        filename = secure_filename(file.filename)
+        ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        
+        # Cloudinary TRICK: Uploading PDF as 'image' allows better viewing/previews as PDFs.
+        # Images/Videos use their respective types, others use 'auto'.
         resource_type = "auto"
-        if ext in ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar']:
-            resource_type = "raw"
+        if ext == 'pdf':
+            resource_type = "image"
         elif ext in ['mp4', 'webm', 'mov', 'avi']:
             resource_type = "video"
             
@@ -1091,6 +1095,8 @@ def upload_file_to_external(file):
             file, 
             resource_type=resource_type,
             folder="3minds_uploads",
+            # We enforce a clean public_id with the correct extension for browser detection
+            public_id=f"{uuid.uuid4().hex}_{filename}",
             use_filename=True,
             unique_filename=True
         )
