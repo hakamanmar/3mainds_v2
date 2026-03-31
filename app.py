@@ -522,6 +522,18 @@ def init_db():
         )
     ''')
 
+    # 18. Push Notification Subscriptions
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subscription_json TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id)
+        )
+    ''')
+
     # 10. Grading Layer (New separate structure)
     c.execute('''
         CREATE TABLE IF NOT EXISTS submission_grades (
