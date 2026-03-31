@@ -156,11 +156,12 @@ const SubjectPage = async (params) => {
                                         </div>
                                         <div class="row-right">
                                             <div class="row-actions">
-                                                <a href="${item.url}" target="_blank" 
+                                                <a href="/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.title)}.pdf&mode=inline&v=${Date.now()}" 
+                                                   target="_blank" 
                                                    class="glass-action-btn view" title="${i18n.t('view')}">
                                                     <i class="ph-bold ph-eye"></i>
                                                 </a>
-                                                <a href="/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.title)}.pdf&v=${Date.now()}" 
+                                                <a href="/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.title)}.pdf&mode=attachment&v=${Date.now()}" 
                                                    target="_blank"
                                                    class="glass-action-btn download" title="${i18n.t('download')}">
                                                     <i class="ph-bold ph-download-simple"></i>
