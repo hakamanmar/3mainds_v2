@@ -117,6 +117,22 @@ export default function ChatPage() {
                 .message-actions { position: absolute; top: -10px; right: 0; display: none; gap: 5px; background: rgba(15, 23, 42, 0.9); padding: 5px; border-radius: 8px; border: 1px solid var(--primary); }
                 .message-bubble:hover .message-actions { display: flex; }
                 .msg-deleted-content { font-style: italic; opacity: 0.5; font-size: 0.9rem; }
+                .icon-btn { 
+                    background: rgba(255,255,255,0.1); 
+                    border: 1px solid rgba(255,255,255,0.15); 
+                    color: #e2e8f0 !important; 
+                    width: 36px; height: 36px; 
+                    border-radius: 10px; 
+                    display: inline-flex; align-items: center; justify-content: center;
+                    font-size: 1.1rem; cursor: pointer; 
+                    transition: all 0.2s;
+                }
+                .icon-btn:hover { 
+                    background: rgba(79, 70, 229, 0.3); 
+                    border-color: var(--primary); 
+                    color: white !important;
+                    transform: translateY(-1px);
+                }
             </style>
         `;
         scrollToBottom();
