@@ -365,6 +365,12 @@ def init_db():
     except Exception:
         c.execute('ALTER TABLE announcements ADD COLUMN target_date TIMESTAMP')
 
+    # Add is_locked column to sections if it doesn't exist
+    try:
+        c.execute('SELECT is_locked FROM sections LIMIT 1')
+    except Exception:
+        c.execute('ALTER TABLE sections ADD COLUMN is_locked INTEGER DEFAULT 0')
+
     # Add publisher_id column if it doesn't exist
     try:
         c.execute('SELECT publisher_id FROM announcements LIMIT 1')
