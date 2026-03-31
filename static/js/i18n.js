@@ -116,7 +116,12 @@ export const translations = {
         minute: 'دقيقة',
         seconds: 'ثانية',
         notifications: 'الإشعارات',
-        refresh_now: 'تحديث الآن'
+        refresh_now: 'تحديث الآن',
+        group_chat: 'دردشة الشعبة',
+        chat_title: 'المحادثات المباشرة',
+        send_message: 'إرسال رسالة',
+        mute_chat: 'كتم الإشعارات',
+        unmute_chat: 'تفعيل الإشعارات'
     },
     en: {
         dir: 'ltr',
@@ -235,7 +240,12 @@ export const translations = {
         minute: 'Minute',
         seconds: 'Seconds',
         notifications: 'Notifications',
-        refresh_now: 'Refresh Now'
+        refresh_now: 'Refresh Now',
+        group_chat: 'Group Chat',
+        chat_title: 'Live Chat',
+        send_message: 'Send Message',
+        mute_chat: 'Mute Chat',
+        unmute_chat: 'Unmute Chat'
     }
 };
 
