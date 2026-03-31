@@ -3125,6 +3125,28 @@ def get_student_profile():
     finally:
         conn.close()
 
+# ─── Debug Endpoint (Temporary) ──────────────────────────────
+@app.route('/api/debug/users-sections', methods=['GET'])
+def debug_users_sections():
+    """Temporary diagnostic: shows all users and their section_ids"""
+    ctx = get_user_context()
+    if ctx['role'] not in ['super_admin', 'head_dept']:
+        return jsonify({'error': 'Unauthorized'}), 401
+    conn = get_db()
+    try:
+        users = conn.execute('''
+            SELECT id, email, role, section_id, full_name 
+            FROM users 
+            ORDER BY role, section_id
+        ''').fetchall()
+        sections = conn.execute('SELECT id, name FROM sections').fetchall()
+        return jsonify({
+            'sections_in_db': [dict(s) for s in sections],
+            'users': [dict(u) for u in users]
+        })
+    finally:
+        conn.close()
+
 # ─── Chat System API ──────────────────────────────────────────
 
 @app.route('/api/chat/messages', methods=['GET'])
