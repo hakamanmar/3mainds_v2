@@ -52,9 +52,21 @@ export default function ChatPage() {
                     <div class="chat-header" style="height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); z-index: 10;">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <i class="ph-bold ph-chat-circle" style="color: var(--primary); font-size: 1.4rem;"></i>
-                            <h3 style="color: white; margin: 0;">${groups.find(g => g.id === selectedGroupId)?.name || 'دردشة الشعبة'}</h3>
+                            <h3 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                                ${groups.find(g => g.id === selectedGroupId)?.name || 'دردشة الشعبة'}
+                                ${groups.find(g => g.id === selectedGroupId)?.is_locked ? '<i class="ph ph-lock" style="font-size: 0.9rem; color: var(--red);"></i>' : ''}
+                                ${isAdmin ? `<button class="icon-btn" onclick="window.chat_renameGroup()" style="font-size: 1rem;"><i class="ph ph-pencil-simple"></i></button>` : ''}
+                            </h3>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="icon-btn" onclick="window.chat_viewMembers()" title="قائمة الأعضاء">
+                                <i class="ph ph-users-three"></i>
+                            </button>
+                            ${isAdmin ? `
+                            <button class="icon-btn" onclick="window.chat_toggleLock()" title="${groups.find(g => g.id === selectedGroupId)?.is_locked ? 'فتح الدردشة' : 'قفل الدردشة'}">
+                                <i class="ph ${groups.find(g => g.id === selectedGroupId)?.is_locked ? 'ph-lock-open' : 'ph-lock'}" style="color: ${groups.find(g => g.id === selectedGroupId)?.is_locked ? '#10b981' : '#f59e0b'}"></i>
+                            </button>
+                            ` : ''}
                             <button id="mute-toggle" class="icon-btn" onclick="window.chat_toggleMute()" title="كتم الإشعارات">
                                 <i class="ph ${groups.find(g => g.id === selectedGroupId)?.is_muted ? 'ph-bell-slash' : 'ph-bell'}" style="color: ${groups.find(g => g.id === selectedGroupId)?.is_muted ? 'var(--red)' : '#fff'}"></i>
                             </button>
@@ -63,6 +75,13 @@ export default function ChatPage() {
 
                     <!-- Messages Container -->
                     <div id="chat-messages-container" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; position: relative;">
+                        ${groups.find(g => g.id === selectedGroupId)?.is_locked ? `
+                        <div style="text-align: center; margin-bottom: 20px; animation: fadeIn 0.5s;">
+                            <span style="background: rgba(244, 63, 94, 0.1); color: var(--red); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(244, 63, 94, 0.2);">
+                                <i class="ph ph-lock"></i> الدردشة مقفلة من قبل المسؤول
+                            </span>
+                        </div>
+                        ` : ''}
                         ${messages.length === 0 ? `
                             <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
                                 <i class="ph ph-chat-centered-dots" style="font-size: 3rem; display: block; margin-bottom: 10px;"></i>
@@ -266,6 +285,66 @@ export default function ChatPage() {
             UI.toast(res.is_muted ? 'تم كتم الدردشة' : 'تم تفعيل التنبيهات', 'success');
             render();
         } catch (e) {}
+    };
+
+    window.chat_viewMembers = async () => {
+        try {
+            const members = await api.getGroupMembers(selectedGroupId);
+            const content = members.length > 0 
+                ? members.map(m => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary); display: grid; place-items: center; font-weight: bold; color: white;">
+                                ${m.full_name[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <div style="color: white; font-weight: 600; font-size: 0.9rem;">${m.full_name}</div>
+                                <div style="color: #94a3b8; font-size: 0.7rem;">${m.email}</div>
+                            </div>
+                        </div>
+                        <span style="font-size: 0.7rem; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 10px;">
+                            ${m.role === 'student' ? 'طالب' : 'مسؤول'}
+                        </span>
+                    </div>
+                `).join('')
+                : '<p style="text-align: center; color: #94a3b8; padding: 20px;">لا يوجد أعضاء في هذه المجموعة</p>';
+
+            UI.modal({
+                title: 'أعضاء المجموعة',
+                content: `<div style="max-height: 400px; overflow-y: auto;">${content}</div>`,
+                actions: [{ label: 'إغلاق', type: 'primary', close: true }]
+            });
+        } catch (e) {
+            UI.toast('فشل جلب قائمة الأعضاء', 'error');
+        }
+    };
+
+    window.chat_toggleLock = async () => {
+        try {
+            const res = await api.toggleChatLock(selectedGroupId);
+            const g = groups.find(x => x.id === selectedGroupId);
+            if (g) g.is_locked = res.is_locked;
+            UI.toast(res.is_locked ? 'تم قفل الدردشة بنجاح' : 'تم فتح الدردشة بنجاح', 'success');
+            render();
+        } catch (e) {
+            UI.toast('فشل تغيير حالة القفل', 'error');
+        }
+    };
+
+    window.chat_renameGroup = async () => {
+        const currentName = groups.find(g => g.id === selectedGroupId)?.name || '';
+        const newName = prompt('تغيير اسم المجموعة:', currentName);
+        if (newName && newName.trim() !== currentName) {
+            try {
+                await api.renameGroup(selectedGroupId, newName.trim());
+                const g = groups.find(x => x.id === selectedGroupId);
+                if (g) g.name = newName.trim();
+                UI.toast('تم تغيير الاسم بنجاح', 'success');
+                render();
+            } catch (e) {
+                UI.toast('فشل تغيير الاسم', 'error');
+            }
+        }
     };
 
     // Cleanup on destroy
