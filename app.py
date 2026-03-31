@@ -3063,6 +3063,157 @@ def get_student_profile():
     finally:
         conn.close()
 
+# ─── Chat System API ──────────────────────────────────────────
+
+@app.route('/api/chat/messages', methods=['GET'])
+def get_chat_messages():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Super Admin and Head Dept can view any section
+    section_id = ctx['section_id']
+    if ctx['role'] in ['super_admin', 'head_dept']:
+        requested_sid = request.args.get('section_id')
+        if requested_sid: section_id = requested_sid
+
+    if not section_id:
+        return jsonify({'error': 'Section ID required'}), 400
+
+    conn = get_db()
+    try:
+        limit = int(request.args.get('limit', 50))
+        messages = conn.execute('''
+            SELECT m.*, u.full_name as sender_name, u.role as sender_role
+            FROM chat_messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.section_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT ?
+        ''', (section_id, limit)).fetchall()
+        
+        # Sort messages by time ascending for the UI
+        res = [dict(m) for m in messages]
+        res.reverse()
+        return jsonify(res)
+    finally:
+        conn.close()
+
+@app.route('/api/chat/messages', methods=['POST'])
+def send_chat_message():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.json
+    content = data.get('content')
+    # Default to user's section, admins can specify
+    section_id = ctx['section_id']
+    if ctx['role'] in ['super_admin', 'head_dept'] and data.get('section_id'):
+        section_id = data.get('section_id')
+
+    if not content or not section_id:
+        return jsonify({'error': 'Missing content or section'}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO chat_messages (section_id, sender_id, content)
+            VALUES (?, ?, ?)
+        ''', (section_id, ctx['user_id'], content))
+        msg_id = cur.lastrowid
+        conn.commit()
+        return jsonify({'success': True, 'id': msg_id})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/messages/<int:msg_id>', methods=['PUT', 'DELETE'])
+def manage_chat_message(msg_id):
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = get_db()
+    try:
+        # Check ownership
+        msg = conn.execute('SELECT * FROM chat_messages WHERE id = ?', (msg_id,)).fetchone()
+        if not msg:
+            return jsonify({'error': 'Message not found'}), 404
+        
+        is_owner = (msg['sender_id'] == ctx['user_id'])
+        is_admin = (ctx['role'] in ['super_admin', 'head_dept'])
+        
+        if request.method == 'DELETE':
+            if not is_owner and not is_admin:
+                return jsonify({'error': 'Forbidden'}), 403
+            conn.execute('UPDATE chat_messages SET is_deleted = 1 WHERE id = ?', (msg_id,))
+            conn.commit()
+            return jsonify({'success': True})
+            
+        elif request.method == 'PUT':
+            if not is_owner:
+                return jsonify({'error': 'Forbidden'}), 403
+            content = request.json.get('content')
+            if not content: return jsonify({'error': 'Empty content'}), 400
+            conn.execute('''
+                UPDATE chat_messages 
+                SET content = ?, is_edited = 1, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ''', (content, msg_id))
+            conn.commit()
+            return jsonify({'success': True})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/settings/toggle-mute', methods=['POST'])
+def toggle_chat_mute():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    section_id = request.json.get('section_id') or ctx['section_id']
+    if not section_id: return jsonify({'error': 'Section ID required'}), 400
+    
+    conn = get_db()
+    try:
+        conn.execute('''
+            INSERT INTO chat_settings (user_id, section_id, is_muted)
+            VALUES (?, ?, 1)
+            ON CONFLICT(user_id, section_id) DO UPDATE SET is_muted = 1 - is_muted
+        ''', (ctx['user_id'], section_id))
+        conn.commit()
+        
+        status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
+                             (ctx['user_id'], section_id)).fetchone()
+        return jsonify({'success': True, 'is_muted': bool(status['is_muted'])})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/my-groups', methods=['GET'])
+def get_my_chat_groups():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = get_db()
+    try:
+        if ctx['role'] in ['super_admin', 'head_dept']:
+            groups = conn.execute('SELECT id, name FROM sections').fetchall()
+        else:
+            groups = conn.execute('SELECT id, name FROM sections WHERE id = ?', (ctx['section_id'],)).fetchall()
+        
+        res = []
+        for g in groups:
+            mute_status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
+                                     (ctx['user_id'], g['id'])).fetchone()
+            res.append({
+                'id': g['id'],
+                'name': g['name'],
+                'is_muted': bool(mute_status['is_muted']) if mute_status else False
+            })
+        return jsonify(res)
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5000)
 
