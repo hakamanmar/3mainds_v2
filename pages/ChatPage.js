@@ -311,7 +311,7 @@ export default function ChatPage() {
 
             UI.modal({
                 title: 'أعضاء المجموعة',
-                content: `<div style="max-height: 400px; overflow-y: auto;">${content}</div>`,
+                body: `<div style="max-height: 400px; overflow-y: auto;">${content}</div>`,
                 actions: [{ label: 'إغلاق', type: 'primary', close: true }]
             });
         } catch (e) {
