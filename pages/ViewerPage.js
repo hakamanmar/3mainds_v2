@@ -18,7 +18,8 @@ const ViewerPage = async (params) => {
     // ── For any external link (PDF, Catbox, DOCX...) ─────────────────────────
     // Instead of trying to embed it (which gets blocked), redirect immediately.
     if (fileType === 'external') {
-        window.open(fileUrl, '_blank');
+        const proxyUrl = `/api/download?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(fileName)}&mode=inline&t=${Date.now()}`;
+        window.open(proxyUrl, '_blank');
         window.history.back();
         return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:1.5rem;text-align:center;padding:2rem;">
             <i class="ph ph-arrow-square-out" style="font-size:4rem;color:var(--primary);"></i>
