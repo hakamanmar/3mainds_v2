@@ -122,7 +122,14 @@ export default function ChatPage() {
                 ${!isOwn ? `<span class="msg-sender">${m.sender_name} ${isAdminMsg ? '<span class="msg-admin-tag">مسؤول</span>' : ''}</span>` : ''}
                 <div class="msg-content">${m.content}</div>
                 ${m.is_edited ? '<span style="font-size: 0.6rem; opacity: 0.5;">(تم التعديل)</span>' : ''}
-                <span class="msg-time">${msgTime}</span>
+                
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin-top: 4px;">
+                    <span class="msg-time" style="margin:0;">${msgTime}</span>
+                    <div class="msg-views" onclick="window.chat_showViews(${m.id})" style="cursor: pointer; display: flex; align-items: center; gap: 3px; font-size: 0.65rem; opacity: 0.7;">
+                        <i class="ph-bold ph-checks" style="color: ${m.views_count > 0 ? '#00f2ff' : '#aaa'};"></i>
+                        <span>${m.views_count}</span>
+                    </div>
+                </div>
 
                 <!-- Actions -->
                 ${(isOwn || ['super_admin', 'head_dept'].includes(user.role)) ? `
@@ -145,8 +152,8 @@ export default function ChatPage() {
             groups = await api.getMyChatGroups();
             if (groups.length > 0) {
                 // Determine starting group
-                selectedGroupId = user.section_id || groups[0].id;
-                await refreshMessages();
+                selectedGroupId = user.section_id || (groups.length > 0 ? groups[0].id : null);
+                if (selectedGroupId) await refreshMessages();
             }
             render();
             startPolling();
@@ -163,13 +170,47 @@ export default function ChatPage() {
             if (JSON.stringify(newMessages) !== JSON.stringify(messages)) {
                 messages = newMessages;
                 render();
+                // Mark new messages as read
+                const unreadIds = messages.map(m => m.id);
+                if (unreadIds.length > 0) api.markChatMessageRead(unreadIds);
             }
         } catch (e) {}
     };
 
     const startPolling = () => {
         if (pollInterval) clearInterval(pollInterval);
-        pollInterval = setInterval(refreshMessages, 4000); // 4 seconds for responsiveness
+        pollInterval = setInterval(refreshMessages, 4000); 
+    };
+
+    // Global listeners
+    window.chat_showViews = async (id) => {
+        try {
+            const viewers = await api.getMessageViews(id);
+            const content = viewers.length > 0 
+                ? viewers.map(v => `
+                    <div style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span style="color: white; font-weight: 600;">${v.full_name}</span>
+                        <span style="font-size: 0.7rem; color: #94a3b8;">${new Date(v.read_at).toLocaleString()}</span>
+                    </div>
+                `).join('')
+                : '<p style="text-align: center; color: #94a3b8; padding: 20px;">لم يشاهد أحد الرسالة بعد</p>';
+            
+            const modal = document.createElement('div');
+            modal.id = 'chat-views-modal';
+            modal.style = "position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:99999; display:flex; align-items:center; justify-content:center; padding:1.5rem; backdrop-filter:blur(8px);";
+            modal.innerHTML = `
+                <div class="card" style="max-width:400px; width:100%; border: 1px solid var(--primary); background: #0f172a; padding: 0; overflow: hidden; animation: popIn 0.3s ease;">
+                    <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to right, var(--primary), var(--secondary));">
+                        <h3 style="margin: 0; color: white; font-size: 1rem;">من شاهد الرسالة؟</h3>
+                        <button onclick="document.getElementById('chat-views-modal').remove()" style="background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer;">✕</button>
+                    </div>
+                    <div style="max-height: 400px; overflow-y: auto; padding: 10px;">${content}</div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        } catch (e) {
+            UI.toast('فشل جلب المشاهدات', 'error');
+        }
     };
 
     // Global listeners
