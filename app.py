@@ -1136,28 +1136,35 @@ def upload_file_to_external(file):
 
 @app.route('/api/download')
 def proxy_download():
-    """Proxy downloader to enforce original filenames from GitHub/Catbox."""
+    """Proxy downloader/viewer to enforce original filenames and bypass bot detection."""
     url = request.args.get('url')
     name = request.args.get('name', 'file.pdf')
+    mode = request.args.get('mode', 'attachment') # attachment or inline
     if not url: return "Missing URL", 400
     
     try:
-        # Stream the file from the external source
-        resp = requests.get(url, stream=True, timeout=30)
-        # Prepare response headers
-        headers = dict(resp.headers)
-        # Overwrite content disposition to force download with custom name
-        # We use 'latin-1' or quoted name for non-ascii (Arabic) headers
+        # Spoof a real browser to avoid connection being aborted by hosts like Catbox
+        headers_to_source = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*"
+        }
+        resp = requests.get(url, stream=True, timeout=60, headers=headers_to_source)
+        
+        # Prepare headers for the final client
         from urllib.parse import quote
         safe_name = quote(name)
-        headers['Content-Disposition'] = f'attachment; filename="{safe_name}"; filename*=UTF-8\'\'{safe_name}'
+        client_headers = {
+            "Content-Type": resp.headers.get('Content-Type', 'application/pdf'),
+            "Content-Disposition": f'{mode}; filename="{safe_name}"; filename*=UTF-8\'\'{safe_name}'
+        }
         
         def generate():
-            for chunk in resp.iter_content(chunk_size=8192):
+            for chunk in resp.iter_content(chunk_size=16384): # Bigger chunks for speed
                 yield chunk
         
-        return Response(generate(), headers=headers)
+        return Response(generate(), headers=client_headers)
     except Exception as e:
+        print(f"[DOWNLOAD_PROXY_FAIL] {e}")
         return f"Download failed: {e}", 500
 
 @app.route('/api/admin/add-lesson', methods=['POST'])
