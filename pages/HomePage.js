@@ -169,22 +169,34 @@ const HomePage = async () => {
     }
 
     return `
-        ${attendanceBanner}
-        ${announcementsHTML}
-
-        <div class="page-header">
-            <div>
-                <h1>${i18n.t('subjects')}</h1>
-                <p class="text-muted">${i18n.t('hello')} <strong>${welcomeName}</strong> — ${i18n.t('welcome_home')}</p>
+        <div class="container mobile-safe-padding">
+            <div class="welcome-header-v2">
+                <div class="welcome-text">
+                    <h1>${i18n.t('hello')} ${welcomeName}! <span class="wave">👋</span></h1>
+                    <p>${i18n.t('welcome_home')}</p>
+                </div>
+                <div class="profile-avatar-mini" data-path="/results" style="cursor:pointer">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}" alt="Avatar">
+                </div>
             </div>
-            <div class="subjects-count">
-                <i class="ph ph-books"></i>
-                <span>${subjects.length} ${i18n.t('subject')}</span>
-            </div>
-        </div>
 
-        <div class="subjects-grid">
-            ${subjects.map((subject, idx) => {
+            ${attendanceBanner}
+            ${chatBanner}
+            ${announcementsHTML}
+
+            <div class="page-header">
+                <div>
+                    <h1>${i18n.t('subjects')}</h1>
+                    <p class="text-muted">${i18n.t('hello')} <strong>${welcomeName}</strong> — ${i18n.t('welcome_home')}</p>
+                </div>
+                <div class="subjects-count">
+                    <i class="ph ph-books"></i>
+                    <span>${subjects.length} ${i18n.t('subject')}</span>
+                </div>
+            </div>
+
+            <div class="subjects-grid">
+                ${subjects.map((subject, idx) => {
         const icon = subjectIcons[idx % subjectIcons.length];
         return `
                     <div class="subject-card" data-path="/subject/${subject.id}"
