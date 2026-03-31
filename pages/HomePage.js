@@ -156,14 +156,50 @@ const HomePage = async () => {
         </style>
     ` : '';
 
+    const chatBanner = `
+        <div class="chat-entry-card fade-in" style="margin-bottom: 2rem; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid rgba(79, 70, 229, 0.4); border-radius: 20px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div style="position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 50%, rgba(79, 70, 229, 0.15) 0%, transparent 50%); pointer-events: none;"></div>
+            <div style="display: flex; align-items: center; gap: 1.25rem; position: relative; z-index: 2;">
+                <div class="chat-pulse-icon" style="background: rgba(79, 70, 229, 0.2); width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.3); box-shadow: 0 0 20px rgba(79, 70, 229, 0.2);">
+                    <i class="ph-bold ph-chats-teardrop"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: white; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px;">${i18n.t('group_chat')}</h3>
+                    <p style="margin: 0; color: #94a3b8; font-size: 0.9rem;">${i18n.lang === 'ar' ? 'تواصل مع زملائك في الشعبة الآن' : 'Connect with your classmates now'}</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" data-path="/chat" style="position: relative; z-index: 2; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); transition: transform 0.2s;">
+                <i class="ph ph-arrow-square-out"></i>
+                ${i18n.lang === 'ar' ? 'دخول الدردشة' : 'Join Chat'}
+            </button>
+        </div>
+        <style>
+            .chat-pulse-icon i { animation: chatPulse 2.5s infinite; }
+            @keyframes chatPulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+            .chat-entry-card:hover { border-color: var(--primary); transform: translateY(-2px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        </style>
+    `;
+
     if (subjects.length === 0) {
         return `
-            ${attendanceBanner}
-            ${announcementsHTML}
-            <div class="empty-state">
-                <i class="ph ph-books"></i>
-                <h2>${i18n.t('no_subjects_yet')}</h2>
-                <p>${i18n.t('subjects_added_soon')}</p>
+            <div class="container mobile-safe-padding">
+                <div class="welcome-header-v2">
+                    <div class="welcome-text">
+                        <h1>${i18n.t('hello')} ${welcomeName}! <span class="wave">👋</span></h1>
+                        <p>${i18n.t('welcome_home')}</p>
+                    </div>
+                    <div class="profile-avatar-mini" data-path="/results" style="cursor:pointer">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}" alt="Avatar">
+                    </div>
+                </div>
+                ${attendanceBanner}
+                ${chatBanner}
+                ${announcementsHTML}
+                <div class="empty-state">
+                    <i class="ph ph-books"></i>
+                    <h2>${i18n.t('no_subjects_yet')}</h2>
+                    <p>${i18n.t('subjects_added_soon')}</p>
+                </div>
             </div>
         `;
     }
