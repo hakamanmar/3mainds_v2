@@ -1076,38 +1076,51 @@ def get_lessons(subject_id):
     conn.close()
     return jsonify([dict(l) for l in lessons])
 
+# ─── GITHUB STORAGE CONFIGURATION ──────────────────────────────
+GITHUB_TOKEN = "ghp_8cBBci1ccng9f2JxroI4SqRi8oMnri1Y09Kg"
+GITHUB_REPO = "hakamanmar15-max/3minds_data"  # format: username/repo
+
 def upload_file_to_external(file):
-    """Securely uploads files to Cloudinary for permanent hosting and instant student previews."""
+    """Securely uploads files to GitHub Repository for permanent, unblocked hosting in Iraq."""
     try:
-        # Determine resource type
         filename = secure_filename(file.filename)
-        ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        # Use UUID to prevent name collisions
+        unique_name = f"{uuid.uuid4().hex}_{filename}"
+        path = f"materials/{unique_name}"
         
-        # Cloudinary TRICK: Uploading PDF as 'image' allows better viewing/previews as PDFs.
-        # Images/Videos use their respective types, others use 'auto'.
-        resource_type = "auto"
-        if ext == 'pdf':
-            resource_type = "image"
-        elif ext in ['mp4', 'webm', 'mov', 'avi']:
-            resource_type = "video"
-            
-        result = cloudinary.uploader.upload(
-            file, 
-            resource_type=resource_type,
-            folder="3minds_uploads",
-            # We enforce a clean public_id with the correct extension for browser detection
-            public_id=f"{uuid.uuid4().hex}_{filename}",
-            use_filename=True,
-            unique_filename=True
-        )
-        return result.get('secure_url')
+        # Read file content and encode to Base64 (GitHub API Requirement)
+        content = file.read()
+        import base64
+        encoded_content = base64.b64encode(content).decode('utf-8')
+        
+        # Reset file pointer if needed (though we already read it)
+        
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        data = {
+            "message": f"Upload: {filename}",
+            "content": encoded_content
+        }
+        
+        response = requests.put(url, json=data, headers=headers, timeout=30)
+        
+        if response.status_code in [200, 201]:
+            # Construct the raw content URL (Publicly accessible if repo is public)
+            raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
+            return raw_url
+        else:
+            print(f"[GITHUB] Upload failed with status {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"[CLOUDINARY] Upload failed: {e}")
-        # Fallback to local /tmp (last resort, won't persist on Vercel)
-        secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
-        return f"/uploads/{secure_name}"
+        print(f"[GITHUB] Exception during upload: {e}")
+
+    # Fallback to local /tmp (last resort, ephemeral)
+    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
+    return f"/uploads/{secure_name}"
 
 @app.route('/api/admin/add-lesson', methods=['POST'])
 @limiter.limit("30 per hour")
