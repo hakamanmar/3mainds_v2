@@ -3239,21 +3239,28 @@ def get_chat_group_members(sid):
     
     conn = get_db()
     try:
-        # Security: admin or member
-        is_member = (ctx['section_id'] == sid)
+        # Everyone in the group or admin can see the member list
         is_admin = (ctx['role'] in ['super_admin', 'head_dept'])
+        is_member = (ctx['section_id'] == sid)
+        
         if not is_member and not is_admin:
             return jsonify({'error': 'Forbidden'}), 403
             
+        # SMART SEARCH: Look for students by section_id
+        # Fallback to name search if id is suspicious
         members = conn.execute('''
             SELECT id, 
                    COALESCE(NULLIF(full_name, ''), email) as full_name,
                    email, role, created_at 
             FROM users 
-            WHERE section_id = ? 
-            ORDER BY full_name ASC
-        ''', (sid,)).fetchall()
+            WHERE section_id = ? OR section_id = (SELECT name FROM sections WHERE id = ?)
+            ORDER BY role DESC, full_name ASC
+        ''', (sid, sid)).fetchall()
+        
         return jsonify([dict(m) for m in members])
+    except Exception as e:
+        app.logger.error(f"Error in get_chat_group_members: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
     finally:
         conn.close()
 
