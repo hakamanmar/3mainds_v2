@@ -1084,12 +1084,18 @@ def upload_file_to_external(file):
     """Securely uploads files to GitHub Repository for permanent, unblocked hosting in Iraq."""
     try:
         import base64
+        # Ensure we are at the start of the file
+        file.seek(0)
+        
         filename = secure_filename(file.filename)
         unique_name = f"{uuid.uuid4().hex}_{filename}"
         path = f"materials/{unique_name}"
         
         # Read and Encode
         content = file.read()
+        if not content:
+            raise Exception("File content is empty")
+            
         encoded_content = base64.b64encode(content).decode('utf-8')
         
         # GitHub API Endpoint
@@ -1097,31 +1103,29 @@ def upload_file_to_external(file):
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "3Minds-Academic-Platform" # Mandatory for GitHub API
+            "User-Agent": "3Minds-Academic-Platform"
         }
         data = {
-            "message": f"Upload: {filename} into materials",
+            "message": f"Upload: {filename}",
             "content": encoded_content,
-            "branch": "main" # Ensuring we target main
+            "branch": "main"
         }
         
-        # Perform PUT request
-        response = requests.put(url, json=data, headers=headers, timeout=40)
+        # Perform PUT request with extended timeout for Iraq interent
+        response = requests.put(url, json=data, headers=headers, timeout=60)
         
         if response.status_code in [200, 201]:
-            # Construct the raw final URL
-            # Note: For public repos, this works instantly. For private, we would need a different proxy.
-            raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
-            return raw_url
+            return f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
         else:
-            print(f"[GITHUB_ERROR] Status: {response.status_code} | Body: {response.text}")
-            raise Exception("GitHub API submission rejected")
+            print(f"[GITHUB_ERROR] Status {response.status_code}: {response.text}")
+            raise Exception(f"GitHub rejected upload: {response.text}")
 
     except Exception as e:
-        print(f"[STORAGE_EXCEPTION] GitHub upload failed: {e}")
+        print(f"[STORAGE_EXCEPTION] Failure: {e}")
 
-    # Final Fallback to local /tmp (ephemeral, should ideally not be reached)
-    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.name if hasattr(file, 'name') else 'file')}"
+    # Final Fallback (Ephemeral)
+    file.seek(0)
+    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
     return f"/uploads/{secure_name}"
