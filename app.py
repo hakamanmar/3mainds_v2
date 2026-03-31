@@ -25,6 +25,18 @@ except ImportError:
     PUSH_AVAILABLE = False
     print("[PUSH] pywebpush not installed - push notifications disabled")
 
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
+
+# ─── Cloudinary Configuration ──────────────────────────────────────────
+cloudinary.config( 
+  cloud_name = "da8y13hi1", 
+  api_key = "993656917894236", 
+  api_secret = "YUI-sX8UIP12G0ytSNBkd4zq18o",
+  secure = True
+)
+
 app = Flask(__name__)
 # Generate a strong runtime secret if none is provided via env
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
@@ -1065,26 +1077,31 @@ def get_lessons(subject_id):
     return jsonify([dict(l) for l in lessons])
 
 def upload_file_to_external(file):
-    """Refined helper to upload files to Catbox for persistent hosting on Vercel."""
+    """Securely uploads files to Cloudinary for permanent hosting and instant student previews."""
     try:
-        # Reposition stream to start if needed (though usually okay here)
-        response = requests.post(
-            'https://catbox.moe/user/api.php', 
-            data={'reqtype': 'fileupload'}, 
-            files={'fileToUpload': (file.filename, file.stream, getattr(file, 'mimetype', 'application/octet-stream'))},
-            timeout=20 # Extra time for large files
+        # Determine resource type (image, video, or raw for PDF/Docs)
+        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        resource_type = "auto"
+        if ext in ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar']:
+            resource_type = "raw"
+        elif ext in ['mp4', 'webm', 'mov', 'avi']:
+            resource_type = "video"
+            
+        result = cloudinary.uploader.upload(
+            file, 
+            resource_type=resource_type,
+            folder="3minds_uploads",
+            use_filename=True,
+            unique_filename=True
         )
-        if response.status_code == 200 and response.text.startswith('http'):
-            return response.text.strip()
+        return result.get('secure_url')
     except Exception as e:
-        print(f"[STORAGE] External upload failed, falling back to local: {e}")
-
-    # Fallback to local /tmp (ephemeral but works as last resort)
-    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'bin'
-    secure_name = f"{uuid.uuid4().hex}.{ext}"
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
-    return f"/uploads/{secure_name}"
+        print(f"[CLOUDINARY] Upload failed: {e}")
+        # Fallback to local /tmp (last resort, won't persist on Vercel)
+        secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
+        return f"/uploads/{secure_name}"
 
 @app.route('/api/admin/add-lesson', methods=['POST'])
 @limiter.limit("30 per hour")
