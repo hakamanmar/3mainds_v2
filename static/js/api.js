@@ -349,5 +349,36 @@ export const api = {
     },
     async deleteExam(examId) {
         return this._fetch(`${API_BASE}/exams/${examId}`, { method: 'DELETE' });
+    },
+
+    // ── CHAT SYSTEM ──────────────────────────────────────────────
+    async getChatMessages(sectionId = null, limit = 50) {
+        let url = `${API_BASE}/chat/messages?limit=${limit}`;
+        if (sectionId) url += `&section_id=${sectionId}`;
+        return this._fetch(url);
+    },
+    async sendChatMessage(content, sectionId = null) {
+        return this._fetch(`${API_BASE}/chat/messages`, {
+            method: 'POST',
+            body: JSON.stringify({ content, section_id: sectionId })
+        });
+    },
+    async updateChatMessage(msgId, content) {
+        return this._fetch(`${API_BASE}/chat/messages/${msgId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ content })
+        });
+    },
+    async deleteChatMessage(msgId) {
+        return this._fetch(`${API_BASE}/chat/messages/${msgId}`, { method: 'DELETE' });
+    },
+    async toggleChatMute(sectionId = null) {
+        return this._fetch(`${API_BASE}/chat/settings/toggle-mute`, {
+            method: 'POST',
+            body: JSON.stringify({ section_id: sectionId })
+        });
+    },
+    async getMyChatGroups() {
+        return this._fetch(`${API_BASE}/chat/my-groups`);
     }
 };
