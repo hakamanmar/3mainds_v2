@@ -3084,7 +3084,8 @@ def get_chat_messages():
     try:
         limit = int(request.args.get('limit', 50))
         messages = conn.execute('''
-            SELECT m.*, u.full_name as sender_name, u.role as sender_role
+            SELECT m.*, u.full_name as sender_name, u.role as sender_role,
+                   (SELECT count(*) FROM chat_read_receipts r WHERE r.message_id = m.id) as views_count
             FROM chat_messages m
             JOIN users u ON m.sender_id = u.id
             WHERE m.section_id = ?
@@ -3096,6 +3097,54 @@ def get_chat_messages():
         res = [dict(m) for m in messages]
         res.reverse()
         return jsonify(res)
+    finally:
+        conn.close()
+
+@app.route('/api/chat/mark-read', methods=['POST'])
+def mark_chat_read():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    msg_ids = request.json.get('message_ids', [])
+    if not msg_ids: return jsonify({'success': True})
+
+    conn = get_db()
+    try:
+        # Use executemany for efficiency
+        data = [(mid, ctx['user_id']) for mid in msg_ids]
+        conn.executemany('''
+            INSERT OR IGNORE INTO chat_read_receipts (message_id, user_id)
+            VALUES (?, ?)
+        ''', data)
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/messages/<int:msg_id>/views', methods=['GET'])
+def get_message_views(msg_id):
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = get_db()
+    try:
+        # Security: check if user can view this message (admin or in same section)
+        msg = conn.execute('SELECT section_id FROM chat_messages WHERE id = ?', (msg_id,)).fetchone()
+        if not msg: return jsonify({'error': 'Not found'}), 404
+        
+        is_admin = ctx['role'] in ['super_admin', 'head_dept']
+        if not is_admin and msg['section_id'] != ctx['section_id']:
+            return jsonify({'error': 'Forbidden'}), 403
+            
+        viewers = conn.execute('''
+            SELECT u.full_name, r.read_at 
+            FROM chat_read_receipts r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.message_id = ?
+            ORDER BY r.read_at DESC
+        ''', (msg_id,)).fetchall()
+        
+        return jsonify([dict(v) for v in viewers])
     finally:
         conn.close()
 
