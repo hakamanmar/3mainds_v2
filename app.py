@@ -1078,46 +1078,50 @@ def get_lessons(subject_id):
 
 # ─── GITHUB STORAGE CONFIGURATION ──────────────────────────────
 GITHUB_TOKEN = "ghp_8cBBci1ccng9f2JxroI4SqRi8oMnri1Y09Kg"
-GITHUB_REPO = "hakamanmar15-max/3minds_data"  # format: username/repo
+GITHUB_REPO = "hakamanmar15-max/3minds_data"
 
 def upload_file_to_external(file):
     """Securely uploads files to GitHub Repository for permanent, unblocked hosting in Iraq."""
     try:
+        import base64
         filename = secure_filename(file.filename)
-        # Use UUID to prevent name collisions
         unique_name = f"{uuid.uuid4().hex}_{filename}"
         path = f"materials/{unique_name}"
         
-        # Read file content and encode to Base64 (GitHub API Requirement)
+        # Read and Encode
         content = file.read()
-        import base64
         encoded_content = base64.b64encode(content).decode('utf-8')
         
-        # Reset file pointer if needed (though we already read it)
-        
+        # GitHub API Endpoint
         url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "3Minds-Academic-Platform" # Mandatory for GitHub API
         }
         data = {
-            "message": f"Upload: {filename}",
-            "content": encoded_content
+            "message": f"Upload: {filename} into materials",
+            "content": encoded_content,
+            "branch": "main" # Ensuring we target main
         }
         
-        response = requests.put(url, json=data, headers=headers, timeout=30)
+        # Perform PUT request
+        response = requests.put(url, json=data, headers=headers, timeout=40)
         
         if response.status_code in [200, 201]:
-            # Construct the raw content URL (Publicly accessible if repo is public)
+            # Construct the raw final URL
+            # Note: For public repos, this works instantly. For private, we would need a different proxy.
             raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
             return raw_url
         else:
-            print(f"[GITHUB] Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"[GITHUB] Exception during upload: {e}")
+            print(f"[GITHUB_ERROR] Status: {response.status_code} | Body: {response.text}")
+            raise Exception("GitHub API submission rejected")
 
-    # Fallback to local /tmp (last resort, ephemeral)
-    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
+    except Exception as e:
+        print(f"[STORAGE_EXCEPTION] GitHub upload failed: {e}")
+
+    # Final Fallback to local /tmp (ephemeral, should ideally not be reached)
+    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.name if hasattr(file, 'name') else 'file')}"
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
     return f"/uploads/{secure_name}"
