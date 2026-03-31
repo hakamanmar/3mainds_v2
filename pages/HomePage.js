@@ -180,36 +180,12 @@ const HomePage = async () => {
         </style>
     `;
 
-    if (subjects.length === 0) {
-        return `
-            <div class="container mobile-safe-padding">
-                <div class="welcome-header-v2">
-                    <div class="welcome-text">
-                        <h1>${i18n.t('hello')} ${welcomeName}! <span class="wave">👋</span></h1>
-                        <p>${i18n.t('welcome_home')}</p>
-                    </div>
-                    <div class="profile-avatar-mini" data-path="/results" style="cursor:pointer">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}" alt="Avatar">
-                    </div>
-                </div>
-                ${attendanceBanner}
-                ${chatBanner}
-                ${announcementsHTML}
-                <div class="empty-state">
-                    <i class="ph ph-books"></i>
-                    <h2>${i18n.t('no_subjects_yet')}</h2>
-                    <p>${i18n.t('subjects_added_soon')}</p>
-                </div>
-            </div>
-        `;
-    }
-
     return `
         <div class="container mobile-safe-padding">
-            <div class="page-header" style="margin-bottom: 2rem;">
-                <div>
-                    <h1 style="font-size: 1.8rem; font-weight: 800;">${i18n.t('hello')} ${welcomeName}! <span class="wave">👋</span></h1>
-                    <p class="text-muted" style="font-size: 1rem;">${i18n.t('welcome_home')}</p>
+            <div class="welcome-header-v2">
+                <div class="welcome-text">
+                    <h1>${i18n.t('hello')} ${welcomeName}! <span class="wave">👋</span></h1>
+                    <p>${i18n.t('welcome_home')}</p>
                 </div>
             </div>
 
@@ -230,50 +206,85 @@ const HomePage = async () => {
 
             <div class="subjects-grid">
                 ${subjects.map((subject, idx) => {
-        const icon = subjectIcons[idx % subjectIcons.length];
-        return `
-                    <div class="subject-card" data-path="/subject/${subject.id}"
-                         style="--subject-color: ${subject.color || '#4f46e5'};">
-                        <div class="subject-card-bg"></div>
-                        <div class="subject-card-content">
-                            <div class="subject-icon">
-                                <i class="ph ${icon}"></i>
+                    const icon = subjectIcons[idx % subjectIcons.length];
+                    return `
+                        <div class="subject-card" data-path="/subject/${subject.id}"
+                             style="--subject-color: ${subject.color || '#4f46e5'};">
+                            <div class="subject-card-bg"></div>
+                            <div class="subject-card-content">
+                                <div class="subject-icon">
+                                    <i class="ph ${icon}"></i>
+                                </div>
+                                <div class="subject-info">
+                                    <h3>${subject.title}</h3>
+                                    <span class="subject-code">${subject.code || ''}</span>
+                                </div>
                             </div>
-                            <div class="subject-info">
-                                <h3>${subject.title}</h3>
-                                <span class="subject-code">${subject.code || ''}</span>
+                            <p class="subject-desc">${subject.description || ''}</p>
+                            <div class="subject-card-footer">
+                                <span><i class="ph ph-arrow-left"></i> ${i18n.t('view_lessons')}</span>
                             </div>
                         </div>
-                        <p class="subject-desc">${subject.description || ''}</p>
-                        <div class="subject-card-footer">
-                            <span><i class="ph ph-arrow-left"></i> ${i18n.t('view_lessons')}</span>
-                        </div>
-                    </div>
-                `;
-    }).join('')}
-        </div>
-                    
-                    <div style="display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; direction: ltr;">
-                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
-                            Alhakam Anmar
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
-                            Mena Sabri
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
-                            <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
-                            Danya Majed
-                        </div>
-                    </div>
-
-                    <p style="font-size: 0.65rem; color: rgba(203, 213, 225, 0.3); letter-spacing: 0.3px;">
-                        3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
-                    </p>
-                </div>
+                    `;
+                }).join('')}
             </div>
-        </footer>
+
+            <!-- Developer Credits - Perfectly Matched Frame -->
+            <footer style="
+                width: 100%;
+                margin-top: 3rem;
+                padding: 1rem 0;
+            ">
+                <div class="card credits-card" style="
+                    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 20px;
+                    padding: 1.5rem;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 10px 40px rgba(49, 46, 129, 0.3);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 1.25rem;
+                ">
+                    <!-- Background image overlay -->
+                    <div style="
+                        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                        background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=600');
+                        background-size: cover; background-position: center; opacity: 0.15; mix-blend-mode: overlay; z-index: 1;
+                    "></div>
+
+                    <!-- Content -->
+                    <div style="position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; color: #cbd5e1; font-size: 0.8rem; direction: ltr; opacity: 0.9;">
+                            <span style="font-weight: 800; letter-spacing: 0.5px; color: #fff;">DEPARTMENT OF CYBERSECURITY</span>
+                            <span style="width: 3px; height: 3px; background: #4f46e5; border-radius: 50%;"></span>
+                            <span>Supervision: <strong style="color: #4f46e5;">Dr. Muhaned Qasim</strong></span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; direction: ltr;">
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                                Alhakam Anmar
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                                Mena Sabri
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; color: #fff;">
+                                <i class="ph ph-circle-wavy-check" style="font-size: 1rem; color: #4f46e5;"></i>
+                                Danya Majed
+                            </div>
+                        </div>
+
+                        <p style="font-size: 0.65rem; color: rgba(203, 213, 225, 0.3); letter-spacing: 0.3px;">
+                            3MINDS ACADEMIC © 2026 — AL-NAHRAIN UNIVERSITY
+                        </p>
+                    </div>
+                </div>
+            </footer>
+        </div>
     `;
 };
 
@@ -282,7 +293,6 @@ HomePage.init = () => {
 
     const updateTimers = () => {
         document.querySelectorAll('.ann-countdown').forEach(el => {
-            // Replace space with T to ensure robust cross-browser compatibility
             const targetStr = el.dataset.target.replace(' ', 'T');
             const target = new Date(targetStr).getTime();
             const now = new Date().getTime();
@@ -306,19 +316,6 @@ HomePage.init = () => {
             const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
             const s = Math.floor((dist % (1000 * 60)) / 1000);
 
-            // Notification logic for "1 day left"
-            if (d === 1 && h === 0 && m === 0 && !el.dataset.notified) {
-                el.dataset.notified = 'true';
-                if (window.Notification && Notification.permission === "granted") {
-                    new Notification(i18n.t('notifications'), {
-                        body: i18n.lang === 'ar'
-                            ? 'بقي يوم واحد فقط على الموعد، يرجى الاستعداد!'
-                            : 'Only 1 day left for this deadline, please prepare!',
-                        icon: '/logo.png'
-                    });
-                }
-            }
-
             const andWord = i18n.lang === 'ar' ? 'و' : 'and';
             let timeStr = `${i18n.t('time_left')} `;
             if (d > 0) timeStr += `<span class="badge badge-outline">${d}</span> ${i18n.t('day_and')} `;
@@ -329,9 +326,8 @@ HomePage.init = () => {
     };
 
     updateTimers();
-    // Clear any existing intervals if component is re-rendered
     if (window.annCountdown) clearInterval(window.annCountdown);
-    window.annCountdown = setInterval(updateTimers, 1000); // update every second
+    window.annCountdown = setInterval(updateTimers, 1000);
 };
 
 function formatDate(dateStr) {
