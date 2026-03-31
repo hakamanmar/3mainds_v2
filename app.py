@@ -407,6 +407,48 @@ def init_db():
             UNIQUE(instructor_id, course_id)
         )
     ''')
+    
+    # 15. Chat Messages Table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            section_id TEXT NOT NULL,
+            sender_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            is_edited INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
+            FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 16. Chat Settings (User preferences like muting)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS chat_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            section_id TEXT NOT NULL,
+            is_muted INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
+            UNIQUE(user_id, section_id)
+        )
+    ''')
+
+    # 17. Chat Read Receipts (Who saw the message)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS chat_read_receipts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(message_id, user_id)
+        )
+    ''')
 
     # 6. Attendance Sessions (Linked to subject)
     c.execute('''
