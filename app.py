@@ -1278,7 +1278,9 @@ def get_announcements():
     conn = get_db()
     
     base_query = """
-        SELECT a.*, u.full_name, u.email as publisher_email, u.role as publisher_role 
+        SELECT a.id, a.content, a.section_id, a.publisher_id, a.target_date, 
+               strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) as created_at,
+               u.full_name, u.email as publisher_email, u.role as publisher_role 
         FROM announcements a
         LEFT JOIN users u ON a.publisher_id = u.id
     """
@@ -3353,7 +3355,9 @@ def get_chat_messages():
     try:
         limit = int(request.args.get('limit', 50))
         messages = conn.execute('''
-            SELECT m.*, u.full_name as sender_name, u.role as sender_role,
+            SELECT m.id, m.section_id, m.sender_id, m.content, m.is_edited, m.is_deleted,
+                   strftime('%Y-%m-%dT%H:%M:%SZ', m.created_at) as created_at,
+                   u.full_name as sender_name, u.role as sender_role,
                    (SELECT count(*) FROM chat_read_receipts r WHERE r.message_id = m.id) as views_count
             FROM chat_messages m
             JOIN users u ON m.sender_id = u.id
@@ -3422,7 +3426,7 @@ def get_message_views(msg_id):
             return jsonify({'error': 'Forbidden'}), 403
             
         viewers = conn.execute('''
-            SELECT u.full_name, r.read_at 
+            SELECT u.full_name, strftime('%Y-%m-%dT%H:%M:%SZ', r.read_at) as read_at 
             FROM chat_read_receipts r
             JOIN users u ON r.user_id = u.id
             WHERE r.message_id = ?
