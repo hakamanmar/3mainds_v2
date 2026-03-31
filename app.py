@@ -1081,54 +1081,58 @@ GITHUB_TOKEN = "ghp_8cBBci1ccng9f2JxroI4SqRi8oMnri1Y09Kg"
 GITHUB_REPO = "hakamanmar15-max/3minds_data"
 
 def upload_file_to_external(file):
-    """Securely uploads files to GitHub Repository for permanent, unblocked hosting in Iraq."""
+    """Hybrid Storage Engine: GitHub for <20MB, Catbox for >20MB. Optimized for Iraq connectivity."""
     try:
         import base64
-        # Ensure we are at the start of the file
         file.seek(0)
-        
+        content = file.read()
+        file_size = len(content)
         filename = secure_filename(file.filename)
         unique_name = f"{uuid.uuid4().hex}_{filename}"
-        path = f"materials/{unique_name}"
         
-        # Read and Encode
-        content = file.read()
-        if not content:
-            raise Exception("File content is empty")
-            
-        encoded_content = base64.b64encode(content).decode('utf-8')
-        
-        # GitHub API Endpoint
-        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
-        headers = {
-            "Authorization": f"token {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "3Minds-Academic-Platform"
-        }
-        data = {
-            "message": f"Upload: {filename}",
-            "content": encoded_content,
-            "branch": "main"
-        }
-        
-        # Perform PUT request with extended timeout for Iraq interent
-        response = requests.put(url, json=data, headers=headers, timeout=60)
-        
-        if response.status_code in [200, 201]:
-            return f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
-        else:
-            print(f"[GITHUB_ERROR] Status {response.status_code}: {response.text}")
-            raise Exception(f"GitHub rejected upload: {response.text}")
+        # --- PATH 1: Small Files (<20MB) -> GitHub ---
+        if file_size < 20 * 1024 * 1024:
+            try:
+                path = f"materials/{unique_name}"
+                encoded_content = base64.b64encode(content).decode('utf-8')
+                url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+                headers = {
+                    "Authorization": f"token {GITHUB_TOKEN}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "3Minds-Academic-Platform"
+                }
+                data = {"message": f"Upload: {filename}", "content": encoded_content, "branch": "main"}
+                response = requests.put(url, json=data, headers=headers, timeout=60)
+                if response.status_code in [200, 201]:
+                    return f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
+                else: print(f"[GITHUB_FAIL] Code {response.status_code}. Switching to Catbox...")
+            except Exception as ge: print(f"[GITHUB_EX] {ge}")
+
+        # --- PATH 2: Large Files (>20MB) or GitHub Failure -> Catbox (Stable in Iraq) ---
+        try:
+            # Re-read or just use 'content'
+            response = requests.post(
+                'https://catbox.moe/user/api.php', 
+                data={'reqtype': 'fileupload'}, 
+                files={'fileToUpload': (filename, content)},
+                timeout=120 # Heavy files need more time
+            )
+            if response.status_code == 200 and response.text.startswith('http'):
+                return response.text.strip()
+        except Exception as ce: print(f"[CATBOX_EX] {ce}")
 
     except Exception as e:
-        print(f"[STORAGE_EXCEPTION] Failure: {e}")
+        print(f"[STORAGE_HYBRID_EXCEPTION] {e}")
 
-    # Final Fallback (Ephemeral)
-    file.seek(0)
-    secure_name = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_name))
-    return f"/uploads/{secure_name}"
+    # --- FINAL FALLBACK: Local (Last Resort) ---
+    try:
+        secure_name = f"{uuid.uuid4().hex}_{filename}"
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        # We need a new file handle or write 'content' directly
+        with open(os.path.join(app.config['UPLOAD_FOLDER'], secure_name), 'wb') as f:
+            f.write(content)
+        return f"/uploads/{secure_name}"
+    except: return ""
 
 @app.route('/api/admin/add-lesson', methods=['POST'])
 @limiter.limit("30 per hour")
