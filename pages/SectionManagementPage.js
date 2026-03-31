@@ -24,6 +24,28 @@ const SectionManagementPage = async () => {
             </div>
 
             <div class="mgmt-v3-grid">
+                <div class="v3-stat-card">
+                    <div class="icon-wrap"><i class="ph-duotone ph-users-three"></i></div>
+                    <div class="info">
+                        <span class="val" id="v3-total-students">0</span>
+                        <span class="lbl">إجمالي الطلاب</span>
+                    </div>
+                </div>
+                <div class="v3-stat-card">
+                    <div class="icon-wrap" style="color:#10b981; background:rgba(16,185,129,0.1);"><i class="ph-duotone ph-check-circle"></i></div>
+                    <div class="info">
+                        <span class="val" id="v3-active-sections">0</span>
+                        <span class="lbl">الشعب المفعلة</span>
+                    </div>
+                </div>
+                <div class="v3-stat-card">
+                    <div class="icon-wrap" style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="ph-duotone ph-arrows-left-right"></i></div>
+                    <div class="info">
+                        <span class="val">آمن</span>
+                        <span class="lbl">حالة النقل</span>
+                    </div>
+                </div>
+                <!-- Chat Management Card -->
                 <div class="v3-stat-card clickable" data-path="/chat" style="cursor:pointer; border: 1px solid rgba(79, 70, 229, 0.3); background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, transparent 100%);">
                     <div class="icon-wrap" style="color:var(--primary); background:rgba(79, 70, 229, 0.1);"><i class="ph-duotone ph-chats-teardrop"></i></div>
                     <div class="info">
