@@ -162,7 +162,6 @@ const SubjectPage = async (params) => {
                                                     <i class="ph-bold ph-eye"></i>
                                                 </a>
                                                 <a href="/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.title)}.pdf&mode=attachment&v=${Date.now()}" 
-                                                   target="_blank"
                                                    class="glass-action-btn download" title="${i18n.t('download')}">
                                                     <i class="ph-bold ph-download-simple"></i>
                                                 </a>
