@@ -602,3 +602,15 @@ window.toggleLang = () => {
     i18n.lang = i18n.lang === 'ar' ? 'en' : 'ar';
     window.location.reload();
 };
+
+// Global Download Helper for PWA Stability
+window.downloadFile = (url, name) => {
+    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&mode=attachment&t=${Date.now()}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', name);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => document.body.removeChild(link), 100);
+};
