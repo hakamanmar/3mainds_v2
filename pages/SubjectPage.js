@@ -161,10 +161,9 @@ const SubjectPage = async (params) => {
                                                    class="glass-action-btn view" title="${i18n.t('view')}">
                                                     <i class="ph-bold ph-eye"></i>
                                                 </a>
-                                                <a href="/api/download?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.title)}.pdf&mode=attachment&v=${Date.now()}" 
-                                                   class="glass-action-btn download" title="${i18n.t('download')}">
+                                                <button class="glass-action-btn download" title="${i18n.t('download')}" onclick="window.downloadFile('${item.url}', '${item.title + (item.type === 'PDF' ? '.pdf' : '')}')">
                                                     <i class="ph-bold ph-download-simple"></i>
-                                                </a>
+                                                </button>
                                                 ${isAdmin ? `
                                                     <button class="glass-action-btn delete delete-lesson-btn" data-id="${item.id}">
                                                         <i class="ph-bold ph-trash"></i>
