@@ -1134,6 +1134,32 @@ def upload_file_to_external(file):
         return f"/uploads/{secure_name}"
     except: return ""
 
+@app.route('/api/download')
+def proxy_download():
+    """Proxy downloader to enforce original filenames from GitHub/Catbox."""
+    url = request.args.get('url')
+    name = request.args.get('name', 'file.pdf')
+    if not url: return "Missing URL", 400
+    
+    try:
+        # Stream the file from the external source
+        resp = requests.get(url, stream=True, timeout=30)
+        # Prepare response headers
+        headers = dict(resp.headers)
+        # Overwrite content disposition to force download with custom name
+        # We use 'latin-1' or quoted name for non-ascii (Arabic) headers
+        from urllib.parse import quote
+        safe_name = quote(name)
+        headers['Content-Disposition'] = f'attachment; filename="{safe_name}"; filename*=UTF-8\'\'{safe_name}'
+        
+        def generate():
+            for chunk in resp.iter_content(chunk_size=8192):
+                yield chunk
+        
+        return Response(generate(), headers=headers)
+    except Exception as e:
+        return f"Download failed: {e}", 500
+
 @app.route('/api/admin/add-lesson', methods=['POST'])
 @limiter.limit("30 per hour")
 @require_role('teacher', 'section_admin', 'super_admin')
