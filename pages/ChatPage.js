@@ -309,11 +309,7 @@ export default function ChatPage() {
                 `).join('')
                 : '<p style="text-align: center; color: #94a3b8; padding: 20px;">لا يوجد أعضاء في هذه المجموعة</p>';
 
-            UI.modal({
-                title: 'أعضاء المجموعة',
-                body: `<div style="max-height: 400px; overflow-y: auto;">${content}</div>`,
-                actions: [{ label: 'إغلاق', type: 'primary', close: true }]
-            });
+            UI.modal('أعضاء المجموعة', `<div style="max-height: 400px; overflow-y: auto;">${content}</div>`, () => true);
         } catch (e) {
             UI.toast('فشل جلب قائمة الأعضاء', 'error');
         }
