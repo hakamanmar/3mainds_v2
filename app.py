@@ -3057,7 +3057,6 @@ def get_student_profile():
             'absent': max(0, total_sessions - present_count),
             'percentage': round((present_count / total_sessions * 100), 1) if total_sessions > 0 else 0
         }
-        
         # 3. Assignments (Tasks & Grades)
         assignments_list = conn.execute(f'''
             SELECT a.id, a.title, subj.title as subject_title, a.due_date,
@@ -3214,6 +3213,12 @@ def send_chat_message():
 
     conn = get_db()
     try:
+        # CHECK FOR LOCK: Students cannot send if section is locked
+        if ctx['role'] not in ['super_admin', 'head_dept']:
+            section = conn.execute('SELECT is_locked FROM sections WHERE id = ?', (section_id,)).fetchone()
+            if section and section['is_locked']:
+                return jsonify({'error': 'Chat is locked by admin'}), 403
+
         cur = conn.cursor()
         cur.execute('''
             INSERT INTO chat_messages (section_id, sender_id, content)
@@ -3222,6 +3227,85 @@ def send_chat_message():
         msg_id = cur.lastrowid
         conn.commit()
         return jsonify({'success': True, 'id': msg_id})
+    finally:
+        conn.close()
+
+# ─── Group Management ──────────────────────────────────────────
+
+@app.route('/api/chat/groups/<string:sid>/members', methods=['GET'])
+def get_chat_group_members(sid):
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = get_db()
+    try:
+        # Security: admin or member
+        is_member = (ctx['section_id'] == sid)
+        is_admin = (ctx['role'] in ['super_admin', 'head_dept'])
+        if not is_member and not is_admin:
+            return jsonify({'error': 'Forbidden'}), 403
+            
+        members = conn.execute('''
+            SELECT id, 
+                   COALESCE(NULLIF(full_name, ''), email) as full_name,
+                   email, role, created_at 
+            FROM users 
+            WHERE section_id = ? 
+            ORDER BY full_name ASC
+        ''', (sid,)).fetchall()
+        return jsonify([dict(m) for m in members])
+    finally:
+        conn.close()
+
+@app.route('/api/chat/groups/<string:sid>/toggle-lock', methods=['POST'])
+@require_role('super_admin', 'head_dept')
+def toggle_chat_lock(sid):
+    conn = get_db()
+    try:
+        conn.execute('UPDATE sections SET is_locked = 1 - is_locked WHERE id = ?', (sid,))
+        conn.commit()
+        status = conn.execute('SELECT is_locked FROM sections WHERE id = ?', (sid,)).fetchone()
+        return jsonify({'success': True, 'is_locked': bool(status['is_locked'])})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/groups/<string:sid>/rename', methods=['PUT'])
+@require_role('super_admin', 'head_dept')
+def rename_chat_group(sid):
+    new_name = request.json.get('name')
+    if not new_name: return jsonify({'error': 'Name required'}), 400
+    
+    conn = get_db()
+    try:
+        conn.execute('UPDATE sections SET name = ? WHERE id = ?', (new_name, sid))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+@app.route('/api/chat/my-groups', methods=['GET'])
+def get_my_chat_groups():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = get_db()
+    try:
+        if ctx['role'] in ['super_admin', 'head_dept']:
+            groups = conn.execute('SELECT id, name, is_locked FROM sections').fetchall()
+        else:
+            groups = conn.execute('SELECT id, name, is_locked FROM sections WHERE id = ?', (ctx['section_id'],)).fetchall()
+        
+        res = []
+        for g in groups:
+            mute_status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
+                                     (ctx['user_id'], g['id'])).fetchone()
+            res.append({
+                'id': g['id'],
+                'name': g['name'],
+                'is_locked': bool(g['is_locked']),
+                'is_muted': bool(mute_status['is_muted']) if mute_status else False
+            })
+        return jsonify(res)
     finally:
         conn.close()
 
@@ -3283,31 +3367,6 @@ def toggle_chat_mute():
         status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
                              (ctx['user_id'], section_id)).fetchone()
         return jsonify({'success': True, 'is_muted': bool(status['is_muted'])})
-    finally:
-        conn.close()
-
-@app.route('/api/chat/my-groups', methods=['GET'])
-def get_my_chat_groups():
-    ctx = get_user_context()
-    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
-    
-    conn = get_db()
-    try:
-        if ctx['role'] in ['super_admin', 'head_dept']:
-            groups = conn.execute('SELECT id, name FROM sections').fetchall()
-        else:
-            groups = conn.execute('SELECT id, name FROM sections WHERE id = ?', (ctx['section_id'],)).fetchall()
-        
-        res = []
-        for g in groups:
-            mute_status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
-                                     (ctx['user_id'], g['id'])).fetchone()
-            res.append({
-                'id': g['id'],
-                'name': g['name'],
-                'is_muted': bool(mute_status['is_muted']) if mute_status else False
-            })
-        return jsonify(res)
     finally:
         conn.close()
 
