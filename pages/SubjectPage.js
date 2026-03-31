@@ -160,7 +160,7 @@ const SubjectPage = async (params) => {
                                                    class="glass-action-btn view" title="${i18n.t('view')}">
                                                     <i class="ph-bold ph-eye"></i>
                                                 </a>
-                                                <a href="${item.url}" target="_blank" 
+                                                <a href="${item.url}" download="${item.title}.pdf"
                                                    class="glass-action-btn download" title="${i18n.t('download')}">
                                                     <i class="ph-bold ph-download-simple"></i>
                                                 </a>
