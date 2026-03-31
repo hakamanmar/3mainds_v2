@@ -18,6 +18,13 @@ try:
 except ImportError:
     Limiter = None
 
+try:
+    from pywebpush import webpush, WebPushException
+    PUSH_AVAILABLE = True
+except ImportError:
+    PUSH_AVAILABLE = False
+    print("[PUSH] pywebpush not installed - push notifications disabled")
+
 app = Flask(__name__)
 # Generate a strong runtime secret if none is provided via env
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
@@ -995,11 +1002,24 @@ def add_subject():
         return jsonify({'error': 'يجب إدخال اسم المادة والشعبة'}), 400
         
     conn = get_db()
-    conn.execute('INSERT INTO subjects (title, description, code, color, section_id, instructor_id) VALUES (?, ?, ?, ?, ?, ?)',
-                 (data['title'], data.get('description', ''), data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        conn.execute('INSERT INTO subjects (title, description, code, color, section_id, instructor_id) VALUES (?, ?, ?, ?, ?, ?)',
+                     (data['title'], data.get('description', ''), data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
+        conn.commit()
+        
+        # ── PUSH NOTIFICATION ──
+        try:
+            students = conn.execute('SELECT id FROM users WHERE section_id = ?', (sid,)).fetchall()
+            for s in students:
+                send_push_notification(s['id'], "مادة دراسية جديدة", f"تم إضافة مادة {data['title']} لشعبتكم.", url='/home', tag='subject')
+        except Exception as push_err:
+            print(f"[PUSH] Subject push error: {push_err}")
+            
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        if 'conn' in locals(): conn.close()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/subjects/<int:id>', methods=['PUT'])
 @require_role('super_admin')
@@ -1216,16 +1236,36 @@ def add_announcement():
         return jsonify({'error': 'المحتوى والشعبة مطلوبان'}), 400
 
     conn = get_db()
-    # If head_dept broadcasts to ALL, insert once with section_id='ALL'
-    if sid == 'ALL':
-        conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
-                     (content, 'ALL', ctx['user_id'], target_date))
-    else:
-        conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
-                     (content, sid, ctx['user_id'], target_date))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        # If head_dept broadcasts to ALL, insert once with section_id='ALL'
+        if sid == 'ALL':
+            conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
+                         (content, 'ALL', ctx['user_id'], target_date))
+        else:
+            conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
+                         (content, sid, ctx['user_id'], target_date))
+        conn.commit()
+        
+        # ── PUSH NOTIFICATION ──
+        try:
+            target_desc = "الجميع" if sid == 'ALL' else f"شعبة {sid}"
+            # Notify ALL if no section, else just that section
+            users_to_notify = []
+            if sid == 'ALL':
+                users_to_notify = conn.execute('SELECT id FROM users').fetchall()
+            else:
+                users_to_notify = conn.execute('SELECT id FROM users WHERE section_id = ?', (sid,)).fetchall()
+            
+            for u in users_to_notify:
+                send_push_notification(u['id'], f"تبليغ جديد للمرحلة ({target_desc})", content[:100], url='/home', tag='announcement')
+        except Exception as push_err: 
+            print(f"[PUSH] Announcement error: {push_err}")
+        
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        if 'conn' in locals(): conn.close()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/announcements', methods=['PUT'])
 @require_role('section_admin', 'super_admin')
@@ -1771,6 +1811,19 @@ def add_homework():
     conn.execute('INSERT INTO assignments (subject_id, teacher_id, title, description, file_url, due_date, allowed_formats) VALUES (?,?,?,?,?,?,?)',
                  (sid, teacher_id, title, desc, file_url, due_date, formats))
     conn.commit()
+    
+    # ── PUSH NOTIFICATION ──
+    try:
+        # Get section_id of the subject
+        subj_info = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (sid,)).fetchone()
+        if subj_info:
+            target_sid = subj_info['section_id']
+            students = conn.execute('SELECT id FROM users WHERE section_id = ?', (target_sid,)).fetchall()
+            for s in students:
+                send_push_notification(s['id'], "واجب جديد", f"تم إضافة واجب جديد: {title}", url=f'/subjects/{sid}', tag='assignment')
+    except Exception as push_err:
+        print(f"[PUSH] Assignment push error: {push_err}")
+        
     conn.close()
     return jsonify({'success': True})
 
@@ -1846,11 +1899,26 @@ def grade_submission(submission_id):
                 instructor_id = excluded.instructor_id,
                 created_at = CURRENT_TIMESTAMP
         """, (submission_id, grade, feedback, ctx['user_id']))
-        
         conn.commit()
+        
+        # ── PUSH NOTIFICATION ──
+        try:
+            # Get assignment title and student_id
+            info = conn.execute('''
+                SELECT s.student_id, a.title, a.id as assignment_id
+                FROM submissions s
+                JOIN assignments a ON s.assignment_id = a.id
+                WHERE s.id = ?
+            ''', (submission_id,)).fetchone()
+            if info:
+                send_push_notification(info['student_id'], "تم تصحيح واجبك!", f"لقد تم رصد درجة لواجب: {info['title']}", url='/grades', tag='grade')
+        except Exception as push_err:
+            print(f"[PUSH] Grading push error: {push_err}")
+
         conn.close()
         return jsonify({'success': True})
     except Exception as e:
+        if 'conn' in locals(): conn.close()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/student/grades', methods=['GET'])
@@ -2752,7 +2820,8 @@ def create_exam():
     title = data.get('title', '').strip()
     subject_id = data.get('subject_id')
     duration = int(data.get('duration_minutes', 60))
-    sections = json.dumps(data.get('sections', []))
+    sections_list = data.get('sections', [])
+    sections_json = json.dumps(sections_list)
     questions = data.get('questions', [])
 
     if not title or not subject_id:
@@ -2762,12 +2831,11 @@ def create_exam():
 
     try:
         conn = get_db()
-        conn.execute(
+        cur = conn.execute(
             'INSERT INTO exams (title, subject_id, teacher_id, duration_minutes, sections) VALUES (?, ?, ?, ?, ?)',
-            (title, subject_id, ctx['user_id'], duration, sections)
+            (title, subject_id, ctx['user_id'], duration, sections_json)
         )
-        exam_id_row = conn.execute('SELECT last_insert_rowid() as id').fetchone()
-        exam_id = exam_id_row['id'] if exam_id_row else None
+        exam_id = cur.lastrowid
 
         if exam_id:
             for idx, q in enumerate(questions):
@@ -2778,9 +2846,25 @@ def create_exam():
                      q.get('option_c', ''), q.get('option_d', ''), q.get('correct_answer', 'a'), idx)
                 )
         conn.commit()
+        
+        # ── PUSH NOTIFICATION ──
+        try:
+            sec_list = sections_list
+            if not sec_list: # Fallback to subject's section
+                subj_info = conn.execute('SELECT section_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+                if subj_info: sec_list = [subj_info['section_id']]
+            
+            for s_id in sec_list:
+                students = conn.execute('SELECT id FROM users WHERE section_id = ?', (s_id,)).fetchall()
+                for s in students:
+                    send_push_notification(s['id'], "اختبار جديد!", f"تم نشر اختبار جديد: {title}", url='/exams', tag='exam')
+        except Exception as push_err:
+            print(f"[PUSH] Exam push error: {push_err}")
+            
         conn.close()
         return jsonify({'success': True, 'exam_id': exam_id})
     except Exception as e:
+        if 'conn' in locals(): conn.close()
         return jsonify({'error': str(e)}), 500
 
 
@@ -3212,8 +3296,24 @@ def mark_chat_read():
             INSERT OR IGNORE INTO chat_read_receipts (message_id, user_id)
             VALUES (?, ?)
         ''', data)
+        msg_id = cur.lastrowid
         conn.commit()
-        return jsonify({'success': True})
+        
+        # ── PUSH NOTIFICATION ──
+        try:
+            target_desc = "الجميع" if not section_id else f"شعبة {section_id}"
+            # Notify ALL if no section, else just that section
+            users_to_notify = []
+            if not section_id:
+                users_to_notify = conn.execute('SELECT id FROM users').fetchall()
+            else:
+                users_to_notify = conn.execute('SELECT id FROM users WHERE section_id = ?', (section_id,)).fetchall()
+            
+            for u in users_to_notify:
+                send_push_notification(u['id'], f"تبليغ جديد للمرحلة ({target_desc})", content[:100], url='/home', tag='announcement')
+        except Exception as e: print(f"[PUSH] Announcement error: {e}")
+        
+        return jsonify({'success': True, 'id': msg_id})
     finally:
         conn.close()
 
@@ -3275,6 +3375,20 @@ def send_chat_message():
         ''', (section_id, ctx['user_id'], content))
         msg_id = cur.lastrowid
         conn.commit()
+        
+        # ─── PUSH NOTIFICATION ───
+        # Notify others in the section
+        try:
+            sender_name = conn.execute('SELECT full_name FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()['full_name'] or ctx['user_email']
+            others = conn.execute('SELECT id FROM users WHERE section_id = ? AND id != ?', (section_id, ctx['user_id'])).fetchall()
+            for o in others:
+                # Check if muted
+                is_muted = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', (o['id'], section_id)).fetchone()
+                if not is_muted or not is_muted['is_muted']:
+                    send_push_notification(o['id'], f"رسالة جديدة في {section_id}", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_{section_id}")
+        except Exception as push_err:
+            print(f"[PUSH] Chat push error: {push_err}")
+            
         return jsonify({'success': True, 'id': msg_id})
     finally:
         conn.close()
@@ -3427,6 +3541,142 @@ def toggle_chat_mute():
     finally:
         conn.close()
 
+# ─── Push Notifications System ──────────────────────────────
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', 'BMAeG3J8JmZ9Xf-yTfJ0XN0zX6V1S4V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', 'fS0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6S0V6=')
+VAPID_CLAIMS = {"sub": "mailto:admin@3minds.edu"}
+
+def send_push_notification(user_id, title, body, url='/', tag='general'):
+    if not PUSH_AVAILABLE: return
+    conn = get_db()
+    try:
+        sub = conn.execute('SELECT subscription_json FROM push_subscriptions WHERE user_id = ?', (user_id,)).fetchone()
+        if not sub: return
+        
+        subscription_info = json.loads(sub['subscription_json'])
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps({
+                "title": title,
+                "body": body,
+                "url": url,
+                "tag": tag,
+                "icon": "/logo.png"
+            }),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS
+        )
+        return True
+    except WebPushException as ex:
+        print(f"[PUSH] Error sending to user {user_id}: {ex}")
+        # If subscription is expired/wrong, remove it
+        if ex.response and ex.response.status_code in [404, 410]:
+            conn.execute('DELETE FROM push_subscriptions WHERE user_id = ?', (user_id,))
+            conn.commit()
+    except Exception as e:
+        print(f"[PUSH] Unexpected error: {e}")
+    finally:
+        conn.close()
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def push_subscribe():
+    ctx = get_user_context()
+    if ctx['role'] == 'guest': return jsonify({'error': 'Unauthorized'}), 401
+    
+    subscription = request.json.get('subscription')
+    if not subscription: return jsonify({'error': 'Missing subscription'}), 400
+    
+    conn = get_db()
+    try:
+        conn.execute('''
+            INSERT INTO push_subscriptions (user_id, subscription_json)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET subscription_json = excluded.subscription_json
+        ''', (ctx['user_id'], json.dumps(subscription)))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
+
+# ── PUSH NOTIFICATIONS (VAPID) ──────────────────────────────────────
+# You should generate your own keys for production: npx web-push generate-vapid-keys
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', "BE_SndG9hZ1Z6Y_IqS_6y2K_2_O6k_h_kS_S_n_S_p_kS_S_n_S_p_kS_S_n_S_p_k").strip()
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', "P_S_n_S_p_kS_S_n_S_p_kS_S_n_S_p_").strip()
+VAPID_CLAIMS = {"sub": "mailto:admin@3minds.edu"}
+
+def send_push_notification(user_id, title, message, url='/', tag='general'):
+    """Sends a Web Push notification to a specific user's subscribed devices."""
+    if not PUSH_AVAILABLE:
+        print(f"[PUSH] Skipping push for {user_id} - pywebpush not available")
+        return False
+    
+    conn = get_db()
+    try:
+        sub_row = conn.execute('SELECT subscription_json FROM push_subscriptions WHERE user_id = ?', (user_id,)).fetchone()
+        if not sub_row:
+            return False
+            
+        subscription = json.loads(sub_row['subscription_json'])
+        payload = json.dumps({
+            'title': title,
+            'body': message,
+            'url': url,
+            'tag': tag
+        })
+        
+        webpush(
+            subscription_info=subscription,
+            data=payload,
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims=VAPID_CLAIMS
+        )
+        return True
+    except WebPushException as ex:
+        if ex.response and ex.response.status_code in [404, 410]:
+            # Subscription expired/invalid -> Remove from DB
+            conn.execute('DELETE FROM push_subscriptions WHERE user_id = ?', (user_id,))
+            conn.commit()
+        print(f"[PUSH] webpush error for {user_id}: {ex}")
+        return False
+    except Exception as e:
+        print(f"[PUSH] general error for {user_id}: {e}")
+        return False
+    finally:
+        conn.close()
+
+@app.route('/api/push/public-key', methods=['GET'])
+def get_push_public_key():
+    """Retrieve the VAPID public key for frontend subscription."""
+    return jsonify({'publicKey': VAPID_PUBLIC_KEY})
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def subscribe_push():
+    """Save or update a push subscription for the current user."""
+    ctx = get_user_context()
+    if ctx['role'] == 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    subscription = request.json
+    if not subscription:
+        return jsonify({'error': 'Missing subscription'}), 400
+        
+    conn = get_db()
+    try:
+        # Use UPSERT to handle existing subscriptions for same user
+        conn.execute('''
+            INSERT INTO push_subscriptions (user_id, subscription_json)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET 
+                subscription_json = excluded.subscription_json,
+                created_at = CURRENT_TIMESTAMP
+        ''', (ctx['user_id'], json.dumps(subscription)))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=True, port=8000)
 
