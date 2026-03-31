@@ -3246,16 +3246,17 @@ def get_chat_group_members(sid):
         if not is_member and not is_admin:
             return jsonify({'error': 'Forbidden'}), 403
             
-        # SMART SEARCH: Look for students by section_id
-        # Fallback to name search if id is suspicious
+        # HYPER-ROBUST SEARCH: Catch all variants of section IDs/Names
         members = conn.execute('''
             SELECT id, 
                    COALESCE(NULLIF(full_name, ''), email) as full_name,
                    email, role, created_at 
             FROM users 
-            WHERE section_id = ? OR section_id = (SELECT name FROM sections WHERE id = ?)
+            WHERE section_id = ? 
+               OR section_id = (SELECT name FROM sections WHERE id = ?)
+               OR section_id LIKE '%' || ? || '%'
             ORDER BY role DESC, full_name ASC
-        ''', (sid, sid)).fetchall()
+        ''', (sid, sid, sid)).fetchall()
         
         return jsonify([dict(m) for m in members])
     except Exception as e:
