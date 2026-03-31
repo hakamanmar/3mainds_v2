@@ -17,6 +17,7 @@ const pageModules = {
     '/exams': () => import('/pages/ExamListPage.js'),
     '/exams/create': () => import('/pages/ExamCreatePage.js'),
     '/sections-mgmt': () => import('/pages/SectionManagementPage.js'),
+    '/chat': () => import('/pages/ChatPage.js'),
 };
 
 class Router {
