@@ -174,7 +174,7 @@ export default async function AttendancePage(params) {
                                 </div>
                                 <div>
                                     <div style="font-weight: 700; color: var(--text-main);">${s.subject_title}</div>
-                                    <div style="font-size: 13px; color: var(--muted);">${new Date(s.started_at).toLocaleString('ar-EG')}</div>
+                                    <div style="font-size: 13px; color: var(--muted);">${new Date(s.started_at.replace(' ', 'T') + 'Z').toLocaleString('ar-EG')}</div>
                                 </div>
                             </div>
                             <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
@@ -201,8 +201,8 @@ export default async function AttendancePage(params) {
                 <div style="background: var(--surface-2); padding: 20px; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
                     <h2 style="margin-bottom: 10px; color: var(--blue);"><i class="ph ph-bookmark-simple"></i> ${s.subject_title} (${s.subject_code})</h2>
                     <p><strong><i class="ph ph-user-circle"></i> مدرس المادة:</strong> ${s.professor_email}</p>
-                    <p><strong><i class="ph ph-calendar-blank"></i> اليوم والتاريخ:</strong> ${new Date(s.started_at).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    <p><strong><i class="ph ph-clock"></i> وقت البدء:</strong> ${new Date(s.started_at).toLocaleTimeString('ar-EG')}</p>
+                    <p><strong><i class="ph ph-calendar-blank"></i> اليوم والتاريخ:</strong> ${new Date(s.started_at.replace(' ', 'T') + 'Z').toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p><strong><i class="ph ph-clock"></i> وقت البدء:</strong> ${new Date(s.started_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ar-EG')}</p>
                 </div>
                 
                 <h3 style="margin-bottom: 1rem;"><i class="ph ph-users"></i> قائمة الطلاب الحاضرين (${data.attended.length})</h3>
@@ -221,7 +221,7 @@ export default async function AttendancePage(params) {
                                 <tr>
                                     <td style="padding: 12px; border-bottom: 1px solid var(--border); font-weight: 600;">${r.full_name || r.email}</td>
                                     <td style="padding: 12px; border-bottom: 1px solid var(--border);"><span class="tag tag-ok">${r.method === 'qr' ? 'بصمة QR' : 'يدوي'}</span></td>
-                                    <td style="padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px;">${new Date(r.scanned_at).toLocaleTimeString('ar-EG')}</td>
+                                    <td style="padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px;">${new Date(r.scanned_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ar-EG')}</td>
                                     <td style="padding: 12px; border-bottom: 1px solid var(--border);">
                                         <button class="delete-attendee-btn btn-sm" data-session="${id}" data-student="${r.student_id}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px;">
                                             <i class="ph ph-trash" style="font-size: 1.2rem;"></i>
@@ -338,9 +338,7 @@ export default async function AttendancePage(params) {
                                 ${(r.full_name || r.email).charAt(0).toUpperCase()}
                             </div>
                             <div style="flex: 1;">
-                                <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">${r.full_name || r.email}</div>
-                                <div style="font-size: 12px; color: var(--muted); display:flex; align-items:center; gap:5px;">
-                                    <i class="ph ph-envelope"></i> ${r.email}  <span style="margin: 0 5px;">|</span> <i class="ph ph-clock"></i> ${new Date(r.scanned_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    <i class="ph ph-envelope"></i> ${r.email}  <span style="margin: 0 5px;">|</span> <i class="ph ph-clock"></i> ${new Date(r.scanned_at.includes('Z') ? r.scanned_at : r.scanned_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
