@@ -49,14 +49,51 @@ with db_init_lock:
     pass # we will call it after definition
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 app.config['DEVICE_BINDING_SECRET'] = secrets.token_hex(16) # For hashing device IDs
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max upload
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Reduced from 500MB to 50MB for better DoS protection
 
-# Setup Rate Limiting
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'mp3', 'mp4', 'mov', 'avi', 'zip', 'rar', 'webm', 'ogg', 'aac', 'm4a', 'webp'}
+# ─── PASSWORD POLICY ──────────────────────────────────────────────
+def validate_password(password):
+    """Enforces: min 8 chars, 1 uppercase, 1 lowercase, 1 number."""
+    if len(password) < 8: return False, "أقل طول لكلمة المرور هو 8 أحرف"
+    if not any(char.isdigit() for char in password): return False, "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل"
+    if not any(char.isupper() for char in password): return False, "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل"
+    if not any(char.islower() for char in password): return False, "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل"
+    return True, ""
+
+# ─── CSRF PROTECTION ──────────────────────────────────────────────
+# Minimal custom CSRF for SPA (Generates token on login, validates on state-changing requests)
+def generate_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+def validate_csrf():
+    if request.method in ['POST', 'PUT', 'DELETE']:
+        token = request.headers.get('X-CSRF-Token')
+        if not token or token != session.get('csrf_token'):
+            audit_log("CSRF_FAILURE", {"ip": request.remote_addr}, risk_score="HIGH")
+            return False
+    return True
+
+# ─── SANITIZATION ─────────────────────────────────────────────
+import html
+def sanitize_input(data):
+    """Sanitizes user input to prevent XSS."""
+    if isinstance(data, str):
+        return html.escape(data).strip()
+    if isinstance(data, dict):
+        return {k: sanitize_input(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [sanitize_input(i) for i in data]
+    return data
+
+# Restrict file types as requested: PDF, Images Only
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    if '.' not in filename: return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in ALLOWED_EXTENSIONS
 
 if Limiter:
     limiter = Limiter(
@@ -92,6 +129,15 @@ def add_security_headers(response):
     )
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
+
+@app.before_request
+def security_check():
+    # 🛑 CSRF Validation for all state-changing requests
+    if request.method in ['POST', 'PUT', 'DELETE']:
+        # Bypass for login since token is generated there
+        if request.path != '/api/login':
+            if not validate_csrf():
+                return jsonify({'error': 'CSRF token mismatch or missing'}), 403
 
 # Detect hosting environment
 IS_VERCEL = "VERCEL" in os.environ
@@ -323,6 +369,19 @@ def init_db():
             FOREIGN KEY (section_id) REFERENCES sections(id)
         )
     ''')
+
+    # 1.1 Login Attempts Table (Brute Force Protection)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            ip TEXT NOT NULL,
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            success INTEGER DEFAULT 0 -- 0=fail, 1=success
+        )
+    ''')
+    # Cleanup old attempts regularly (optional - but keeps table slim)
+    c.execute('DELETE FROM login_attempts WHERE attempt_time < datetime("now", "-1 day")')
 
     # 13. User Devices Table (Multi-Device Support: Max 3)
     c.execute('''
@@ -783,21 +842,42 @@ def login():
     print(f"[LOGIN] Attempt for email: {email}") # DEBUG LOG
 
     conn = get_db()
+    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr)
+    
     try:
+        # 1. 🛑 Brute Force & Lockout Check
+        recent_fails = conn.execute('''
+            SELECT COUNT(*) FROM login_attempts 
+            WHERE email = ? AND success = 0 
+            AND attempt_time > datetime("now", "-15 minutes")
+        ''', (email,)).fetchone()
+        
+        fail_count = int(list(recent_fails.values())[0]) if isinstance(recent_fails, dict) else recent_fails[0]
+        
+        if fail_count >= 5:
+            audit_log("LOGIN_LOCKED", {"email": email, "ip": ip_addr}, risk_score="HIGH")
+            conn.close()
+            return jsonify({'success': False, 'message': 'تم قفل الحساب مؤقتاً لمدة 15 دقيقة بسبب محاولات فاشلة متكررة'}), 429
+
         user_row = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         
         if not user_row:
-            print(f"[LOGIN] User not found: {email}") # DEBUG LOG
+            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)', (email, ip_addr, 0))
+            conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'البريد الإلكتروني غير مسجل'}), 401
             
         user = dict(user_row)
-        print(f"[LOGIN] Found user: {user['email']} with role: {user['role']}") # DEBUG LOG
         
         if not check_password_hash(user['password'], password):
-            print(f"[LOGIN] Password mismatch for user: {email}") # DEBUG LOG
+            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)', (email, ip_addr, 0))
+            conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'كلمة المرور غير صحيحة'}), 401
+        
+        # Success Update
+        conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 1)', (email, ip_addr, 1))
+        conn.commit()
 
         # Audit successful login
         audit_log("LOGIN_SUCCESS", {"user_id": user['id'], "email": email, "role": user['role']})
@@ -845,14 +925,28 @@ def login():
     }
     auth_token = serializer.dumps(token_data, salt='auth-token')
 
-    print(f"[LOGIN] Login successful, generating token for {email}") # DEBUG LOG
+    # Regenerate Session (Prevent fixation)
+    session.clear()
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(hours=8)
     
+    # CSRF Token for this session
+    csrf_token = generate_csrf_token()
+
     resp = make_response(jsonify({
         'success': True,
         'must_reset': bool(user.get('must_change_pw', 0)),
-        'user': token_data
+        'user': token_data,
+        'csrf_token': csrf_token
     }))
-    resp.set_cookie('auth_token', auth_token, httponly=True, secure=False, samesite='Strict', max_age=31536000)
+    
+    # Secure Cookie Configuration
+    is_secure = request.is_secure or (request.headers.get('X-Forwarded-Proto', '').lower() == 'https')
+    resp.set_cookie('auth_token', auth_token, 
+                    httponly=True, 
+                    secure=is_secure, 
+                    samesite='Strict', 
+                    max_age=31536000)
     return resp
 
 @app.route('/api/change-password', methods=['POST'])
@@ -864,6 +958,11 @@ def change_password():
 
     if not new_password:
         return jsonify({'error': 'كلمة المرور مطلوبة'}), 400
+
+    # 🛑 Enforcement: Password Policy
+    is_valid, msg = validate_password(new_password)
+    if not is_valid:
+        return jsonify({'error': msg}), 400
 
     conn = get_db()
     conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
@@ -1015,8 +1114,10 @@ def add_subject():
         
     conn = get_db()
     try:
+        title = sanitize_input(data['title'])
+        desc = sanitize_input(data.get('description', ''))
         conn.execute('INSERT INTO subjects (title, description, code, color, section_id, instructor_id) VALUES (?, ?, ?, ?, ?, ?)',
-                     (data['title'], data.get('description', ''), data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
+                     (title, desc, data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
         conn.commit()
         
         # ── PUSH NOTIFICATION ──
@@ -1216,6 +1317,8 @@ def add_lesson():
     if not subject_id or not title or not url:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
 
+    title = sanitize_input(title) # Sanitize title
+
     conn = get_db()
     conn.execute('INSERT INTO lessons (subject_id, title, url, type) VALUES (?, ?, ?, ?)',
                  (subject_id, title, url, lesson_type))
@@ -1264,7 +1367,7 @@ def update_lesson(id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     conn.execute('UPDATE lessons SET title = ?, url = ?, type = ? WHERE id = ?',
-                 (data.get('title'), data.get('url'), data.get('type', 'PDF'), id))
+                 (sanitize_input(data.get('title')), data.get('url'), data.get('type', 'PDF'), id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -1317,7 +1420,7 @@ def add_announcement():
     if ctx['role'] in ['super_admin', 'head_dept']:
         sid = data.get('section_id', 'ALL')
         
-    content = data.get('content', '').strip()
+    content = sanitize_input(data.get('content', '')).strip()
     target_date = data.get('target_date', None)
     
     if not content or not sid:
@@ -1359,12 +1462,20 @@ def add_announcement():
 @require_role('section_admin', 'super_admin')
 def update_announcement():
     ann_id = request.args.get('id')
+    ctx = get_user_context()
     data = request.json
-    content = data.get('content', '').strip()
+    content = sanitize_input(data.get('content', '')).strip()
     target_date = data.get('target_date', None)
     if not content:
         return jsonify({'error': 'المحتوى مطلوب'}), 400
+    
     conn = get_db()
+    # 🛑 IDOR Check
+    ann = conn.execute('SELECT section_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
+    if not ann or (ctx['role'] == 'section_admin' and ann['section_id'] != ctx['section_id']):
+        conn.close()
+        return jsonify({'error': 'لا يمكنك تعديل هذا التبليغ'}), 403
+
     conn.execute('UPDATE announcements SET content = ?, target_date = ? WHERE id = ?', (content, target_date, ann_id))
     conn.commit()
     conn.close()
@@ -1374,7 +1485,14 @@ def update_announcement():
 @require_role('section_admin', 'super_admin')
 def delete_announcement():
     ann_id = request.args.get('id')
+    ctx = get_user_context()
     conn = get_db()
+    # 🛑 IDOR Check
+    ann = conn.execute('SELECT section_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
+    if not ann or (ctx['role'] == 'section_admin' and ann['section_id'] != ctx['section_id']):
+        conn.close()
+        return jsonify({'error': 'لا يمكنك حذف هذا التبليغ'}), 403
+
     conn.execute('DELETE FROM announcements WHERE id = ?', (ann_id,))
     conn.commit()
     conn.close()
@@ -1515,6 +1633,11 @@ def add_user():
     if not email or not password or not role:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
     
+    # 🛑 Enforcement: Password Policy
+    is_valid, msg = validate_password(password)
+    if not is_valid:
+        return jsonify({'error': msg}), 400
+
     if not full_name:
         return jsonify({'error': 'الاسم الثلاثي مطلوب'}), 400
 
@@ -1584,12 +1707,7 @@ def add_user():
             
     except Exception as e:
         if 'UNIQUE' in str(e).upper() or 'unique' in str(e).lower() or 'IntegrityError' in str(type(e).__name__):
-                  counts = conn.execute('''
-            SELECT section_id, COUNT(*) as count 
-            FROM users 
-            WHERE role = 'student' AND section_id IS NOT NULL
-            GROUP BY section_id
-        ''').fetchall()({'success': True})
+            return jsonify({'error': 'البريد الإلكتروني مسجل مسبقاً'}), 400
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
@@ -1603,6 +1721,12 @@ def admin_reset_device():
     if not uid:
         return jsonify({'error': 'User ID is required'}), 400
     conn = get_db()
+    # 🛑 IDOR Check
+    user = conn.execute('SELECT section_id FROM users WHERE id = ?', (uid,)).fetchone()
+    if not user or (ctx['role'] == 'section_admin' and user['section_id'] != ctx['section_id']):
+        conn.close()
+        return jsonify({'error': 'لا يمكنك تصفير أجهزة هذا المستخدم'}), 403
+
     conn.execute('DELETE FROM user_devices WHERE user_id = ?', (uid,))
     conn.commit()
     conn.close()
@@ -1617,6 +1741,11 @@ def admin_change_password():
     if not uid or not new_pw:
         return jsonify({'error': 'User ID and password are required'}), 400
     
+    # 🛑 Enforcement: Password Policy
+    is_valid, msg = validate_password(new_pw)
+    if not is_valid:
+        return jsonify({'error': msg}), 400
+
     conn = get_db()
     try:
         conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?', 
@@ -1749,13 +1878,10 @@ def update_user_role(id):
     conn.close()
     return jsonify({'success': True})
 
-# Strict allowed extensions by category
+# Restricted allowed extensions as requested (PDF & Images Only)
 ALLOWED_EXTENSIONS = {
     'pdf': ['pdf'],
-    'image': ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-    'video': ['mp4', 'webm', 'mov', 'avi'],
-    'audio': ['mp3', 'wav', 'ogg', 'm4a'],
-    'doc': ['doc', 'docx', 'ppt', 'pptx']
+    'image': ['png', 'jpg', 'jpeg', 'gif', 'webp']
 }
 
 def allowed_file(filename):
@@ -2214,7 +2340,9 @@ def _active_session(subject_id):
 
 # ── Start a new attendance session ──────────────────────────────
 @app.route('/api/attendance/start', methods=['POST'])
+@require_role('teacher', 'super_admin', 'section_admin')
 def attendance_start():
+    ctx = get_user_context()
     data = request.json or {}
     subject_id   = data.get('subject_id')
     professor_id = data.get('professor_id')
@@ -2242,13 +2370,20 @@ def attendance_start():
 
 # ── Refresh / get current QR token ──────────────────────────────
 @app.route('/api/attendance/qr/<int:session_id>', methods=['GET', 'POST'])
+@require_role('teacher', 'super_admin', 'section_admin')
 def attendance_qr(session_id):
+    ctx = get_user_context()
     conn = get_db()
-    session = conn.execute("SELECT * FROM attendance_sessions WHERE id=?", (session_id,)).fetchone()
+    session = conn.execute("SELECT s.*, b.instructor_id, b.section_id FROM attendance_sessions s JOIN subjects b ON s.subject_id = b.id WHERE s.id=?", (session_id,)).fetchone()
     if not session or session['status'] != 'active':
         conn.close()
         return jsonify({'error': 'Session not found or ended'}), 404
 
+    # 🛑 IDOR Check
+    if ctx['role'] != 'super_admin' and session['instructor_id'] != ctx['user_id'] and session['section_id'] != ctx['section_id']:
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    
     interval = session['refresh_interval']
     # Auto-refresh if expired
     now = datetime.utcnow()
@@ -2279,10 +2414,12 @@ def attendance_qr(session_id):
 # ── Student scans QR ─────────────────────────────────────────────
 @app.route('/api/attendance/scan', methods=['POST'])
 @limiter.limit("5 per minute") # Mitigates Brute-force & Token Forgery attempts
+@require_role('student', 'super_admin')
 def attendance_scan():
+    ctx = get_user_context()
     data = request.json or {}
     token      = data.get('token', '')
-    student_id = data.get('student_id')
+    student_id = ctx['user_id'] # 🛑 FORCE: student_id must match logged-in user
 
     if not token or not student_id:
         return jsonify({'error': 'token and student_id required'}), 400
@@ -2338,7 +2475,9 @@ def attendance_scan():
 
 # ── Live attendance list ─────────────────────────────────────────
 @app.route('/api/attendance/live/<int:session_id>', methods=['GET'])
+@require_role('teacher', 'super_admin', 'section_admin', 'committee', 'head_dept')
 def attendance_live(session_id):
+    ctx = get_user_context()
     conn = get_db()
     records = conn.execute('''
         SELECT ar.id, ar.scanned_at, ar.method,
@@ -2379,7 +2518,9 @@ def attendance_live(session_id):
 
 # ── Manual mark attendance ───────────────────────────────────────
 @app.route('/api/attendance/manual-mark', methods=['POST'])
+@require_role('teacher', 'super_admin', 'section_admin', 'head_dept')
 def attendance_manual():
+    ctx = get_user_context()
     data = request.json or {}
     session_id = data.get('session_id')
     student_id = data.get('student_id')
@@ -2401,7 +2542,9 @@ def attendance_manual():
 
 # ── Delete attendance record ──────────────────────────────────────
 @app.route('/api/attendance/delete-record', methods=['DELETE'])
+@require_role('teacher', 'super_admin', 'section_admin')
 def attendance_delete_record():
+    ctx = get_user_context()
     data = request.json or {}
     session_id = data.get('session_id')
     student_id = data.get('student_id')
@@ -2420,7 +2563,9 @@ def attendance_delete_record():
 
 # ── Pause/Resume session ──────────────────────────────────────────
 @app.route('/api/attendance/toggle-status/<int:session_id>', methods=['POST'])
+@require_role('teacher', 'super_admin', 'section_admin')
 def attendance_toggle_status(session_id):
+    ctx = get_user_context()
     data = request.json or {}
     new_status = data.get('status') # 'active' or 'paused'
     if new_status not in ['active', 'paused']:
@@ -2437,7 +2582,9 @@ def attendance_toggle_status(session_id):
 
 # ── End session ──────────────────────────────────────────────────
 @app.route('/api/attendance/end/<int:session_id>', methods=['POST'])
+@require_role('teacher', 'super_admin', 'section_admin')
 def attendance_end(session_id):
+    ctx = get_user_context()
     conn = get_db()
     conn.execute(
         "UPDATE attendance_sessions SET status='ended', ended_at=CURRENT_TIMESTAMP WHERE id=?",
@@ -2922,6 +3069,7 @@ def create_exam():
 
     try:
         conn = get_db()
+        title = sanitize_input(title) # Sanitize exam title
         cur = conn.execute(
             'INSERT INTO exams (title, subject_id, teacher_id, duration_minutes, sections) VALUES (?, ?, ?, ?, ?)',
             (title, subject_id, ctx['user_id'], duration, sections_json)
@@ -2933,10 +3081,13 @@ def create_exam():
                 conn.execute(
                     '''INSERT INTO exam_questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_answer, question_order)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (exam_id, q.get('question_text', ''), q.get('option_a', ''), q.get('option_b', ''),
-                     q.get('option_c', ''), q.get('option_d', ''), q.get('correct_answer', 'a'), idx)
+                    (exam_id, sanitize_input(q.get('question_text', '')), 
+                     sanitize_input(q.get('option_a', '')), sanitize_input(q.get('option_b', '')),
+                     sanitize_input(q.get('option_c', '')), sanitize_input(q.get('option_d', '')), 
+                     q.get('correct_answer', 'a'), idx)
                 )
         conn.commit()
+        audit_log("EXAM_CREATED", {"exam_id": exam_id, "title": title})
         
         # ── PUSH NOTIFICATION ──
         try:
@@ -2968,10 +3119,16 @@ def get_exam(exam_id):
 
     conn = get_db()
     try:
-        exam = conn.execute('SELECT e.*, s.title as subject_title FROM exams e JOIN subjects s ON e.subject_id = s.id WHERE e.id = ?', (exam_id,)).fetchone()
+        exam = conn.execute('SELECT e.*, s.title as subject_title, s.section_id FROM exams e JOIN subjects s ON e.subject_id = s.id WHERE e.id = ?', (exam_id,)).fetchone()
         if not exam:
             conn.close()
             return jsonify({'error': 'Exam not found'}), 404
+
+        # 🛑 IDOR Check
+        is_admin = ctx['role'] in ['super_admin', 'head_dept', 'committee', 'section_admin']
+        if not is_admin and ctx['role'] == 'student' and exam['section_id'] != ctx['section_id']:
+            conn.close()
+            return jsonify({'error': 'Unauthorized access to this exam'}), 403
 
         exam_dict = dict(exam)
         try:
@@ -3351,6 +3508,11 @@ def get_chat_messages():
     if not section_id:
         return jsonify({'error': 'Section ID required'}), 400
 
+    # 🛑 IDOR Check
+    is_admin = ctx['role'] in ['super_admin', 'head_dept']
+    if not is_admin and section_id != ctx['section_id']:
+        return jsonify({'error': 'Forbidden access to this chat'}), 403
+
     conn = get_db()
     try:
         limit = int(request.args.get('limit', 50))
@@ -3462,6 +3624,7 @@ def send_chat_message():
                 return jsonify({'error': 'Chat is locked by admin'}), 403
 
         cur = conn.cursor()
+        content = sanitize_input(content) # Sanitize message
         cur.execute('''
             INSERT INTO chat_messages (section_id, sender_id, content)
             VALUES (?, ?, ?)
@@ -3599,7 +3762,7 @@ def manage_chat_message(msg_id):
         elif request.method == 'PUT':
             if not is_owner:
                 return jsonify({'error': 'Forbidden'}), 403
-            content = request.json.get('content')
+            content = sanitize_input(request.json.get('content'))
             if not content: return jsonify({'error': 'Empty content'}), 400
             conn.execute('''
                 UPDATE chat_messages 
