@@ -338,7 +338,9 @@ export default async function AttendancePage(params) {
                                 ${(r.full_name || r.email).charAt(0).toUpperCase()}
                             </div>
                             <div style="flex: 1;">
-                                    <i class="ph ph-envelope"></i> ${r.email}  <span style="margin: 0 5px;">|</span> <i class="ph ph-clock"></i> ${new Date(r.scanned_at.includes('Z') ? r.scanned_at : r.scanned_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">${r.full_name || r.email.split('@')[0]}</div>
+                                <div style="font-size: 12px; color: var(--muted); display:flex; align-items:center; gap:5px;">
+                                    <i class="ph ph-clock"></i> ${new Date(r.scanned_at.includes('Z') ? r.scanned_at : r.scanned_at.replace(' ', 'T') + 'Z').toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px;">
