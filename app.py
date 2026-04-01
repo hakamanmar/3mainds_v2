@@ -424,7 +424,7 @@ def init_db():
         )
     ''')
     # Cleanup old attempts regularly (optional - but keeps table slim)
-    c.execute('DELETE FROM login_attempts WHERE attempt_time < datetime("now", "-1 day")')
+    c.execute("DELETE FROM login_attempts WHERE attempt_time < datetime('now', '-1 day')")
 
     # 13. User Devices Table (Multi-Device Support: Max 3)
     c.execute('''
@@ -900,7 +900,7 @@ def login():
         recent_fails = conn.execute('''
             SELECT COUNT(*) FROM login_attempts 
             WHERE email = ? AND success = 0 
-            AND attempt_time > datetime("now", "-15 minutes")
+            AND attempt_time > datetime('now', '-15 minutes')
         ''', (email,)).fetchone()
         
         fail_count = int(list(recent_fails.values())[0]) if isinstance(recent_fails, dict) else recent_fails[0]
