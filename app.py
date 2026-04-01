@@ -5,6 +5,9 @@ import secrets
 import string
 import uuid
 import mimetypes
+import logging
+from logging.handlers import RotatingFileHandler
+from functools import lru_cache
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, make_response, Response
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -37,7 +40,18 @@ cloudinary.config(
   secure = True
 )
 
+# ─── LOGGING CONFIGURATION ──────────────────────────────────────────────
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+log_file = 'app.log'
+file_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024 * 5, backupCount=5)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.INFO)
+
 app = Flask(__name__)
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+app.logger.info('3Minds Platform startup')
+
 # Generate a strong runtime secret if none is provided via env
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
@@ -48,8 +62,18 @@ with db_init_lock:
     # This ensures init_db is defined or we call it if defined already
     pass # we will call it after definition
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-app.config['DEVICE_BINDING_SECRET'] = secrets.token_hex(16) # For hashing device IDs
+app.config['DEVICE_BINDING_SECRET'] = os.environ.get('DEVICE_BINDING_SECRET', secrets.token_hex(16)) 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Reduced from 500MB to 50MB for better DoS protection
+
+# ─── GLOBAL ERROR HANDLER ──────────────────────────────────────────────
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the full error internally
+    app.logger.error(f"Unhandled Exception: {str(e)}", exc_info=True)
+    # Return a safe JSON response for API or a generic error page
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Internal Server Error", "message": "An unexpected error occurred. Please try again later."}), 500
+    return "An unexpected error occurred. Please contact the administrator.", 500
 
 # ─── PASSWORD POLICY ──────────────────────────────────────────────
 def validate_password(password):
@@ -136,8 +160,13 @@ def security_check():
     if request.method in ['POST', 'PUT', 'DELETE']:
         # Bypass for login since token is generated there
         if request.path != '/api/login':
-            if not validate_csrf():
-                return jsonify({'error': 'CSRF token mismatch or missing'}), 403
+            try:
+                if not validate_csrf():
+                    app.logger.warning(f"CSRF Failure: {request.remote_addr} -> {request.path}")
+                    return jsonify({'error': 'CSRF token mismatch or missing'}), 403
+            except Exception as e:
+                app.logger.error(f"CSRF Validator Error: {e}")
+                return jsonify({'error': 'Security validation error'}), 403
 
 # Detect hosting environment
 IS_VERCEL = "VERCEL" in os.environ
@@ -705,8 +734,13 @@ def audit_log(action, payload=None, risk_score="LOW"):
         # Append-only (Immutable) log pattern
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(json.dumps(log_entry) + '\n')
+        # Also log to main app logger for consolidated monitoring
+        if risk_score == "HIGH":
+            app.logger.error(f"AUDIT {risk_score}: {action} | Payload: {payload}")
+        else:
+            app.logger.info(f"AUDIT {risk_score}: {action}")
     except Exception as e:
-        print(f"Audit log failure: {e}")
+        app.logger.error(f"Audit log failure: {e}")
 
 # ─── Authorization ────────────────────────────────────────────
 def get_user_context():
@@ -981,11 +1015,16 @@ def logout():
 
 # ─── SECTIONS ─────────────────────────────────────────────────
 @app.route('/api/sections', methods=['GET'])
+@lru_cache(maxsize=1)
 def get_all_sections():
-    conn = get_db()
-    rows = conn.execute('SELECT * FROM sections').fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
+    try:
+        conn = get_db()
+        rows = conn.execute('SELECT * FROM sections').fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        app.logger.error(f"Error fetching sections: {e}")
+        return jsonify({"error": "Failed to fetch sections"}), 500
 
 # ─── MY COURSES (Teacher-facing) ──────────────────────────────
 @app.route('/api/my-courses', methods=['GET'])
