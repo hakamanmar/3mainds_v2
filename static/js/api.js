@@ -83,6 +83,12 @@ export const api = {
             }
 
             const data = await res.json();
+            
+            // 🛑 Auto-save CSRF token if server returns it (extremely robust)
+            if (data && data.csrf_token) {
+                localStorage.setItem('csrf_token', data.csrf_token);
+            }
+
             // Save to Persistent LocalStorage Cache if it's a GET request
             if (isGet) {
                 try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
