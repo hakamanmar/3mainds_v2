@@ -122,10 +122,17 @@ export const api = {
 
     // ── Auth ──────────────────────────────────────────────────
     async login(email, password) {
-        return this._fetch(`${API_BASE}/login`, {
+        const res = await this._fetch(`${API_BASE}/login`, {
             method: 'POST',
             body: JSON.stringify({ email, password, device_id: getDeviceId() })
         });
+        
+        // 🛑 Store CSRF token if returned (Critical for subsequent POST calls)
+        if (res && res.csrf_token) {
+            localStorage.setItem('csrf_token', res.csrf_token);
+        }
+        
+        return res;
     },
     async changePassword(user_id, password) {
         return this._fetch(`${API_BASE}/change-password`, {
