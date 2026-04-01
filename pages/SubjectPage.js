@@ -28,7 +28,7 @@ const SubjectPage = async (params) => {
             api.getSubject(id),
             api.getAssignments(id)
         ]);
-        
+
         const subData = subRes.status === 'fulfilled' ? subRes.value : null;
         const assignmentsData = assignmentsRes.status === 'fulfilled' ? assignmentsRes.value : [];
 
@@ -40,7 +40,7 @@ const SubjectPage = async (params) => {
 
         // If even the subject name is missing and we aren't loading, then we show error
         if (!subject.title && !navigator.onLine) {
-             throw new Error('لم يتم تحميل هذه المادة مسبقاً للعمل بدون إنترنت');
+            throw new Error('لم يتم تحميل هذه المادة مسبقاً للعمل بدون إنترنت');
         }
     } catch (e) {
         return `<div class="error-state">
@@ -134,12 +134,12 @@ const SubjectPage = async (params) => {
                     ` : `
                         <div class="premium-lessons-list">
                             ${lessons.map((item, idx) => {
-                                const type = getFileType(item.url);
-                                const icon = typeIcon[type] || 'ph-file';
-                                const color = typeColor[type] || '#4f46e5';
-                                const encodedUrl = encodeURIComponent(item.url || '');
-                                const encodedName = encodeURIComponent(item.title || 'ملف');
-                                return `
+        const type = getFileType(item.url);
+        const icon = typeIcon[type] || 'ph-file';
+        const color = typeColor[type] || '#4f46e5';
+        const encodedUrl = encodeURIComponent(item.url || '');
+        const encodedName = encodeURIComponent(item.title || 'ملف');
+        return `
                                     <div class="lesson-row-card" data-id="${item.id}" style="--item-color: ${color}">
                                         <div class="row-left">
                                             <div class="row-icon-box">
@@ -173,7 +173,7 @@ const SubjectPage = async (params) => {
                                         </div>
                                     </div>
                                 `;
-                            }).join('')}
+    }).join('')}
                         </div>
                     `}
                 </div>
@@ -200,8 +200,8 @@ const SubjectPage = async (params) => {
                                     <p>لا يوجد واجبات حالية</p>
                                 </div>
                             ` : assignments.map(a => {
-                                const isExpired = a.due_date && new Date(a.due_date) < new Date();
-                                return `
+        const isExpired = a.due_date && new Date(a.due_date) < new Date();
+        return `
                                     <div class="assignment-mini-card ${isExpired ? 'expired' : ''}">
                                         <div class="assign-header">
                                             <h3>${a.title}</h3>
@@ -212,7 +212,7 @@ const SubjectPage = async (params) => {
                                             <div class="assign-meta">
                                                 <span class="due-tag">
                                                     <i class="ph-bold ph-clock"></i>
-                                                    ${new Date(a.due_date).toLocaleDateString('ar-EG', {month:'short', day:'numeric'})}
+                                                    ${new Date(a.due_date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
                                                 </span>
                                                 <span class="format-tag">${a.allowed_formats}</span>
                                             </div>
@@ -245,7 +245,7 @@ const SubjectPage = async (params) => {
                                         </div>
                                     </div>
                                 `;
-                            }).join('')}
+    }).join('')}
                         </div>
                     </div>
                 </div>
@@ -426,21 +426,26 @@ SubjectPage.init = (params) => {
         `;
 
         let html5QrcodeScanner;
-        
+
         const onScanSuccess = async (decodedText) => {
             if (html5QrcodeScanner) {
                 await html5QrcodeScanner.clear().catch(() => {});
             }
-            UI.toast(i18n.lang === 'ar' ? 'تم التقاط الرمز!' : 'Code detected!');
-            const res = await api.scanQR(decodedText, user.id);
-            if (res.success) {
-                UI.toast(res.message);
-                if (UI.closeCurrentModal) UI.closeCurrentModal();
-                if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
-            } else {
-                UI.toast(res.message, 'error');
-                // Restart scanner if error
-                initScannerUI();
+            UI.toast(i18n.lang === 'ar' ? 'تم التقاط الرمز، جاري المعالجة...' : 'Code detected, processing...');
+            
+            try {
+                const res = await api.scanQR(decodedText, user.id);
+                if (res && res.success) {
+                    UI.toast(res.message);
+                    if (UI.closeCurrentModal) UI.closeCurrentModal();
+                    if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`); 
+                } else {
+                    UI.toast(res ? res.message : 'Error', 'error');
+                    initScannerUI(); // Restart
+                }
+            } catch (err) {
+                UI.toast(err.message || 'حدث خطأ أثناء تسجيل الحضور', 'error');
+                initScannerUI(); // Restart
             }
         };
 
@@ -450,20 +455,20 @@ SubjectPage.init = (params) => {
                 return;
             }
 
-            html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { 
-                fps: 10, 
+            html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", {
+                fps: 10,
                 qrbox: { width: 250, height: 250 },
                 rememberLastUsedCamera: true,
                 supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
             }, /* verbose= */ false);
-            
+
             html5QrcodeScanner.render(onScanSuccess, (err) => {
                 // Ignore routine errors
             });
         };
 
         UI.modal(i18n.t('scan_attendance') || 'تسجيل الحضور', html, () => false, {
-            onClose: async () => { if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => {}); },
+            onClose: async () => { if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => { }); },
             hideFooter: true,
             large: false
         });
@@ -479,15 +484,15 @@ SubjectPage.init = (params) => {
 
             const submitBtn = document.getElementById('manual-submit-btn');
             if (submitBtn) submitBtn.onclick = async () => {
-                 const token = document.getElementById('qr-token-input').value.trim();
-                 if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
-                 const res = await api.scanQR(token, user.id);
-                 if (res.success) {
-                    if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => {});
+                const token = document.getElementById('qr-token-input').value.trim();
+                if (!token) { UI.toast('يرجى إدخال الرمز', 'error'); return; }
+                const res = await api.scanQR(token, user.id);
+                if (res.success) {
+                    if (html5QrcodeScanner) await html5QrcodeScanner.clear().catch(() => { });
                     UI.toast(res.message);
                     if (UI.closeCurrentModal) UI.closeCurrentModal();
                     if (params.action === 'scan') window.router.navigate(`/subject/${subjectId}`);
-                 } else { UI.toast(res.message, 'error'); }
+                } else { UI.toast(res.message, 'error'); }
             };
         }, 300);
     };
