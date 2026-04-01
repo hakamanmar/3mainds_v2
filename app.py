@@ -107,9 +107,12 @@ def generate_csrf_token():
 
 def validate_csrf():
     if request.method in ['POST', 'PUT', 'DELETE']:
-        token = request.headers.get('X-CSRF-Token')
-        if not token or token != session.get('csrf_token'):
-            audit_log("CSRF_FAILURE", {"ip": request.remote_addr}, risk_score="HIGH")
+        header_token = request.headers.get('X-CSRF-Token')
+        ctx = get_user_context() # Extract from signed persistent cookie
+        cookie_token = ctx.get('csrf_token')
+        
+        if not header_token or not cookie_token or header_token != cookie_token:
+            audit_log("CSRF_FAILURE", {"ip": request.remote_addr, "user": ctx.get('email')}, risk_score="HIGH")
             return False
     return True
 
@@ -172,15 +175,17 @@ def add_security_headers(response):
 def security_check():
     # 🛑 CSRF Validation for all state-changing requests
     if request.method in ['POST', 'PUT', 'DELETE']:
-        # Bypass for login since token is generated there
-        if request.path != '/api/login':
-            try:
-                if not validate_csrf():
-                    app.logger.warning(f"CSRF Failure: {request.remote_addr} -> {request.path}")
-                    return jsonify({'error': 'CSRF token mismatch or missing'}), 403
-            except Exception as e:
-                app.logger.error(f"CSRF Validator Error: {e}")
-                return jsonify({'error': 'Security validation error'}), 403
+        # Bypass for login since token is generated/captured there
+        if request.path.rstrip('/') == '/api/login':
+            return
+
+        try:
+            if not validate_csrf():
+                app.logger.warning(f"CSRF Failure: {request.remote_addr} -> {request.path}")
+                return jsonify({'error': 'CSRF token mismatch or missing'}), 403
+        except Exception as e:
+            app.logger.error(f"CSRF Validator Error: {e}")
+            return jsonify({'error': 'Security validation error'}), 403
 
 # Detect hosting environment
 # (Already defined above for logging)
@@ -364,11 +369,20 @@ def get_db():
 
 # Force immediate schema initialization for Vercel environments
 def ensure_schema():
+    """Optimized initialization: only runs if core tables are missing."""
     try:
-        print(f"[DB] Initializing schema... Turso Active: {USE_TURSO}")
-        init_db()
-    except Exception as e:
-        print(f"[DB] Critical: ensure_schema failed: {e}")
+        conn = get_db()
+        # Fast check for a critical table
+        conn.execute('SELECT 1 FROM users LIMIT 1')
+        conn.close()
+        app.logger.info("[DB] Schema already initialized - Skipping init_db")
+    except Exception:
+        # Schema missing or broken
+        try:
+            app.logger.info("[DB] Schema missing or mismatch - Initializing tables...")
+            init_db()
+        except Exception as e:
+            app.logger.error(f"[DB] Critical: ensure_schema failed: {e}")
 
 
 def init_db():
@@ -774,19 +788,12 @@ def get_user_context():
         user_role = data.get('role', 'guest')
         user_id = data.get('id')
         
-        # Device Binding: Force check for students to prevent session hijacking
-        if user_role == 'student':
-            client_device_id = request.headers.get('X-Device-ID')
-            # Instead of a heavy DB hit here, we can trust the login process handled the binding
-            # but for TRUE Zero Trust, we should verify it periodically.
-            # Here we just ensure the header exists and matches what we expect
-            pass
-
         return {
             'role': user_role,
             'section_id': data.get('section_id'),
             'user_id': user_id,
-            'email': data.get('email')
+            'email': data.get('email'),
+            'csrf_token': data.get('csrf_token') # Persistent CSRF
         }
     except (SignatureExpired, BadTimeSignature):
         return {'role': 'guest', 'section_id': None, 'user_id': None}
@@ -968,21 +975,23 @@ def login():
         conn.close()
 
     # Generate Secure Auth Token
+    # CSRF Token for this session
+    # Generate it early so it can be included in the token payload
+    csrf_token = secrets.token_hex(32)
+
+    # Generate Secure Auth Token (Stateless)
     token_data = {
         'id': user['id'],
         'email': user['email'],
         'role': user['role'],
-        'section_id': user.get('section_id')
+        'section_id': user.get('section_id'),
+        'csrf_token': csrf_token # Persist CSRF inside the signed cookie!
     }
     auth_token = serializer.dumps(token_data, salt='auth-token')
 
-    # Regenerate Session (Prevent fixation)
+    # Regenerate Session (Internal flask session, mostly for flash/temp data)
     session.clear()
-    session.permanent = True
-    app.permanent_session_lifetime = timedelta(hours=8)
-    
-    # CSRF Token for this session
-    csrf_token = generate_csrf_token()
+    session['csrf_token'] = csrf_token
 
     resp = make_response(jsonify({
         'success': True,
