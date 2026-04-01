@@ -33,7 +33,10 @@ export const auth = {
         // We don't store the token in LocalStorage anymore! It's in the HttpOnly cookie.
     },
     logout() {
-        try { localStorage.removeItem('user'); } catch (e) { }
+        try { 
+            localStorage.removeItem('user'); 
+            localStorage.removeItem('csrf_token');
+        } catch (e) { }
         // Let the server clear the cookie
         fetch('/api/logout', { method: 'POST' }).finally(() => {
             window.location.href = '/';
@@ -52,6 +55,14 @@ export const api = {
         if (user && user.role) headers['X-User-Role'] = user.role;
         const sectionId = (user && user.section_id) || selectedSection;
         if (sectionId) headers['X-Section-ID'] = sectionId;
+
+        // 🛑 CSRF Protection (Added)
+        // Read CSRF token from LocalStorage for POST/PUT/DELETE requests
+        const isSafeMethod = ['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes((options.method || 'GET').toUpperCase());
+        if (!isSafeMethod) {
+            const csrfToken = localStorage.getItem('csrf_token');
+            if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+        }
 
         const isGet = !options.method || options.method.toUpperCase() === 'GET';
         const cacheKey = `cache_${url.split('?')[0]}`;
@@ -111,10 +122,15 @@ export const api = {
 
     // ── Auth ──────────────────────────────────────────────────
     async login(email, password) {
-        return this._fetch(`${API_BASE}/login`, {
+        const res = await this._fetch(`${API_BASE}/login`, {
             method: 'POST',
             body: JSON.stringify({ email, password, device_id: getDeviceId() })
         });
+        // 🛑 Store CSRF token if returned
+        if (res && res.csrf_token) {
+            localStorage.setItem('csrf_token', res.csrf_token);
+        }
+        return res;
     },
     async changePassword(user_id, password) {
         return this._fetch(`${API_BASE}/change-password`, {
