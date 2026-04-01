@@ -15,6 +15,32 @@ from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 import time
 import requests
+
+# ─── ENVIRONMENT DETECTION ──────────────────────────────────────────────
+IS_VERCEL = "VERCEL" in os.environ
+
+# ─── LOGGING CONFIGURATION ──────────────────────────────────────────────
+app = Flask(__name__)
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+
+# On Vercel, the filesystem is read-only except for /tmp
+log_file = '/tmp/app.log' if IS_VERCEL else 'app.log'
+
+try:
+    file_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024 * 5, backupCount=5)
+    file_handler.setFormatter(log_formatter)
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+except Exception as e:
+    # Fallback to console logging if file system is not writable
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(log_formatter)
+    app.logger.addHandler(stream_handler)
+    print(f"[LOGGING] Warning: could not initialize file logging: {e}")
+
+app.logger.setLevel(logging.INFO)
+app.logger.info(f'3Minds Platform startup - Vercel={IS_VERCEL}')
+
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
@@ -26,13 +52,13 @@ try:
     PUSH_AVAILABLE = True
 except ImportError:
     PUSH_AVAILABLE = False
-    print("[PUSH] pywebpush not installed - push notifications disabled")
+    app.logger.warning("[PUSH] pywebpush not installed - push notifications disabled")
 
 import cloudinary
 import cloudinary.uploader
 from cloudinary.utils import cloudinary_url
 
-# ─── Cloudinary Configuration ──────────────────────────────────────────
+# ─── SECRETS & CONFIG ──────────────────────────────────────────
 cloudinary.config( 
   cloud_name = "da8y13hi1", 
   api_key = "993656917894236", 
@@ -40,27 +66,15 @@ cloudinary.config(
   secure = True
 )
 
-# ─── LOGGING CONFIGURATION ──────────────────────────────────────────────
-log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
-log_file = 'app.log'
-file_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024 * 5, backupCount=5)
-file_handler.setFormatter(log_formatter)
-file_handler.setLevel(logging.INFO)
-
-app = Flask(__name__)
-app.logger.addHandler(file_handler)
-app.logger.setLevel(logging.INFO)
-app.logger.info('3Minds Platform startup')
-
 # Generate a strong runtime secret if none is provided via env
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# Initialize DB at startup (important for Vercel /tmp)
+# Initialize DB lock
 from threading import Lock
 db_init_lock = Lock()
 with db_init_lock:
-    # This ensures init_db is defined or we call it if defined already
-    pass # we will call it after definition
+    pass 
+
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 app.config['DEVICE_BINDING_SECRET'] = os.environ.get('DEVICE_BINDING_SECRET', secrets.token_hex(16)) 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Reduced from 500MB to 50MB for better DoS protection
@@ -169,7 +183,7 @@ def security_check():
                 return jsonify({'error': 'Security validation error'}), 403
 
 # Detect hosting environment
-IS_VERCEL = "VERCEL" in os.environ
+# (Already defined above for logging)
 
 if IS_VERCEL:
     DB_PATH = '/tmp/academic.db'
@@ -729,7 +743,10 @@ def audit_log(action, payload=None, risk_score="LOW"):
         "risk_score": risk_score,
         "payload": payload or {}
     }
-    log_path = os.path.join(os.getcwd(), 'security_audit.log')
+    
+    # On Vercel, the root folder is read-only. Use /tmp.
+    log_path = '/tmp/security_audit.log' if IS_VERCEL else 'security_audit.log'
+
     try:
         # Append-only (Immutable) log pattern
         with open(log_path, 'a', encoding='utf-8') as f:
