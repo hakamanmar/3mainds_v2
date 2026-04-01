@@ -913,7 +913,7 @@ def login():
         user_row = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         
         if not user_row:
-            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)', (email, ip_addr, 0))
+            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, ?)', (email, ip_addr, 0))
             conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'البريد الإلكتروني غير مسجل'}), 401
@@ -921,13 +921,13 @@ def login():
         user = dict(user_row)
         
         if not check_password_hash(user['password'], password):
-            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)', (email, ip_addr, 0))
+            conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, ?)', (email, ip_addr, 0))
             conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'كلمة المرور غير صحيحة'}), 401
         
         # Success Update
-        conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 1)', (email, ip_addr, 1))
+        conn.execute('INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, ?)', (email, ip_addr, 1))
         conn.commit()
 
         # Audit successful login
