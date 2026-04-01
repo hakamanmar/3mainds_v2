@@ -1944,7 +1944,7 @@ textarea:focus {
 .section-glass-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
 .v3-sec-btn {
-    background: var(--background);
+    background: var(--surface-2);
     border: 1.5px solid var(--border);
     padding: 1.25rem 2.5rem;
     border-radius: 20px;
@@ -1955,6 +1955,7 @@ textarea:focus {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    color: var(--text-main);
 }
 
 .v3-sec-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
