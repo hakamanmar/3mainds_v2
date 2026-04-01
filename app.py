@@ -1772,14 +1772,15 @@ def add_user():
 @app.route('/api/admin/reset-device', methods=['POST'])
 @require_role('section_admin', 'super_admin')
 def admin_reset_device():
+    ctx = get_user_context()
     data = request.json or {}
     uid = data.get('user_id')
     if not uid:
         return jsonify({'error': 'User ID is required'}), 400
     conn = get_db()
     # 🛑 IDOR Check
-    user = conn.execute('SELECT section_id FROM users WHERE id = ?', (uid,)).fetchone()
-    if not user or (ctx['role'] == 'section_admin' and user['section_id'] != ctx['section_id']):
+    user_row = conn.execute('SELECT section_id FROM users WHERE id = ?', (uid,)).fetchone()
+    if not user_row or (ctx['role'] == 'section_admin' and user_row['section_id'] != ctx['section_id']):
         conn.close()
         return jsonify({'error': 'لا يمكنك تصفير أجهزة هذا المستخدم'}), 403
 
