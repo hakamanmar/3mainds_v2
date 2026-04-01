@@ -1,4 +1,4 @@
-const CACHE_NAME = '3minds-v41';
+const CACHE_NAME = '3minds-v42';
 const ASSETS = [
     '/',
     '/index.html',
