@@ -74,9 +74,21 @@ export const api = {
         }
 
         try {
-            const res = await fetch(finalUrl, { ...options, headers });
+            const res = await fetch(finalUrl, { ...options, headers, credentials: 'include' });
             
-            if (res.status === 401) { auth.logout(); return; }
+            if (res.status === 401) { 
+                console.warn(`[DEBUG] 401 Unauthorized from: ${finalUrl}`);
+                const errData = await res.clone().json().catch(() => ({}));
+                if (errData.required) {
+                    // This is a role permission error, NOT a login session error.
+                    // DO NOT logout. Just show a warning or handle in caller.
+                    console.error(`Permission Denied: Required ${errData.required}, but you have ${errData.got}`);
+                    throw { status: 401, message: 'ليس لديك صلاحية للوصول لهذه البيانات', permissionError: true };
+                } else {
+                    auth.logout(); 
+                    return; 
+                }
+            }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw { status: res.status, message: err.error || err.message || res.statusText };
