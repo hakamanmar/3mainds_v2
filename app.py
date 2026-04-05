@@ -2999,6 +2999,7 @@ def init_exam_tables():
                 duration_minutes INTEGER NOT NULL DEFAULT 60,
                 sections TEXT DEFAULT '[]',
                 is_active INTEGER DEFAULT 1,
+                closing_after_minutes INTEGER DEFAULT 0, -- 0 means never closes automatically
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
                 FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
@@ -3106,6 +3107,17 @@ def list_exams():
             # Question count
             qcount = conn.execute('SELECT COUNT(*) FROM exam_questions WHERE exam_id = ?', (d['id'],)).fetchone()
             d['question_count'] = qcount[0] if qcount else 0
+            # Calculate if closed
+            d['is_closed'] = False
+            if d.get('closing_after_minutes', 0) > 0:
+                # Support both space and T in timestamp
+                c_at_str = d['created_at'].replace(' ', 'T')
+                if not 'Z' in c_at_str: c_at_str += 'Z'
+                created_at_dt = datetime.fromisoformat(c_at_str.replace('Z', '+00:00'))
+                expiry_time = created_at_dt + timedelta(minutes=d['closing_after_minutes'])
+                if datetime.now(created_at_dt.tzinfo) > expiry_time:
+                    d['is_closed'] = True
+
             result.append(d)
 
         conn.close()
@@ -3136,9 +3148,10 @@ def create_exam():
     try:
         conn = get_db()
         title = sanitize_input(title) # Sanitize exam title
+        closing_after_minutes = int(data.get('closing_after_minutes', 0))
         cur = conn.execute(
-            'INSERT INTO exams (title, subject_id, teacher_id, duration_minutes, sections) VALUES (?, ?, ?, ?, ?)',
-            (title, subject_id, ctx['user_id'], duration, sections_json)
+            'INSERT INTO exams (title, subject_id, teacher_id, duration_minutes, sections, closing_after_minutes) VALUES (?, ?, ?, ?, ?, ?)',
+            (title, subject_id, ctx['user_id'], duration, sections_json, closing_after_minutes)
         )
         exam_id = cur.lastrowid
 
@@ -3249,6 +3262,17 @@ def start_exam(exam_id):
         if not exam:
             conn.close()
             return jsonify({'error': 'Exam not found or not active'}), 404
+
+        # Check if exam is closed for NEW attempts
+        closing_m = exam.get('closing_after_minutes', 0)
+        if closing_m > 0:
+            c_at_str = exam['created_at'].replace(' ', 'T')
+            if not 'Z' in c_at_str: c_at_str += 'Z'
+            created_at_dt = datetime.fromisoformat(c_at_str.replace('Z', '+00:00'))
+            expiry_time = created_at_dt + timedelta(minutes=closing_m)
+            if datetime.now(created_at_dt.tzinfo) > expiry_time:
+                conn.close()
+                return jsonify({'error': 'عذراً، انتهى الوقت المسموح به للدخول للاختبار'}), 403
 
         existing = conn.execute(
             'SELECT * FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
