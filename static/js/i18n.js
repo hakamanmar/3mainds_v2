@@ -121,7 +121,22 @@ export const translations = {
         chat_title: 'المحادثات المباشرة',
         send_message: 'إرسال رسالة',
         mute_chat: 'كتم الإشعارات',
-        unmute_chat: 'تفعيل الإشعارات'
+        unmute_chat: 'تفعيل الإشعارات',
+        attendance_subtitle: 'نظام الحضور الذكي عبر QR code والباركود الديناميكي الآمن.',
+        choose_section: 'اختر الشعبة الدراسية',
+        choose_subject: 'اختر المادة الدراسية',
+        no_subjects_found: 'لا توجد مواد دراسية مسجلة لهذه الشعبة.',
+        dynamic_qr: 'رمز QR الديناميكي',
+        qr_instruction: 'اعرض هذا الرمز للطلاب للمسح، يتغير الرمز تلقائياً للأمان.',
+        live_attendance: 'لوحة الحضور المباشر',
+        waiting_scans: 'بانتظار مسح الطلاب للرمز الآن...',
+        end_lecture: 'إنهاء المحاضرة وحفظ التقرير',
+        qr_refreshed: 'تم تجديد الرمز بنجاح',
+        loading_subjects: 'جاري تحميل المواد الدراسية الخاصة بك...',
+        select_subject_error: 'يرجى اختيار المادة الدراسية قبل بدء المحاضرة',
+        confirm_end_attendance: 'هل أنت متأكد من إنهاء تسجيل الحضور؟ سيتم حفظ التقرير في الأرشيف.',
+        attendance_saved: 'تم حفظ سجل الحضور في الأرشيف بنجاح',
+        start_lecture: 'بدء محاضرة جديدة'
     },
     en: {
         dir: 'ltr',
@@ -245,7 +260,22 @@ export const translations = {
         chat_title: 'Live Chat',
         send_message: 'Send Message',
         mute_chat: 'Mute Chat',
-        unmute_chat: 'Unmute Chat'
+        unmute_chat: 'Unmute Chat',
+        attendance_subtitle: 'Smart attendance system via secure dynamic QR and barcodes.',
+        choose_section: 'Select Class Section',
+        choose_subject: 'Select Course Subject',
+        no_subjects_found: 'No courses registered for this section.',
+        dynamic_qr: 'Dynamic QR Token',
+        qr_instruction: 'Display this token for students to scan, it refreshes automatically for security.',
+        live_attendance: 'Live Attendance Monitoring',
+        waiting_scans: 'Waiting for student scans now...',
+        end_lecture: 'End Lecture & Save Report',
+        qr_refreshed: 'QR token refreshed successfully',
+        loading_subjects: 'Loading your course materials...',
+        select_subject_error: 'Please select a subject before starting the session',
+        confirm_end_attendance: 'Are you sure you want to end attendance tracking? The report will be archived.',
+        attendance_saved: 'Attendance record archived successfully',
+        start_lecture: 'Start New Lecture Session'
     }
 };
 
