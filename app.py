@@ -1442,75 +1442,86 @@ def update_lesson(id):
 @require_role('student', 'teacher', 'section_admin', 'super_admin', 'head_dept', 'committee')
 def get_announcements():
     ctx = get_user_context()
-    sid = request.args.get('section_id') or ctx['section_id']
+    sid = ctx['section_id']
     conn = get_db()
     
-    base_query = """
+    # We fetch more broadly and filter in Python for complex JSON overlaps
+    query = """
         SELECT a.id, a.content, a.section_id, a.publisher_id, a.target_date, 
                strftime('%Y-%m-%dT%H:%M:%SZ', a.created_at) as created_at,
                u.full_name, u.email as publisher_email, u.role as publisher_role 
         FROM announcements a
         LEFT JOIN users u ON a.publisher_id = u.id
+        ORDER BY a.created_at DESC
     """
-    
-    if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
-        if sid:
-            query = base_query + " WHERE a.section_id = ? OR a.section_id = 'ALL' ORDER BY a.created_at DESC"
-            ann = conn.execute(query, (sid,)).fetchall()
-        else:
-            query = base_query + " ORDER BY a.created_at DESC"
-            ann = conn.execute(query).fetchall()
-    else:
-        query = base_query + " WHERE a.section_id = ? OR a.section_id = 'ALL' ORDER BY a.created_at DESC"
-        ann = conn.execute(query, (sid,)).fetchall()
+    ann = conn.execute(query).fetchall()
     
     results = []
     for r in ann:
         d = dict(r)
-        # Fallback logic: Name -> Email -> 'إدارة المنصة'
-        d['publisher_name'] = d.get('full_name') if (d.get('full_name') and str(d.get('full_name')).strip()) else d.get('publisher_email', 'إدارة المنصة')
-        results.append(d)
+        target_sid = d['section_id']
+        
+        show = False
+        if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
+            show = True # Admins see all
+        elif target_sid == 'ALL':
+            show = True # Global announcement
+        elif target_sid == sid:
+            show = True # Direct match
+        else:
+            # Check if it's a JSON list
+            try:
+                if target_sid.startswith('['):
+                    s_list = json.loads(target_sid)
+                    if sid in s_list:
+                        show = True
+            except: pass
+
+        if show:
+            d['publisher_name'] = d.get('full_name') if (d.get('full_name') and str(d.get('full_name')).strip()) else d.get('publisher_email', 'إدارة المنصة')
+            results.append(d)
         
     conn.close()
     return jsonify(results)
 
 @app.route('/api/announcements', methods=['POST'])
-@require_role('section_admin', 'head_dept')
+@require_role('teacher', 'section_admin', 'head_dept', 'super_admin', 'committee')
 def add_announcement():
     data = request.json
     ctx = get_user_context()
-    sid = ctx['section_id']
-
-    # Head of Dept & Super Admin: can broadcast to ALL sections
-    if ctx['role'] in ['super_admin', 'head_dept']:
-        sid = data.get('section_id', 'ALL')
-        
+    
+    # Accept 'sections' as 'ALL' or a list of section IDs
+    sections = data.get('sections', 'ALL') 
     content = sanitize_input(data.get('content', '')).strip()
     target_date = data.get('target_date', None)
     
-    if not content or not sid:
-        return jsonify({'error': 'المحتوى والشعبة مطلوبان'}), 400
+    if not content:
+        return jsonify({'error': 'المحتوى مطلوب'}), 400
+
+    # Convert sections to string for storage
+    stored_sections = sections
+    if isinstance(sections, list):
+        stored_sections = json.dumps(sorted(sections))
 
     conn = get_db()
     try:
-        # If head_dept broadcasts to ALL, insert once with section_id='ALL'
-        if sid == 'ALL':
-            conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
-                         (content, 'ALL', ctx['user_id'], target_date))
-        else:
-            conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
-                         (content, sid, ctx['user_id'], target_date))
+        cur = conn.execute('INSERT INTO announcements (content, section_id, publisher_id, target_date) VALUES (?, ?, ?, ?)', 
+                     (content, stored_sections, ctx['user_id'], target_date))
         conn.commit()
         
         # ── PUSH NOTIFICATION ──
         try:
-            target_desc = "الجميع" if sid == 'ALL' else f"شعبة {sid}"
-            # Notify ALL if no section, else just that section
+            target_desc = "الجميع" if stored_sections == 'ALL' else "الطلاب المشمولين"
             users_to_notify = []
-            if sid == 'ALL':
+            
+            if stored_sections == 'ALL':
                 users_to_notify = conn.execute('SELECT id FROM users').fetchall()
+            elif isinstance(sections, list):
+                if sections:
+                    placeholders = ','.join(['?'] * len(sections))
+                    users_to_notify = conn.execute(f'SELECT id FROM users WHERE section_id IN ({placeholders})', sections).fetchall()
             else:
-                users_to_notify = conn.execute('SELECT id FROM users WHERE section_id = ?', (sid,)).fetchall()
+                users_to_notify = conn.execute('SELECT id FROM users WHERE section_id = ?', (stored_sections,)).fetchall()
             
             for u in users_to_notify:
                 send_push_notification(u['id'], f"تبليغ جديد للمرحلة ({target_desc})", content[:100], url='/home', tag='announcement')
@@ -1524,7 +1535,7 @@ def add_announcement():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/announcements', methods=['PUT'])
-@require_role('section_admin', 'super_admin')
+@require_role('teacher', 'section_admin', 'super_admin', 'head_dept', 'committee')
 def update_announcement():
     ann_id = request.args.get('id')
     ctx = get_user_context()
@@ -1535,9 +1546,21 @@ def update_announcement():
         return jsonify({'error': 'المحتوى مطلوب'}), 400
     
     conn = get_db()
-    # 🛑 IDOR Check
-    ann = conn.execute('SELECT section_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
-    if not ann or (ctx['role'] == 'section_admin' and ann['section_id'] != ctx['section_id']):
+    # 🛑 Authorization Check
+    ann = conn.execute('SELECT section_id, publisher_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
+    if not ann:
+        conn.close()
+        return jsonify({'error': 'التبليغ غير موجود'}), 404
+        
+    can_edit = False
+    if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
+        can_edit = True
+    elif ctx['user_id'] == ann['publisher_id']:
+        can_edit = True
+    elif ctx['role'] == 'section_admin' and ann['section_id'] == ctx['section_id']:
+        can_edit = True
+
+    if not can_edit:
         conn.close()
         return jsonify({'error': 'لا يمكنك تعديل هذا التبليغ'}), 403
 
@@ -1547,14 +1570,26 @@ def update_announcement():
     return jsonify({'success': True})
 
 @app.route('/api/announcements', methods=['DELETE'])
-@require_role('section_admin', 'super_admin')
+@require_role('teacher', 'section_admin', 'super_admin', 'head_dept', 'committee')
 def delete_announcement():
     ann_id = request.args.get('id')
     ctx = get_user_context()
     conn = get_db()
-    # 🛑 IDOR Check
-    ann = conn.execute('SELECT section_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
-    if not ann or (ctx['role'] == 'section_admin' and ann['section_id'] != ctx['section_id']):
+    # 🛑 Authorization Check
+    ann = conn.execute('SELECT section_id, publisher_id FROM announcements WHERE id = ?', (ann_id,)).fetchone()
+    if not ann:
+        conn.close()
+        return jsonify({'error': 'التبليغ غير موجود'}), 404
+
+    can_del = False
+    if ctx['role'] in ['super_admin', 'head_dept', 'committee']:
+        can_del = True
+    elif ctx['user_id'] == ann['publisher_id']:
+        can_del = True
+    elif ctx['role'] == 'section_admin' and ann['section_id'] == ctx['section_id']:
+        can_del = True
+
+    if not can_del:
         conn.close()
         return jsonify({'error': 'لا يمكنك حذف هذا التبليغ'}), 403
 
