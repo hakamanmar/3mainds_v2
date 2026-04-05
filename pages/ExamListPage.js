@@ -48,12 +48,10 @@ export default async function ExamListPage(params) {
                     <i class="ph ph-exam" style="font-size:4rem;opacity:0.1;"></i>
                     <h3 style="margin-top:1.5rem;">لا توجد اختبارات</h3>
                     <p style="color:var(--text-muted);">${isInstructor ? 'ابدأ بإنشاء اختبار جديد لطلابك.' : 'لم يتم نشر أي اختبارات بعد.'}</p>
-                </div>
-            ` : `
-                <div style="display:grid;gap:1rem;">
-                    ${exams.map(exam => {
-                        const expired = exam.attempt && exam.attempt.is_submitted;
+                </div>                        const expired = exam.attempt && exam.attempt.is_submitted;
                         const started = exam.attempt && !exam.attempt.is_submitted;
+                        const closed = exam.is_closed;
+
                         return `
                         <div class="exam-list-card" data-exam-id="${exam.id}">
                             <div style="display:flex;align-items:center;gap:1.25rem;flex:1;min-width:0;">
@@ -91,9 +89,16 @@ export default async function ExamListPage(params) {
                                         <button class="btn-take-exam" data-exam-id="${exam.id}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700;">
                                             متابعة الاختبار
                                         </button>
+                                    ` : closed ? `
+                                        <span style="background:#fef2f2;color:#ef4444;padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;">
+                                            <i class="ph ph-lock-key"></i> مُغلق
+                                        </span>
                                     ` : `
                                         <button class="btn-take-exam" data-exam-id="${exam.id}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700;font-size:1rem;">
                                             <i class="ph-bold ph-play"></i> ابدأ الاختبار
+                                        </button>
+                                    `}
+                      <i class="ph-bold ph-play"></i> ابدأ الاختبار
                                         </button>
                                     `}
                                 ` : `
