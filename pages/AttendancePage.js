@@ -60,7 +60,7 @@ export default async function AttendancePage(params) {
     }
 
     function renderStartSession() {
-        const showSectionSelect = user.role === 'super_admin';
+        const showSectionSelect = user.role === 'super_admin' || user.role === 'teacher';
         return `
             <div class="card" style="max-width: 600px; margin: 0 auto;">
                 <h3 style="margin-bottom: 20px;">🎓 ${i18n.t('start_lecture') || 'بدء محاضرة جديدة'}</h3>
