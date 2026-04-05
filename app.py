@@ -2367,22 +2367,27 @@ def get_assignment_submissions_v2(id):
 
 # ─── STATS ────────────────────────────────────────────────────
 @app.route('/api/stats', methods=['GET'])
-@require_role('section_admin', 'super_admin')
+@require_role('section_admin', 'super_admin', 'head_dept', 'committee', 'teacher')
 def get_stats():
     ctx = get_user_context()
     sid = ctx['section_id']
     conn = get_db()
     
-    if ctx['role'] == 'super_admin' and not sid:
+    # Global Roles
+    is_global = ctx['role'] in ['super_admin', 'head_dept', 'committee']
+    
+    if is_global and not sid:
         # Global stats
         subjects_count = conn.execute('SELECT count(*) FROM subjects').fetchone()[0]
         students_count = conn.execute("SELECT count(*) FROM users WHERE role = 'student'").fetchone()[0]
         lessons_count = conn.execute('SELECT count(*) FROM lessons').fetchone()[0]
         announcements_count = conn.execute('SELECT count(*) FROM announcements').fetchone()[0]
     else:
-        # Section filtered stats
-        subjects_count = conn.execute('SELECT count(*) FROM subjects WHERE section_id=?', (sid,)).fetchone()[0]
-        students_count = conn.execute("SELECT count(*) FROM users WHERE role = 'student' AND section_id=?", (sid,)).fetchone()[0]
+        # Filtered by sid (Section Admin or Teacher assigned to a section)
+        # If sid is still None (unlikely for student/teacher but possible), default to 0
+        s_val = sid or 'NONE'
+        subjects_count = conn.execute('SELECT count(*) FROM subjects WHERE section_id=?', (s_val,)).fetchone()[0]
+        students_count = conn.execute("SELECT count(*) FROM users WHERE role = 'student' AND section_id=?", (s_val,)).fetchone()[0]
         # Lessons count is harder because it's linked via subject
         lessons_count = conn.execute('SELECT count(*) FROM lessons l JOIN subjects s ON l.subject_id=s.id WHERE s.section_id=?', (sid,)).fetchone()[0]
         announcements_count = conn.execute('SELECT count(*) FROM announcements WHERE section_id=?', (sid,)).fetchone()[0]
