@@ -539,10 +539,11 @@ class Router {
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
-            // === TEACHER: Only their subjects + attendance ===
+            // === TEACHER: Their subjects + attendance + announcements ===
             } else if (user.role === 'teacher') {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
+                    <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-megaphone-simple"></i><span>التبليغات</span></button>
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
