@@ -90,8 +90,7 @@ const AdminPage = async () => {
             </div>
 
             <div class="admin-grid">
-
-                <!-- Announcements Management -->
+                <!-- Announcements Management (Visible to Admins & Teachers) -->
                 <div class="card admin-card full-width-card">
                     <div class="card-header">
                         <h3><i class="ph ph-megaphone-simple"></i> ${i18n.t('announcements')}</h3>
@@ -101,16 +100,26 @@ const AdminPage = async () => {
                     </div>
                     <div class="ann-admin-list">
                         ${announcements.length === 0 ? `<p class="empty-msg">${i18n.t('no_announcements_yet')}</p>` :
-            announcements.map(a => `
+            announcements.map(a => {
+                let sectionLabel = i18n.t(a.section_id);
+                if (a.section_id && a.section_id.startsWith('[')) {
+                    try {
+                        const s_list = JSON.parse(a.section_id);
+                        sectionLabel = s_list.map(s => i18n.t(s)).join(' ، ');
+                    } catch(e) {}
+                }
+                return `
                             <div class="ann-admin-item">
                                 <div class="ann-admin-content">
                                     <i class="ph ph-megaphone" style="color: var(--primary); font-size: 1.2rem;"></i>
                                     <div>
-                                        <div style="font-weight:700; color:var(--primary);">${i18n.t(a.section_id)}</div>
+                                        <div style="font-weight:700; color:var(--primary); font-size:0.8rem; margin-bottom:2px;">
+                                            <i class="ph ph-circles-four"></i> ${sectionLabel}
+                                        </div>
                                         <div style="font-size:0.95rem;">${a.content}</div>
                                         <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
                                             <i class="ph ph-user"></i> نشر بواسطة: <strong>${a.publisher_name || 'مسؤول'}</strong> 
-                                            <span style="opacity:0.6;">(${a.publisher_role || 'إدارة'})</span>
+                                            <span style="opacity:0.6;">(${i18n.t(a.publisher_role || 'management')})</span>
                                         </div>
                                     </div>
                                 </div>
@@ -121,51 +130,54 @@ const AdminPage = async () => {
                                     </button>
                                 </div>
                             </div>
-                        `).join('')}
+                        `;
+            }).join('')}
                     </div>
                 </div>
 
-                <!-- Subjects Management -->
-                <div class="card admin-card">
-                    <div class="card-header">
-                        <h3><i class="ph ph-books"></i> ${i18n.t('subjects')}</h3>
-                        <button id="add-subject-btn" class="btn btn-primary btn-sm">
-                            <i class="ph ph-plus"></i> ${i18n.t('add_subject')}
-                        </button>
-                    </div>
-                    <div class="list-container">
-                        ${subjects.length === 0 ? `<p class="empty-msg">${i18n.t('no_subjects')}</p>` :
+                ${['super_admin', 'head_dept', 'section_admin'].includes(user.role) ? `
+                    <!-- Subjects Management -->
+                    <div class="card admin-card">
+                        <div class="card-header">
+                            <h3><i class="ph ph-books"></i> ${i18n.t('subjects')}</h3>
+                            <button id="add-subject-btn" class="btn btn-primary btn-sm">
+                                <i class="ph ph-plus"></i> ${i18n.t('add_subject')}
+                            </button>
+                        </div>
+                        <div class="list-container">
+                            ${subjects.length === 0 ? `<p class="empty-msg">${i18n.t('no_subjects')}</p>` :
             subjects.map(s => `
-                            <div class="list-item" style="border-right: 4px solid ${s.color || '#4f46e5'};">
-                                <div class="list-item-info">
-                                    <div style="font-weight:600;">${s.title} <span class="badge badge-outline">${i18n.t(s.section_id)}</span></div>
-                                    <span class="code-tag">${s.code}</span>
+                                <div class="list-item" style="border-right: 4px solid ${s.color || '#4f46e5'};">
+                                    <div class="list-item-info">
+                                        <div style="font-weight:600;">${s.title} <span class="badge badge-outline">${i18n.t(s.section_id)}</span></div>
+                                        <span class="code-tag">${s.code}</span>
+                                    </div>
+                                    <div class="list-item-actions">
+                                        ${user.role === 'super_admin' ? `
+                                            <button class="icon-btn edit-sub-btn" data-id="${s.id}" 
+                                                    data-title="${s.title}" data-code="${s.code || ''}" 
+                                                    data-desc="${s.description || ''}" data-color="${s.color || '#4f46e5'}">
+                                                <i class="ph ph-pencil-simple"></i>
+                                            </button>
+                                            <button class="icon-btn del-sub-btn" data-id="${s.id}" data-title="${s.title}">
+                                                <i class="ph ph-trash"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                                <div class="list-item-actions">
-                                    ${user.role === 'super_admin' ? `
-                                        <button class="icon-btn edit-sub-btn" data-id="${s.id}" 
-                                                data-title="${s.title}" data-code="${s.code || ''}" 
-                                                data-desc="${s.description || ''}" data-color="${s.color || '#4f46e5'}">
-                                            <i class="ph ph-pencil-simple"></i>
-                                        </button>
-                                        <button class="icon-btn del-sub-btn" data-id="${s.id}" data-title="${s.title}">
-                                            <i class="ph ph-trash"></i>
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
 
-                <!-- User Management (All Roles) -->
-                <div class="card admin-card">
-                    <div class="card-header">
-                        <h3><i class="ph ph-users"></i> ${i18n.t('user_management')}</h3>
-                        <button id="add-any-user-btn" class="btn btn-primary btn-sm">
-                            <i class="ph ph-plus"></i> ${i18n.t('create_account')}
-                        </button>
-                    </div>
+                    <!-- User Management (All Roles) -->
+                    <div class="card admin-card">
+                        <div class="card-header">
+                            <h3><i class="ph ph-users"></i> ${i18n.t('user_management')}</h3>
+                            <button id="add-any-user-btn" class="btn btn-primary btn-sm">
+                                <i class="ph ph-plus"></i> ${i18n.t('create_account')}
+                            </button>
+                        </div>
+                ` : ''}
                     <div class="list-container">
                         ${users.length === 0 ? `<p class="empty-msg">${i18n.t('no_users')}</p>` :
             users.map(u => `
@@ -296,30 +308,51 @@ AdminPage.init = () => {
         addAnnBtn.addEventListener('click', async () => {
             const sections = await api.getSections();
             const result = await UI.modal(i18n.t('add_announcement'), `
-                    ${user.role === 'super_admin' ? `
-                        <div class="form-group">
-                            <label class="form-label">${i18n.t('select_section')}</label>
-                            <select id="ann-section" class="form-input">
-                                ${sections.map(s => `<option value="${s.id}">${i18n.t(s.id)}</option>`).join('')}
-                            </select>
-                        </div>
-                    ` : ''}
+                    <style>
+                        .ann-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem; }
+                        .ann-sec-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; transition: 0.2s; }
+                        .ann-sec-item:hover { border-color: var(--primary); background: var(--primary-light); }
+                        .ann-sec-item.checked { border-color: var(--primary); background: var(--primary-light); font-weight: 700; }
+                    </style>
                     <div class="form-group">
-                        <label class="form-label">${i18n.t('content')}</label>
-                        <textarea id="ann-content" style="height: 120px;" placeholder="..."></textarea>
+                        <label class="form-label">الطلاب المستهدفين (يمكنك اختيار أكثر من شعبة)</label>
+                        <div class="ann-section-grid">
+                            <label class="ann-sec-item checked" id="ann-sec-all-lbl">
+                                <input type="checkbox" id="ann-sec-all" value="ALL" checked style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)">
+                                <i class="ph ph-globe" style="color:var(--primary);"></i> الجميع (Broadcast)
+                            </label>
+                            ${sections.map(s => `
+                                <label class="ann-sec-item" id="ann-sec-${s.id}-lbl">
+                                    <input type="checkbox" class="ann-sec-chk" value="${s.id}" style="display:none;" onchange="this.parentElement.classList.toggle('checked', this.checked)">
+                                    <i class="ph ph-circles-four" style="color:var(--primary);"></i> ${i18n.t(s.id)}
+                                </label>
+                            `).join('')}
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">${i18n.t('event_date')}</label>
+                        <label class="form-label">${i18n.t('content')}</label>
+                        <textarea id="ann-content" style="height: 120px;" placeholder="اكتب نص التبليغ هنا..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">${i18n.t('event_date')} (اختياري)</label>
                         <input type="datetime-local" id="ann-target-date" class="form-input">
                     </div>
                 `, async () => {
                 const content = document.getElementById('ann-content').value.trim();
-                const sidEl = document.getElementById('ann-section');
+                const allChk = document.getElementById('ann-sec-all').checked;
                 const targetDateEl = document.getElementById('ann-target-date');
-                const sid = sidEl ? sidEl.value : null;
                 const targetDate = targetDateEl ? targetDateEl.value : null;
-                if (!content) return false;
-                await api.addAnnouncement(content, sid, targetDate || null);
+
+                if (!content) { UI.toast('نص التبليغ مطلوب', 'error'); return false; }
+
+                let finalSections = 'ALL';
+                if (!allChk) {
+                    const selected = Array.from(document.querySelectorAll('.ann-sec-chk:checked')).map(cb => cb.value);
+                    if (selected.length === 0) { UI.toast('يجب اختيار شعبة واحدة على الأقل أو تحديد "الجميع"', 'error'); return false; }
+                    finalSections = selected;
+                }
+
+                await api.addAnnouncement(content, finalSections, targetDate || null);
                 return true;
             });
             if (result) location.reload();
