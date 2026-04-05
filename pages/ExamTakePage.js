@@ -84,12 +84,22 @@ export default async function ExamTakePage(params) {
             <div id="exam-header" style="position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <div>
                     <div style="font-weight:800;font-size:1.1rem;color:var(--text-main);">${exam.title}</div>
-                    <div style="font-size:0.8rem;color:var(--text-muted);">أجب على <strong>${totalQ}</strong> سؤال</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+                        <span>أجب على <strong>${totalQ}</strong> سؤال</span>
+                        ${exam.closing_after_minutes > 0 ? `
+                            <div id="global-closing-timer" style="color:#ef4444;font-weight:800;display:flex;align-items:center;gap:4px;">
+                                <i class="ph ph-warning-circle"></i> يغلق كلياً خلال: <span id="global-closing-text">--:--</span>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:1.5rem;">
                     <div id="answered-count" style="font-size:0.85rem;color:var(--text-muted);">أجبت على 0/${totalQ}</div>
-                    <div id="timer-box" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:10px 20px;border-radius:14px;font-size:1.3rem;font-weight:900;min-width:90px;text-align:center;font-family:monospace;">
-                        ${formatTime(remainingMs)}
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                        <div id="timer-box" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:10px 20px;border-radius:14px;font-size:1.3rem;font-weight:900;min-width:90px;text-align:center;font-family:monospace;">
+                            ${formatTime(remainingMs)}
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);font-weight:700;">وقتك المتبقي</div>
                     </div>
                 </div>
             </div>
@@ -153,18 +163,44 @@ export default async function ExamTakePage(params) {
         let remaining = remainingMs;
         const timerEl = container.querySelector('#timer-box');
         const answeredEl = container.querySelector('#answered-count');
+        const globalTimerText = container.querySelector('#global-closing-text');
+
+        // Global closing calculation
+        const globalExpiry = exam.closing_after_minutes > 0 ? 
+            new Date(new Date(exam.created_at.replace(' ', 'T') + 'Z').getTime() + exam.closing_after_minutes * 60000) : null;
 
         timerInterval = setInterval(async () => {
+            const now = Date.now();
             remaining -= 1000;
+
+            // Update Personal Timer
             if (remaining <= 0) {
                 clearInterval(timerInterval);
-                timerEl.textContent = '00:00';
-                UI.toast('انتهى وقت الاختبار! يتم التسليم التلقائي...', 'error');
+                if (timerEl) timerEl.textContent = '00:00';
+                UI.toast('انتهى وقت الاختبار الشخصي! يتم التسليم التلقائي...', 'error');
                 await submitAnswers(true);
                 return;
             }
-            timerEl.textContent = formatTime(remaining);
-            if (remaining <= 5 * 60 * 1000) timerEl.classList.add('warning');
+            if (timerEl) {
+                timerEl.textContent = formatTime(remaining);
+                if (remaining <= 5 * 60 * 1000) timerEl.classList.add('warning');
+            }
+
+            // Update Global Closing Timer
+            if (globalExpiry && globalTimerText) {
+                const globalDiff = globalExpiry - now;
+                if (globalDiff <= 0) {
+                    clearInterval(timerInterval);
+                    globalTimerText.textContent = 'انتهى الوقت';
+                    UI.toast('تم إغلاق الاختبار كلياً من قبل النظام! يتم التسليم الآن...', 'error');
+                    await submitAnswers(true);
+                    return;
+                } else {
+                    const gMins = Math.floor(globalDiff / 60000);
+                    const gSecs = Math.floor((globalDiff % 60000) / 1000);
+                    globalTimerText.textContent = `${gMins}:${gSecs.toString().padStart(2, '0')}`;
+                }
+            }
         }, 1000);
 
         // Answer selection
