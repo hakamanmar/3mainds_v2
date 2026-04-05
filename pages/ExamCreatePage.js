@@ -61,6 +61,11 @@ export default async function ExamCreatePage(params) {
                         <label class="form-label">مدة الاختبار (بالدقائق) *</label>
                         <input id="exam-duration" type="number" class="form-control" value="60" min="5" max="300" style="height:50px;font-size:1.1rem;" />
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">وقت إغلاق الاختبار (بالدقائق من الآن) *</label>
+                        <input id="exam-closing" type="number" class="form-control" value="120" min="1" max="10000" style="height:50px;font-size:1.1rem;" />
+                        <small style="color:var(--text-muted);">بعد هذه المدة، لن يتمكن أي طالب من دخول الاختبار.</small>
+                    </div>
                 </div>
             </div>
 
@@ -228,6 +233,7 @@ export default async function ExamCreatePage(params) {
         const title = container.querySelector('#exam-title').value.trim();
         const subject_id = container.querySelector('#exam-subject').value;
         const duration_minutes = parseInt(container.querySelector('#exam-duration').value);
+        const closing_after_minutes = parseInt(container.querySelector('#exam-closing').value || 0);
 
         if (!title) { UI.toast('يرجى إدخال عنوان الاختبار', 'error'); return; }
         if (!subject_id) { UI.toast('يرجى اختيار المادة', 'error'); return; }
@@ -246,7 +252,7 @@ export default async function ExamCreatePage(params) {
         btn.innerHTML = '<i class="ph ph-spinner"></i> جاري الحفظ...';
 
         try {
-            const res = await api.createExam({ title, subject_id, duration_minutes, questions });
+            const res = await api.createExam({ title, subject_id, duration_minutes, closing_after_minutes, questions });
             if (res.success) {
                 UI.toast('تم نشر الاختبار بنجاح ✅');
                 window.router.navigate('/exams');
