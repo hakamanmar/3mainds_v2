@@ -382,6 +382,7 @@ export default async function AttendancePage(params) {
         if (e.target.id === 'section-select') {
             selectedSectionId = e.target.value;
             if (selectedSectionId) {
+                api.setSelectedSection(selectedSectionId);
                 UI.toast(i18n.t('loading_subjects') || 'جاري تحميل مواد الشعبة...');
                 subjects = await api.getSubjects(selectedSectionId);
             } else {
