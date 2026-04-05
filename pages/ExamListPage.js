@@ -53,7 +53,8 @@ export default async function ExamListPage(params) {
                     ${exams.map(exam => {
                         const expired = exam.attempt && exam.attempt.is_submitted;
                         const started = exam.attempt && !exam.attempt.is_submitted;
-                        const closed = exam.is_closed;
+                        const is_closed = exam.is_closed;
+                        const can_close = exam.closing_after_minutes > 0;
 
                         return `
                         <div class="exam-list-card" data-exam-id="${exam.id}">
@@ -73,6 +74,14 @@ export default async function ExamListPage(params) {
                                         <span style="font-size:0.8rem;color:var(--text-muted);display:flex;align-items:center;gap:4px;">
                                             <i class="ph ph-list-numbers"></i> ${exam.question_count} سؤال
                                         </span>
+                                        ${can_close && !is_closed && !expired ? `
+                                            <span class="exam-countdown" 
+                                                data-created-at="${exam.created_at}" 
+                                                data-closing-minutes="${exam.closing_after_minutes}"
+                                                style="font-size:0.8rem;color:#ef4444;font-weight:800;display:flex;align-items:center;gap:4px;background:#fef2f2;padding:2px 8px;border-radius:6px;border:1px solid #fee2e2;">
+                                                <i class="ph-bold ph-hourglass"></i> <span class="countdown-text">جاري الحساب...</span>
+                                            </span>
+                                        ` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -92,7 +101,7 @@ export default async function ExamListPage(params) {
                                         <button class="btn-take-exam" data-exam-id="${exam.id}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700;">
                                             متابعة الاختبار
                                         </button>
-                                    ` : closed ? `
+                                    ` : is_closed ? `
                                         <span style="background:#fef2f2;color:#ef4444;padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;display:flex;align-items:center;gap:6px;">
                                             <i class="ph-bold ph-lock-key"></i> مُغلق
                                         </span>
@@ -122,8 +131,48 @@ export default async function ExamListPage(params) {
             .exam-list-card { display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.25rem 1.5rem;gap:1rem;transition:all 0.2s; }
             .exam-list-card:hover { border-color:#6366f1;box-shadow:0 8px 24px rgba(99,102,241,0.08);transform:translateY(-2px); }
             .btn-view-result, .btn-view-results-instructor { background:var(--surface-2) !important; color:var(--primary) !important; }
+            .exam-countdown { animation: pulse 2s infinite; }
+            @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         </style>
     `;
+
+    // Countdown logic
+    const updateCountdowns = () => {
+        container.querySelectorAll('.exam-countdown').forEach(cd => {
+            const createdAtStr = cd.dataset.createdAt;
+            const closingMinutes = parseInt(cd.dataset.closingMinutes);
+            
+            // Parse created_at (SQLite format: YYYY-MM-DD HH:MM:SS)
+            // Use local date parsing if it lacks timezone, assuming it's UTC from server but displayed in local
+            // Actually server uses UTC usually. Let's try to parse it correctly.
+            const createdAt = new Date(createdAtStr.replace(' ', 'T') + 'Z'); 
+            const expiryTime = new Date(createdAt.getTime() + closingMinutes * 60000);
+            const now = new Date();
+            
+            const diff = expiryTime - now;
+            
+            if (diff <= 0) {
+                // Should be closed already, but UI might need refresh
+                cd.innerHTML = '<i class="ph-bold ph-lock"></i> انتهى الوقت';
+                cd.style.color = '#ef4444';
+                // Optional: refresh page to update status
+                // window.location.reload(); 
+            } else {
+                const mins = Math.floor(diff / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+                cd.querySelector('.countdown-text').textContent = `يغلق خلال: ${mins}:${secs.toString().padStart(2, '0')}`;
+            }
+        });
+    };
+
+    updateCountdowns();
+    const interval = setInterval(() => {
+        if (!document.body.contains(container)) {
+            clearInterval(interval);
+            return;
+        }
+        updateCountdowns();
+    }, 1000);
 
     // Bind events
     container.querySelector('#create-exam-btn')?.addEventListener('click', () => {
