@@ -109,19 +109,29 @@ const LoginPage = async () => {
                             <span>Supervised by: <strong style="color: #4f46e5;">Dr. Muhaned</strong></span>
                         </div>
                         
-                        <div style="display: flex; justify-content: center; gap: 1rem; direction: ltr; font-size: 0.75rem; white-space: nowrap;">
-                            <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
-                                Alhakam Anmar
-                            </span>
-                            <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
-                                Mena Sabri
-                            </span>
-                            <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
-                                <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
-                                Danya Majed
-                            </span>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 0.6rem; direction: ltr; font-size: 0.75rem;">
+                            <!-- Top Group -->
+                            <div style="display: flex; justify-content: center; gap: 1rem; white-space: nowrap;">
+                                <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
+                                    <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
+                                    Alhakam Anmar
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
+                                    <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
+                                    Mena Sabri
+                                </span>
+                            </div>
+                            <!-- Bottom Group -->
+                            <div style="display: flex; justify-content: center; gap: 1rem; white-space: nowrap;">
+                                <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
+                                    <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
+                                    Danya Majed
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 5px; font-weight: 700; color: #fff;">
+                                    <i class="ph ph-circle-wavy-check" style="color: #4f46e5;"></i>
+                                    Hussein Alaa
+                                </span>
+                            </div>
                         </div>
                         
                         <p style="font-size: 0.6rem; color: rgba(203, 213, 225, 0.4); margin-top: 0.8rem; letter-spacing: 0.5px;">
