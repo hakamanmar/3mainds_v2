@@ -3042,8 +3042,17 @@ def init_exam_tables():
         ''')
 
         conn.commit()
+        
+        # Migration: Add closing_after_minutes to existing installations
+        try:
+            c.execute('ALTER TABLE exams ADD COLUMN closing_after_minutes INTEGER DEFAULT 0')
+            conn.commit()
+        except:
+            # Column might already exist
+            pass
+            
         conn.close()
-        print("[DB] Exam tables initialized.")
+        print("[DB] Exam tables and migrations initialized.")
     except Exception as e:
         print(f"[DB] Exam table init warning: {e}")
 
