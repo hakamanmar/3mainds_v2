@@ -808,6 +808,7 @@ def require_role(*roles):
             
             # Check if role matches
             if ctx['role'] not in roles:
+                print(f"[AUTH_DEBUG] 401 Unauthorized: Required {roles}, Got '{ctx['role']}' for endpoint: {request.endpoint}")
                 return jsonify({'error': 'Unauthorized', 'required': roles, 'got': ctx['role']}), 401
             
             return f(*args, **kwargs)
@@ -1600,7 +1601,7 @@ def delete_announcement():
 
 # ─── USERS ────────────────────────────────────────────────────
 @app.route('/api/users', methods=['GET'])
-@require_role('section_admin', 'super_admin', 'head_dept')
+@require_role('section_admin', 'super_admin', 'head_dept', 'teacher')
 def get_users():
     ctx = get_user_context()
     sid_param = request.args.get('section_id')
@@ -1707,7 +1708,7 @@ def delete_user():
     return jsonify({'success': True})
 
 @app.route('/api/admin/add-user', methods=['POST'])
-@require_role('section_admin', 'super_admin', 'head_dept')
+@require_role('section_admin', 'super_admin', 'head_dept', 'teacher')
 def add_user():
     data = request.json
     ctx = get_user_context()
@@ -1814,7 +1815,7 @@ def add_user():
     return jsonify({'success': True})
 
 @app.route('/api/admin/reset-device', methods=['POST'])
-@require_role('section_admin', 'super_admin')
+@require_role('section_admin', 'super_admin', 'teacher')
 def admin_reset_device():
     ctx = get_user_context()
     data = request.json or {}
@@ -1948,7 +1949,7 @@ def transfer_student():
 
 @app.route('/api/admin/reset-device', methods=['POST'])
 @limiter.limit("20 per hour")
-@require_role('super_admin', 'section_admin', 'head_dept')
+@require_role('super_admin', 'section_admin', 'head_dept', 'teacher')
 def reset_device():
     data = request.json
     user_id = data.get('user_id')
@@ -2854,7 +2855,7 @@ def attendance_my_stats():
 
 # ── Committee: full report ───────────────────────────────────────
 @app.route('/api/attendance/report', methods=['GET'])
-@require_role('committee', 'section_admin', 'super_admin')
+@require_role('committee', 'section_admin', 'super_admin', 'teacher')
 def attendance_report():
     subject_id = request.args.get('subject_id')
     ctx = get_user_context()
@@ -2903,7 +2904,7 @@ def attendance_report():
 
 # ── Committee: absence alerts ────────────────────────────────────
 @app.route('/api/attendance/alerts', methods=['GET'])
-@require_role('committee', 'section_admin', 'super_admin')
+@require_role('committee', 'section_admin', 'super_admin', 'teacher')
 def attendance_alerts():
     threshold = float(request.args.get('threshold', 0.25))
     ctx = get_user_context()
@@ -2950,7 +2951,7 @@ def attendance_alerts():
 
 # ── Committee: overview stats ────────────────────────────────────
 @app.route('/api/attendance/overview', methods=['GET'])
-@require_role('committee', 'section_admin', 'super_admin')
+@require_role('committee', 'section_admin', 'super_admin', 'teacher')
 def attendance_overview():
     ctx = get_user_context()
     sid = ctx['section_id']
