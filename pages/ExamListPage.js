@@ -11,8 +11,7 @@ export default async function ExamListPage(params) {
     if (!user) { window.router.navigate('/'); return container; }
 
     const isInstructor = ['teacher', 'super_admin', 'section_admin', 'head_dept', 'committee'].includes(user.role);
-    const isStudent = user.role === 'student' || user.role === 'super_admin';
-
+    
     container.innerHTML = `<div style="display:grid;place-items:center;height:55vh;"><div class="spinner"></div></div>`;
 
     let exams = [];
@@ -48,7 +47,11 @@ export default async function ExamListPage(params) {
                     <i class="ph ph-exam" style="font-size:4rem;opacity:0.1;"></i>
                     <h3 style="margin-top:1.5rem;">لا توجد اختبارات</h3>
                     <p style="color:var(--text-muted);">${isInstructor ? 'ابدأ بإنشاء اختبار جديد لطلابك.' : 'لم يتم نشر أي اختبارات بعد.'}</p>
-                </div>                        const expired = exam.attempt && exam.attempt.is_submitted;
+                </div>
+            ` : `
+                <div style="display:grid;gap:1rem;">
+                    ${exams.map(exam => {
+                        const expired = exam.attempt && exam.attempt.is_submitted;
                         const started = exam.attempt && !exam.attempt.is_submitted;
                         const closed = exam.is_closed;
 
@@ -76,7 +79,7 @@ export default async function ExamListPage(params) {
                             <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
                                 ${user.role === 'student' ? `
                                     ${expired ? `
-                                        <span style="background:#ecfdf5;color:#10b981;padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;">
+                                        <span style="background:var(--success-surface);color:var(--success);padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;display:flex;align-items:center;gap:6px;">
                                             <i class="ph-bold ph-check-circle"></i> تم: ${exam.attempt.score}%
                                         </span>
                                         <button class="btn-view-result" data-exam-id="${exam.id}" style="padding:8px 14px;border-radius:10px;background:#f1f5f9;border:none;cursor:pointer;font-weight:700;color:#4f46e5;">
@@ -90,15 +93,12 @@ export default async function ExamListPage(params) {
                                             متابعة الاختبار
                                         </button>
                                     ` : closed ? `
-                                        <span style="background:#fef2f2;color:#ef4444;padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;">
-                                            <i class="ph ph-lock-key"></i> مُغلق
+                                        <span style="background:#fef2f2;color:#ef4444;padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;display:flex;align-items:center;gap:6px;">
+                                            <i class="ph-bold ph-lock-key"></i> مُغلق
                                         </span>
                                     ` : `
                                         <button class="btn-take-exam" data-exam-id="${exam.id}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700;font-size:1rem;">
                                             <i class="ph-bold ph-play"></i> ابدأ الاختبار
-                                        </button>
-                                    `}
-                      <i class="ph-bold ph-play"></i> ابدأ الاختبار
                                         </button>
                                     `}
                                 ` : `
