@@ -64,7 +64,7 @@ export default async function ExamCreatePage(params) {
                     <div class="form-group">
                         <label class="form-label">وقت إغلاق الاختبار (بالدقائق من الآن) *</label>
                         <input id="exam-closing" type="number" class="form-control" value="120" min="1" max="10000" style="height:50px;font-size:1.1rem;" />
-                        <small style="color:var(--text-muted);">بعد هذه المدة، لن يتمكن أي طالب من دخول الاختبار.</small>
+                        <small style="color:var(--text-muted);">بعد هذه المدة من الآن، سيتم إغلاق الاختبار ولن يتمكن أي طالب جديد من الدخول.</small>
                     </div>
                 </div>
             </div>
@@ -137,19 +137,19 @@ export default async function ExamCreatePage(params) {
                     <input class="form-control q-text" data-qidx="${idx}" placeholder="نص السؤال..." value="${q.question_text || ''}" style="font-weight:600;" />
                 </div>
                 <div class="option-row">
-                    <div class="option-label opt-a">أ</div>
+                    <div class="option-label opt-a">A</div>
                     <input class="form-control q-opt" data-qidx="${idx}" data-opt="option_a" placeholder="الخيار الأول..." value="${q.option_a || ''}" style="height:44px;" />
                 </div>
                 <div class="option-row">
-                    <div class="option-label opt-b">ب</div>
+                    <div class="option-label opt-b">B</div>
                     <input class="form-control q-opt" data-qidx="${idx}" data-opt="option_b" placeholder="الخيار الثاني..." value="${q.option_b || ''}" style="height:44px;" />
                 </div>
                 <div class="option-row">
-                    <div class="option-label opt-c">ج</div>
+                    <div class="option-label opt-c">C</div>
                     <input class="form-control q-opt" data-qidx="${idx}" data-opt="option_c" placeholder="الخيار الثالث..." value="${q.option_c || ''}" style="height:44px;" />
                 </div>
                 <div class="option-row">
-                    <div class="option-label opt-d">د</div>
+                    <div class="option-label opt-d">D</div>
                     <input class="form-control q-opt" data-qidx="${idx}" data-opt="option_d" placeholder="الخيار الرابع..." value="${q.option_d || ''}" style="height:44px;" />
                 </div>
                 <div>
@@ -157,7 +157,7 @@ export default async function ExamCreatePage(params) {
                     <div class="correct-select">
                         ${['a','b','c','d'].map((k, i) => `
                             <button class="correct-btn ${q.correct_answer === k ? 'active' : ''}" data-qidx="${idx}" data-correct="${k}">
-                                ${['أ','ب','ج','د'][i]}
+                                ${['A','B','C','D'][i]}
                             </button>
                         `).join('')}
                     </div>
