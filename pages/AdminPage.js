@@ -59,6 +59,7 @@ const AdminPage = async () => {
 
             <!-- Dashboard Stats -->
             <div class="stats-grid">
+                ${user.role !== 'teacher' ? `
                 <div class="stat-card stat-indigo">
                     <i class="ph ph-users-four"></i>
                     <div>
@@ -66,6 +67,7 @@ const AdminPage = async () => {
                         <span class="stat-label">${i18n.t('total_users')}</span>
                     </div>
                 </div>
+                ` : ''}
                 <div class="stat-card stat-purple">
                     <i class="ph ph-books"></i>
                     <div>
@@ -80,6 +82,7 @@ const AdminPage = async () => {
                         <span class="stat-label">${i18n.t('total_sections')}</span>
                     </div>
                 </div>
+                ${user.role !== 'teacher' ? `
                 <div class="stat-card stat-green">
                     <i class="ph ph-shield-check"></i>
                     <div>
@@ -87,6 +90,7 @@ const AdminPage = async () => {
                         <span class="stat-label">${i18n.t('admins_and_committees')}</span>
                     </div>
                 </div>
+                ` : ''}
             </div>
 
             <div class="admin-grid">
@@ -170,6 +174,7 @@ const AdminPage = async () => {
                     </div>
 
                     <!-- User Management (All Roles) -->
+                    ${user.role !== 'teacher' ? `
                     <div class="card admin-card">
                         <div class="card-header">
                             <h3><i class="ph ph-users"></i> ${i18n.t('user_management')}</h3>
@@ -177,45 +182,46 @@ const AdminPage = async () => {
                                 <i class="ph ph-plus"></i> ${i18n.t('create_account')}
                             </button>
                         </div>
-                ` : ''}
-                    <div class="list-container">
-                        ${users.length === 0 ? `<p class="empty-msg">${i18n.t('no_users')}</p>` :
+                        <div class="list-container">
+                            ${users.length === 0 ? `<p class="empty-msg">${i18n.t('no_users')}</p>` :
             users.map(u => `
-                            <div class="list-item">
-                                <div class="list-item-info">
-                                    <div style="display:flex; align-items:center; gap: 0.75rem;">
-                                        <i class="ph ph-circle-wavy-check" style="font-size:1.5rem; color: var(--primary);"></i>
-                                        <div>
-                                            <div style="font-weight:700; font-size:1rem;">${u.full_name || u.email}</div>
-                                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">${u.email}</div>
-                                            <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
-                                                <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
-                                                <span class="badge badge-primary">${i18n.t(u.primary_section)}</span>
-                                                ${(u.sections && u.sections.length > 1) ? `<span class="badge badge-outline">+${u.sections.length - 1}</span>` : ''}
-                                                 <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
-                                                      <i class="ph ph-devices"></i> ${u.device_count || 0}/3
-                                                 </span>
-                                             </div>
+                                <div class="list-item">
+                                    <div class="list-item-info">
+                                        <div style="display:flex; align-items:center; gap: 0.75rem;">
+                                            <i class="ph ph-circle-wavy-check" style="font-size:1.5rem; color: var(--primary);"></i>
+                                            <div>
+                                                <div style="font-weight:700; font-size:1rem;">${u.full_name || u.email}</div>
+                                                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">${u.email}</div>
+                                                <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
+                                                    <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
+                                                    <span class="badge badge-primary">${i18n.t(u.primary_section)}</span>
+                                                    ${(u.sections && u.sections.length > 1) ? `<span class="badge badge-outline">+${u.sections.length - 1}</span>` : ''}
+                                                    <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
+                                                        <i class="ph ph-devices"></i> ${u.device_count || 0}/3
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="list-item-actions">
-                                    ${user.role === 'super_admin' ? `
-                                        <button class="icon-btn change-pw-btn" data-id="${u.id}" data-email="${u.email}" title="تغيير كلمة السر">
-                                            <i class="ph ph-key"></i>
+                                    <div class="list-item-actions">
+                                        ${user.role === 'super_admin' ? `
+                                            <button class="icon-btn change-pw-btn" data-id="${u.id}" data-email="${u.email}" title="تغيير كلمة السر">
+                                                <i class="ph ph-key"></i>
+                                            </button>
+                                        ` : ''}
+                                        <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
+                                            <i class="ph ph-arrows-counter-clockwise"></i>
                                         </button>
-                                    ` : ''}
-                                    <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
-                                        <i class="ph ph-arrows-counter-clockwise"></i>
-                                    </button>
-                                    <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.full_name || u.email}">
-                                        <i class="ph ph-trash"></i>
-                                    </button>
+                                        <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.full_name || u.email}">
+                                            <i class="ph ph-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
+                    ` : ''}
+                ` : ''}
 
             </div>
 
