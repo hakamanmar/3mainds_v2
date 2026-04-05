@@ -114,13 +114,18 @@ export default async function ExamTakePage(params) {
                                     {key: 'b', text: q.option_b},
                                     {key: 'c', text: q.option_c},
                                     {key: 'd', text: q.option_d}
-                                ]).map(opt => `
+                                ]).map((opt, optIdx) => {
+                                    const labelChar = ['A', 'B', 'C', 'D'][optIdx] || '';
+                                    return `
                                     <label class="exam-option" data-q="${q.id}" data-key="${opt.key}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:2px solid var(--border);border-radius:14px;cursor:pointer;transition:all 0.15s;font-weight:500;">
                                         <input type="radio" name="q-${q.id}" value="${opt.key}" style="display:none;" />
                                         <div class="opt-indicator" style="width:22px;height:22px;border:2px solid var(--border);border-radius:50%;flex-shrink:0;transition:all 0.15s;"></div>
-                                        <span>${opt.text || '(خيار فارغ)'}</span>
+                                        <span style="display:flex;gap:6px;">
+                                            <strong style="color:var(--primary);">${labelChar}.</strong>
+                                            <span>${opt.text || '(خيار فارغ)'}</span>
+                                        </span>
                                     </label>
-                                `).join('')}
+                                `;}).join('')}
                             </div>
                         </div>
                     `).join('')}
