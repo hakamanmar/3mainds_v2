@@ -184,8 +184,8 @@ export const api = {
     async getAnnouncements() {
         return this._fetch(`${API_BASE}/announcements`);
     },
-    async addAnnouncement(content, sectionId = null, targetDate = null) {
-        return this._fetch(`${API_BASE}/announcements`, { method: 'POST', body: JSON.stringify({ content, section_id: sectionId, target_date: targetDate }) });
+    async addAnnouncement(content, sections = 'ALL', targetDate = null) {
+        return this._fetch(`${API_BASE}/announcements`, { method: 'POST', body: JSON.stringify({ content, sections, target_date: targetDate }) });
     },
     async updateAnnouncement(id, content, targetDate = null) {
         return this._fetch(`${API_BASE}/announcements?id=${id}`, { method: 'PUT', body: JSON.stringify({ content, target_date: targetDate }) });
