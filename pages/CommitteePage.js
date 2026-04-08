@@ -176,16 +176,16 @@ export default async function CommitteePage(params) {
                 .alert-progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-out; }
                 
                 .report-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-                .report-table th { background: #f8fafc; padding: 12px; font-weight: 800; color: #64748b; border-bottom: 2px solid #e2e8f0; text-align: right; white-space: nowrap; }
-                .report-table td { padding: 15px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-                .report-table tr:hover { background: #f8fafc; }
+                .report-table th { background: var(--surface-2); padding: 12px; font-weight: 800; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; white-space: nowrap; }
+                .report-table td { padding: 15px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+                .report-table tr:hover { background: var(--surface-2); }
                 
                 .stats-cell { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
                 .stats-val { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
-                .stats-absent { color: var(--red); font-size: 0.75rem; font-weight: 600; }
+                .stats-absent { color: var(--danger); font-size: 0.75rem; font-weight: 600; }
                 .btn-action { padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
-                .btn-warning { background: #fee2e2; color: #ef4444; }
-                .btn-excuse { background: #fef3c7; color: #d97706; }
+                .btn-warning { background: var(--danger-light); color: var(--danger); }
+                .btn-excuse { background: rgba(245, 158, 11, 0.1); color: #d97706; }
                 .btn-action:hover { opacity: 0.8; transform: scale(1.05); }
             </style>
         `;
@@ -198,7 +198,7 @@ export default async function CommitteePage(params) {
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th style="position: sticky; right: 0; background: #f8fafc; z-index: 10;">اسم الطالب</th>
+                        <th style="position: sticky; right: 0; background: var(--surface-2); z-index: 10;">اسم الطالب</th>
                         ${reportData.subjects.map(s => `<th>${s.title}</th>`).join('')}
                         <th>الإجراءات</th>
                     </tr>
@@ -206,7 +206,7 @@ export default async function CommitteePage(params) {
                 <tbody>
                     ${reportData.students.map(stu => `
                         <tr>
-                            <td style="position: sticky; right: 0; background: inherit; z-index: 5; box-shadow: -2px 0 5px rgba(0,0,0,0.02);">
+                            <td style="position: sticky; right: 0; background: var(--surface); z-index: 5; box-shadow: -2px 0 5px rgba(0,0,0,0.02);">
                                 <div style="font-weight: 800; color: var(--text-main);">${stu.full_name || 'طالب جديد'}</div>
                                 <div style="font-size: 0.7rem; color: var(--muted);">${stu.email}</div>
                             </td>
@@ -215,7 +215,7 @@ export default async function CommitteePage(params) {
                                     <div class="stats-cell">
                                         <div class="stats-val">✅ حضور: ${s.attended} / ${s.total}</div>
                                         <div class="stats-absent">❌ غياب: ${s.absent}</div>
-                                        <div style="height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+                                        <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
                                             <div style="height: 100%; width: ${(s.attended/s.total*100)||0}%; background: ${s.attended/s.total > 0.75 ? '#10b981' : (s.attended/s.total > 0.5 ? '#f59e0b' : '#ef4444')};"></div>
                                         </div>
                                         <button class="btn-action btn-excuse" data-student-id="${stu.student_id}" data-subject-id="${s.subject_id}" data-subject-name="${s.title}">
@@ -229,7 +229,7 @@ export default async function CommitteePage(params) {
                                     <button class="btn-action btn-warning" data-student-id="${stu.student_id}" data-student-name="${stu.full_name || stu.email}">
                                         <i class="ph ph-warning"></i> إرسال إنذار
                                     </button>
-                                    <button class="btn-action btn-outline" style="background: #f1f5f9; color: #475569;" onclick="window.router.navigate('/results?student_id=${stu.student_id}')">
+                                    <button class="btn-action btn-outline" style="background: var(--surface-2); color: var(--text-muted);" onclick="window.router.navigate('/results?student_id=${stu.student_id}')">
                                         <i class="ph ph-eye"></i> عرض السجل
                                     </button>
                                 </div>
