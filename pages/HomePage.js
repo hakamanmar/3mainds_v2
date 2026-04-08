@@ -59,34 +59,35 @@ const HomePage = async () => {
 
                     return `
                         <div class="bulletin-item-premium ${isUrgent ? 'urgent' : ''}">
-                            <div class="bulletin-left-accent" style="background: ${isUrgent ? 'var(--red)' : 'var(--primary)'}"></div>
-                            <div class="bulletin-main">
-                                <div class="bulletin-top-row">
-                                    <div class="publisher-info">
-                                        <div class="pub-avatar" style="background: ${isUrgent ? 'var(--red-light)' : 'var(--primary-light)'}; color: ${isUrgent ? 'var(--red)' : 'var(--primary)'}">
+                            <div class="bulletin-accent-bar" style="background: ${isUrgent ? 'var(--danger)' : 'var(--primary)'}"></div>
+                            <div class="bulletin-body-container">
+                                <div class="bulletin-top-info">
+                                    <div class="pub-profile">
+                                        <div class="pub-img" style="color: ${isUrgent ? 'var(--danger)' : 'var(--primary)'}">
                                             <i class="ph-fill ${isUrgent ? 'ph-warning-octagon' : 'ph-user-gear'}"></i>
                                         </div>
-                                        <div class="pub-details">
-                                            <span class="pub-name">${a.publisher_name || 'إدارة المنصة'}</span>
-                                            <span class="pub-role">${roleLabel}</span>
+                                        <div class="pub-text">
+                                            <span class="pub-nm">${a.publisher_name || 'إدارة المنصة'}</span>
+                                            <span class="pub-rl">${roleLabel}</span>
                                         </div>
                                     </div>
-                                    <div class="bulletin-meta">
-                                        <span class="bulletin-tag ${a.section_id === 'ALL' ? 'global' : 'local'}">
-                                            ${a.section_id === 'ALL' ? 'تبليغ عام' : `شعبة ${a.section_id}`}
-                                        </span>
+                                    <div class="bulletin-status-tag ${a.section_id === 'ALL' ? 'global' : 'local'}">
+                                        <i class="ph ph-hash"></i>
+                                        ${a.section_id === 'ALL' ? 'تبليغ عام' : `شعبة ${a.section_id}`}
                                     </div>
                                 </div>
-                                <div class="bulletin-body">
-                                    <p>${a.content}</p>
+                                
+                                <div class="bulletin-text-content">
+                                    ${a.content}
                                 </div>
-                                <div class="bulletin-footer">
-                                    <div class="bulletin-time">
-                                        <i class="ph ph-clock-counter-clockwise"></i>
+
+                                <div class="bulletin-item-footer">
+                                    <div class="bulletin-ts">
+                                        <i class="ph ph-calendar-blank"></i>
                                         ${formatDate(a.created_at)}
                                     </div>
                                     ${a.target_date ? `
-                                        <div class="bulletin-countdown-v2 ann-countdown" data-target="${a.target_date}">
+                                        <div class="bulletin-cd ann-countdown" data-target="${a.target_date}">
                                             <i class="ph-bold ph-hourglass-high"></i>
                                             <span class="cd-text">${i18n.t('calculating')}</span>
                                         </div>
@@ -99,33 +100,32 @@ const HomePage = async () => {
             </div>
         </div>
         <style>
-            .bulletin-board-v2 { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 2rem; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
-            .bulletin-header { padding: 1.25rem 1.5rem; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-            .bulletin-title-group { display: flex; align-items: center; gap: 10px; }
-            .bulletin-pulse { width: 10px; height: 10px; background: var(--red); border-radius: 50%; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); animation: pulseAlert 2s infinite; }
-            @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-            .bulletin-title-group h3 { font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; }
-            .bulletin-count { font-size: 0.75rem; font-weight: 700; background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 20px; }
-            .bulletin-scroll-area { max-height: 450px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 12px; }
-            .bulletin-item-premium { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all 0.2s; display: flex; }
-            .bulletin-item-premium:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-            .bulletin-item-premium.urgent { border-color: var(--red-light); background: rgba(239, 68, 68, 0.05); }
-            .bulletin-left-accent { width: 5px; flex-shrink: 0; }
-            .bulletin-main { flex: 1; padding: 1.25rem; display: flex; flex-direction: column; gap: 12px; }
-            .bulletin-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
-            .publisher-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
-            .pub-avatar { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
-            .pub-details { display: flex; flex-direction: column; min-width: 0; }
-            .pub-name { font-size: 0.95rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .pub-role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-            .bulletin-meta { flex-shrink: 0; }
-            .bulletin-tag { font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; white-space: nowrap; }
-            .bulletin-tag.global { background: #dcfce7; color: #15803d; }
-            .bulletin-tag.local { background: #dbeafe; color: #1d4ed8; }
-            .bulletin-body { font-size: 1rem; line-height: 1.6; color: var(--text-main); font-weight: 500; }
-            .bulletin-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 10px; margin-top: auto; }
-            .bulletin-time { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; font-weight: 500; }
-            .bulletin-countdown-v2 { font-size: 0.75rem; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 6px; background: var(--danger-light); padding: 5px 12px; border-radius: 8px; }
+            .bulletin-board-v2 { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 2.5rem; overflow: hidden; box-shadow: var(--shadow-lg); }
+            .bulletin-header { padding: 1.5rem; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+            .bulletin-title-group { display: flex; align-items: center; gap: 12px; }
+            .bulletin-pulse { width: 12px; height: 12px; background: var(--danger); border-radius: 50%; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4); animation: pulseRed 2s infinite; }
+            @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+            .bulletin-title-group h3 { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 0; }
+            .bulletin-count { font-size: 0.8rem; font-weight: 800; background: var(--primary); color: white; padding: 4px 12px; border-radius: 50px; }
+            .bulletin-scroll-area { max-height: 500px; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 16px; scrollbar-width: thin; }
+            .bulletin-item-premium { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+            .bulletin-item-premium:hover { border-color: var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: translateY(-3px); }
+            .bulletin-item-premium.urgent { border-color: var(--danger); border-width: 2px; }
+            .bulletin-accent-bar { height: 4px; width: 100%; position: absolute; top: 0; left: 0; }
+            .bulletin-body-container { padding: 1.25rem; display: flex; flex-direction: column; gap: 15px; }
+            .bulletin-top-info { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+            .pub-profile { display: flex; align-items: center; gap: 12px; }
+            .pub-img { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: var(--surface-2); border: 1px solid var(--border); }
+            .pub-text { display: flex; flex-direction: column; line-height: 1.2; }
+            .pub-nm { font-size: 1rem; font-weight: 800; color: var(--text-main); }
+            .pub-rl { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+            .bulletin-status-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 800; padding: 4px 12px; border-radius: 50px; }
+            .bulletin-status-tag.global { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+            .bulletin-status-tag.local { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+            .bulletin-text-content { font-size: 1rem; line-height: 1.7; color: var(--text-main); font-weight: 500; background: var(--surface-2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+            .bulletin-item-footer { display: flex; justify-content: space-between; align-items: center; padding: 0 5px; }
+            .bulletin-ts { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; font-weight: 600; }
+            .bulletin-cd { font-size: 0.75rem; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 8px; background: var(--danger-light); padding: 5px 14px; border-radius: 50px; }
         </style>
     ` : '';
 
