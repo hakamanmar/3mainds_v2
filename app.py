@@ -4221,6 +4221,15 @@ def subscribe_push():
     finally:
         conn.close()
 
+@app.route('/api/system/status', methods=['GET'])
+def get_system_status():
+    return jsonify({
+        'database': 'Cloud (Turso) ☁️' if USE_TURSO else 'Local (SQLite - Ephemeral) ⚠️',
+        'storage': 'External (GitHub/Catbox) ✅',
+        'is_cloud': USE_TURSO,
+        'is_vercel': IS_VERCEL
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=8000)
 
