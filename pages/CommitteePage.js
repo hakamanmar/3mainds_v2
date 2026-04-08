@@ -326,7 +326,7 @@ export default async function CommitteePage(params) {
                 <button id="send-w-btn" class="btn btn-primary" style="width: 100%; margin-top: 20px;">إرسال الإنذار الآن</button>
             </div>
         `;
-        UI.modal('إصدار إنذار رسمي', html);
+        UI.modal('إصدار إنذار رسمي', html, () => true, { hideFooter: true });
         
         document.getElementById('send-w-btn').onclick = async () => {
             const data = {
@@ -339,7 +339,7 @@ export default async function CommitteePage(params) {
             try {
                 await api.addWarning(data);
                 UI.toast('تم إرسال الإنذار بنجاح');
-                UI.modalClose();
+                if (UI.closeCurrentModal) UI.closeCurrentModal();
             } catch (err) {
                 UI.toast(err.message, 'error');
             }
@@ -372,7 +372,7 @@ export default async function CommitteePage(params) {
                     </div>
                 </div>
             `;
-            UI.modal('تبرير غياب يدوي', html);
+            UI.modal('تبرير غياب يدوي', html, () => true, { large: false, hideFooter: false });
 
             document.querySelectorAll('.mark-excused-btn').forEach(btn => {
                 btn.onclick = async () => {
