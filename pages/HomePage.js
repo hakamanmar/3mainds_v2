@@ -99,28 +99,26 @@ const HomePage = async () => {
             </div>
         </div>
         <style>
-            .bulletin-board-v2 { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; margin-bottom: 3rem; overflow: hidden; box-shadow: var(--shadow-lg); }
-            .bulletin-header { padding: 1.5rem 2rem; background: var(--surface-2); border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-            .bulletin-pulse { width: 12px; height: 12px; background: #ff4757; border-radius: 50%; animation: pulseRed 2s infinite; }
-            @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
-            .bulletin-title-group { display: flex; align-items: center; gap: 15px; }
-            .bulletin-title-group h3 { font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0; }
-            .bulletin-scroll-area { max-height: 600px; overflow-y: auto; padding: 2rem; }
-            .bulletin-item-premium { position: relative; background: var(--surface); border: 2px solid var(--border); border-radius: 20px; margin-bottom: 1.5rem; transition: all 0.3s ease; box-shadow: var(--shadow-sm); }
-            .bulletin-item-premium:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: var(--shadow-md); }
-            .bulletin-item-body { padding: 1.5rem; }
-            .bulletin-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-            .pub-box { display: flex; align-items: center; gap: 12px; }
-            .pub-icon { width: 48px; height: 48px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--primary); }
-            .pub-info-text { display: flex; flex-direction: column; }
-            .pub-info-text .name { font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
-            .pub-info-text .role { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
-            .section-pill { background: var(--primary-light); color: var(--primary); font-size: 0.75rem; font-weight: 800; padding: 6px 14px; border-radius: 12px; border: 1px solid var(--primary); }
-            .announcement-content-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 15px; padding: 1.25rem; margin-bottom: 1.25rem; font-size: 1.1rem; line-height: 1.8; color: var(--text-main); font-weight: 600; text-align: right; min-height: 60px; display: block; position: relative; z-index: 5; }
-            .bulletin-item-premium.urgent .announcement-content-box { border-color: #ff4757; background: rgba(255, 71, 87, 0.05); }
-            .bulletin-item-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 1rem; }
-            .ts-text { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-            .cd-box { font-size: 0.8rem; font-weight: 800; color: #ff4757; background: rgba(255, 71, 87, 0.1); padding: 6px 14px; border-radius: 50px; display: flex; align-items: center; gap: 8px; }
+            .bulletin-board-v2 { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 2rem; overflow: hidden; box-shadow: var(--shadow-md); }
+            .bulletin-header { padding: 1rem 1.5rem; background: var(--surface-2); border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+            .bulletin-pulse { width: 10px; height: 10px; background: #ff4757; border-radius: 50%; animation: pulseRed 2s infinite; }
+            @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
+            .bulletin-title-group { display: flex; align-items: center; gap: 10px; }
+            .bulletin-title-group h3 { font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; }
+            .bulletin-scroll-area { max-height: 500px; overflow-y: auto; padding: 1.25rem; }
+            .bulletin-item-premium { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 1rem; transition: all 0.2s ease; }
+            .bulletin-item-premium:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+            .bulletin-item-body { padding: 1rem 1.25rem; }
+            .bulletin-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+            .pub-box { display: flex; align-items: center; gap: 10px; }
+            .pub-icon { width: 40px; height: 40px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--primary); }
+            .pub-info-text .name { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
+            .pub-info-text .role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+            .section-pill { background: var(--primary-light); color: var(--primary); font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--primary-light); }
+            .announcement-content-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; margin-bottom: 10px; font-size: 0.95rem; line-height: 1.6; color: var(--text-main); font-weight: 600; text-align: right; display: block; position: relative; z-index: 5; }
+            .bulletin-item-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 0.75rem; }
+            .ts-text { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+            .cd-box { font-size: 0.75rem; font-weight: 800; color: #ff4757; background: rgba(255, 71, 87, 0.1); padding: 4px 10px; border-radius: 30px; display: flex; align-items: center; gap: 6px; }
         </style>
     ` : '';
 
