@@ -325,6 +325,30 @@ export const api = {
         });
     },
 
+    async getSectionReport(sectionId) {
+        return this._fetch(`${API_BASE}/attendance/section-report?section_id=${sectionId}`);
+    },
+    async getStudentMissedSessions(studentId, subjectId) {
+        return this._fetch(`${API_BASE}/attendance/student-missed-sessions?student_id=${studentId}&subject_id=${subjectId}`);
+    },
+    async markExcused(sessionId, studentId) {
+        return this._fetch(`${API_BASE}/attendance/mark-excused`, {
+            method: 'POST',
+            body: JSON.stringify({ session_id: sessionId, student_id: studentId })
+        });
+    },
+    async getWarnings(studentId = null) {
+        let url = `${API_BASE}/warnings`;
+        if (studentId) url += `?student_id=${studentId}`;
+        return this._fetch(url);
+    },
+    async addWarning(data) {
+        return this._fetch(`${API_BASE}/warnings`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
     async deleteAttendanceSession(sessionId) {
         return this._fetch(`${API_BASE}/attendance/sessions/${sessionId}`, {
             method: 'DELETE'
