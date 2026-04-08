@@ -18,20 +18,28 @@ export default async function CommitteePage(params) {
     let sections = [];
     let selectedSectionId = localStorage.getItem('committee_selected_section') || '';
     let reportData = null;
+    let systemStatus = { database: 'Checking...', is_cloud: false };
 
     async function init() {
         try {
-            [stats, alerts, subjects, sections] = await Promise.all([
+            const results = await Promise.allSettled([
                 api.getAttendanceOverview(),
                 api.getAttendanceAlerts(),
                 api.getSubjects(),
-                api.getSections()
+                api.getSections(),
+                fetch('/api/system/status').then(r => r.json())
             ]);
-            
+
+            stats = results[0].status === 'fulfilled' ? results[0].value : { total_students: 0, avg_rate: 0, today_sessions: 0 };
+            alerts = results[1].status === 'fulfilled' ? results[1].value : [];
+            subjects = results[2].status === 'fulfilled' ? results[2].value : [];
+            sections = results[3].status === 'fulfilled' ? results[3].value : [];
+            systemStatus = results[4].status === 'fulfilled' ? results[4].value : { database: 'Unknown' };
+
             if (selectedSectionId) {
                 reportData = await api.getSectionReport(selectedSectionId);
             }
-            
+
             render();
             initCharts();
         } catch (e) {
@@ -41,6 +49,26 @@ export default async function CommitteePage(params) {
 
     function render() {
         container.innerHTML = `
+            <div class="system-status-banner ${systemStatus.is_cloud ? 'status-cloud' : 'status-local'}">
+                <i class="ph-fill ${systemStatus.is_cloud ? 'ph-cloud-check' : 'ph-warning-octagon'}"></i>
+                <div class="status-info">
+                    <span class="status-label">${systemStatus.is_cloud ? 'نظام التخزين السحابي نشط' : 'تنبيـــه: نظام التخزين محلي (مؤقت)'}</span>
+                    <span class="status-desc">قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage}</span>
+                </div>
+                ${!systemStatus.is_cloud ? `<button class="btn btn-sm btn-white" id="help-cloud-btn">كيف أفعل السحاب؟</button>` : ''}
+            </div>
+
+            <style>
+                .system-status-banner { display: flex; align-items: center; gap: 15px; padding: 12px 20px; border-radius: 12px; margin-bottom: 24px; animation: slideDown 0.5s ease; }
+                .status-cloud { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); }
+                .status-local { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2); }
+                .status-info { flex: 1; display: flex; flex-direction: column; }
+                .status-label { font-weight: 800; font-size: 0.95rem; }
+                .status-desc { font-size: 0.75rem; opacity: 0.9; font-weight: 600; }
+                .btn-white { background: white; color: #d97706; border: none; font-weight: 800; }
+                @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            </style>
+
             <div class="page-header">
                 <div>
                     <h1>📊 ${i18n.t('exam_committee_dashboard') || 'لوحة لجنة الغيابات'}</h1>
@@ -101,11 +129,11 @@ export default async function CommitteePage(params) {
                                 <p>لا يوجد طلاب متجاوزين لنسبة الغياب حالياً</p>
                             </div>
                         ` : alerts.map(a => {
-                            const rate = a.absence_rate;
-                            const statusColor = rate >= 25 ? '#ef4444' : (rate >= 15 ? '#f59e0b' : '#3b82f6');
-                            const statusLabel = rate >= 25 ? 'فصل نهائي' : (rate >= 15 ? 'إنذار ثاني' : 'إنذار أول');
-                            
-                            return `
+            const rate = a.absence_rate;
+            const statusColor = rate >= 25 ? '#ef4444' : (rate >= 15 ? '#f59e0b' : '#3b82f6');
+            const statusLabel = rate >= 25 ? 'فصل نهائي' : (rate >= 15 ? 'إنذار ثاني' : 'إنذار أول');
+
+            return `
                                 <div class="alert-card-premium">
                                     <div class="alert-status-pillar" style="background: ${statusColor}"></div>
                                     <div class="alert-content-main">
@@ -133,7 +161,7 @@ export default async function CommitteePage(params) {
                                     </div>
                                 </div>
                             `;
-                        }).join('')}
+        }).join('')}
                     </div>
                 </div>
             </div>
@@ -193,7 +221,7 @@ export default async function CommitteePage(params) {
 
     function renderSectionReport() {
         if (!reportData || !reportData.students) return '<p class="empty-text">لا توجد بيانات لهذه الشعبة</p>';
-        
+
         return `
             <table class="report-table">
                 <thead>
@@ -216,7 +244,7 @@ export default async function CommitteePage(params) {
                                         <div class="stats-val">✅ حضور: ${s.attended} / ${s.total}</div>
                                         <div class="stats-absent">❌ غياب: ${s.absent}</div>
                                         <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
-                                            <div style="height: 100%; width: ${(s.attended/s.total*100)||0}%; background: ${s.attended/s.total > 0.75 ? '#10b981' : (s.attended/s.total > 0.5 ? '#f59e0b' : '#ef4444')};"></div>
+                                            <div style="height: 100%; width: ${(s.attended / s.total * 100) || 0}%; background: ${s.attended / s.total > 0.75 ? '#10b981' : (s.attended / s.total > 0.5 ? '#f59e0b' : '#ef4444')};"></div>
                                         </div>
                                         <button class="btn-action btn-excuse" data-student-id="${stu.student_id}" data-subject-id="${s.subject_id}" data-subject-name="${s.title}">
                                             <i class="ph ph-calendar-check"></i> تبرير غياب
@@ -327,7 +355,7 @@ export default async function CommitteePage(params) {
             </div>
         `;
         UI.modal('إصدار إنذار رسمي', html, () => true, { hideFooter: true });
-        
+
         document.getElementById('send-w-btn').onclick = async () => {
             const data = {
                 student_id: studentId,
@@ -335,7 +363,7 @@ export default async function CommitteePage(params) {
                 message: document.getElementById('w-message').value,
                 subject_id: document.getElementById('w-subject').value || null
             };
-            
+
             try {
                 await api.addWarning(data);
                 UI.toast('تم إرسال الإنذار بنجاح');
@@ -350,7 +378,7 @@ export default async function CommitteePage(params) {
         UI.toast('جاري جلب المحاضرات التي غاب عنها الطالب...');
         try {
             const missed = await api.getStudentMissedSessions(studentId, subjectId);
-            
+
             if (missed.length === 0) {
                 UI.toast('الطالب حاضر في جميع محاضرات هذه المادة!', 'info');
                 return;
