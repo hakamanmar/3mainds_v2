@@ -16,8 +16,12 @@ export default async function MyResultsPage() {
     container.innerHTML = `<div style="display:grid;place-items:center;height:60vh;"><div class="spinner"></div></div>`;
 
     let results = [];
+    let warnings = [];
     try {
-        results = await api.getStudentGrades();
+        [results, warnings] = await Promise.all([
+            api.getStudentGrades(),
+            api.getWarnings()
+        ]);
     } catch (e) {
         container.innerHTML = `<div class="error-state"><p>${e.message}</p></div>`;
         return container;
@@ -30,8 +34,29 @@ export default async function MyResultsPage() {
                     <i class="ph ph-arrow-right"></i> ${i18n.t('back')}
                 </button>
                 <h1><i class="ph ph-medal" style="color:#f59e0b;"></i> نتائجي وتقييماتي</h1>
-                <p class="text-muted">هنا يمكنك متابعة درجاتك وتغذية الأساتذة الراجعة على واجباتك المسلمة.</p>
+                <p class="text-muted">هنا يمكنك متابعة درجاتك وتغذية الأساتذة الراجعة، بالإضافة للإنذارات الرسمية.</p>
             </div>
+
+            ${warnings.length > 0 ? `
+            <div class="warnings-section" style="margin-top:24px;">
+                <h3 style="color: var(--red); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-warning-octagon"></i> الإنذارات الرسمية والتبليغات
+                </h3>
+                <div style="display: grid; gap: 15px;">
+                    ${warnings.map(w => `
+                        <div class="card" style="border-right: 5px solid var(--red); background: #fff1f2;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="font-weight: 800; color: #991b1b; font-size: 1.1rem;">
+                                    إنذار غياب (${w.type}) ${w.subject_title ? `- ${w.subject_title}` : ''}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #b91c1c;">${new Date(w.created_at).toLocaleDateString('ar-EG')}</div>
+                            </div>
+                            <p style="margin-top: 10px; color: #7f1d1d; line-height: 1.6;">${w.message || 'يرجى مراجعة لجنة الغيابات بخصوص تجاوزك لنسبة الغياب المسموح بها.'}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
 
             <div class="results-container" style="margin-top:2rem; display:grid; gap:1.5rem;">
                 ${results.length === 0 ? `
