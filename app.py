@@ -684,6 +684,22 @@ def init_db():
         )
     ''')
 
+    # 11. Warnings Table (Manual alerts from committee)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS warnings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            subject_id INTEGER,
+            type TEXT NOT NULL, -- e.g., 'أول', 'ثاني', 'نهائي'
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by INTEGER NOT NULL,
+            FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+    ''')
+
     # Seed Sections
     c.execute('SELECT count(*) as total FROM sections')
     row = c.fetchone()
@@ -1601,7 +1617,7 @@ def delete_announcement():
 
 # ─── USERS ────────────────────────────────────────────────────
 @app.route('/api/users', methods=['GET'])
-@require_role('section_admin', 'super_admin', 'head_dept', 'teacher')
+@require_role('section_admin', 'super_admin', 'head_dept')
 def get_users():
     ctx = get_user_context()
     sid_param = request.args.get('section_id')
@@ -2901,6 +2917,138 @@ def attendance_report():
         })
     conn.close()
     return jsonify(result)
+
+# ── Committee: Section-wide detailed report ──────────────────────
+@app.route('/api/attendance/section-report', methods=['GET'])
+@require_role('committee', 'section_admin', 'super_admin')
+def attendance_section_report():
+    section_id = request.args.get('section_id')
+    if not section_id:
+        return jsonify({"error": "section_id is required"}), 400
+    
+    conn = get_db()
+    students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (section_id,)).fetchall()
+    subjects = conn.execute("SELECT id, title, code FROM subjects WHERE section_id=?", (section_id,)).fetchall()
+    
+    report = []
+    for stu in students:
+        stu_stats = {
+            'student_id': stu['id'],
+            'email': stu['email'],
+            'full_name': stu['full_name'],
+            'subjects': []
+        }
+        for sub in subjects:
+            total = conn.execute("SELECT count(*) FROM attendance_sessions WHERE subject_id=? AND status='ended'", (sub['id'],)).fetchone()[0]
+            attended = conn.execute("SELECT count(*) FROM attendance_records ar JOIN attendance_sessions s ON ar.session_id=s.id WHERE s.subject_id=? AND ar.student_id=?", (sub['id'], stu['id'])).fetchone()[0]
+            stu_stats['subjects'].append({
+                'subject_id': sub['id'],
+                'title': sub['title'],
+                'total': total,
+                'attended': attended,
+                'absent': total - attended
+            })
+        report.append(stu_stats)
+    conn.close()
+    return jsonify({"students": report, "subjects": [dict(s) for s in subjects]})
+
+@app.route('/api/attendance/student-missed-sessions', methods=['GET'])
+@require_role('committee', 'section_admin', 'super_admin')
+def get_student_missed_sessions():
+    student_id = request.args.get('student_id')
+    subject_id = request.args.get('subject_id')
+    if not student_id or not subject_id:
+        return jsonify({"error": "Missing params"}), 400
+    conn = get_db()
+    sessions = conn.execute('''
+        SELECT s.id, s.started_at, subj.title 
+        FROM attendance_sessions s
+        JOIN subjects subj ON s.subject_id = subj.id
+        WHERE s.subject_id = ? AND s.status = 'ended'
+        AND NOT EXISTS (
+            SELECT 1 FROM attendance_records ar 
+            WHERE ar.session_id = s.id AND ar.student_id = ?
+        )
+        ORDER BY s.started_at DESC
+    ''', (subject_id, student_id)).fetchall()
+    conn.close()
+    return jsonify([dict(s) for s in sessions])
+
+@app.route('/api/attendance/mark-excused', methods=['POST'])
+@require_role('committee', 'section_admin', 'super_admin')
+def attendance_mark_excused():
+    data = request.json
+    session_id = data.get('session_id')
+    student_id = data.get('student_id')
+    
+    if not session_id or not student_id:
+        return jsonify({"error": "Missing session_id or student_id"}), 400
+        
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM attendance_records WHERE session_id=? AND student_id=?", (session_id, student_id)).fetchone()
+    if existing:
+        conn.execute("UPDATE attendance_records SET method='excused', note='تم تعديله لمجاز بواسطة اللجنة' WHERE session_id=? AND student_id=?", (session_id, student_id))
+    else:
+        conn.execute("INSERT INTO attendance_records (session_id, student_id, method, note) VALUES (?, ?, 'excused', 'بواسطة اللجنة')", (session_id, student_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "تم تسجيل الطالب كمجاز"})
+
+# ── Warnings System ─────────────────────────────────────────────
+@app.route('/api/warnings', methods=['POST', 'GET'])
+@require_role('committee', 'section_admin', 'super_admin', 'student')
+def manage_warnings():
+    ctx = get_user_context()
+    conn = get_db()
+    
+    if request.method == 'POST':
+        if ctx['role'] not in ['committee', 'section_admin', 'super_admin']:
+            return jsonify({"error": "Unauthorized"}), 403
+        data = request.json
+        student_id = data.get('student_id')
+        subject_id = data.get('subject_id')
+        w_type = data.get('type')
+        message = data.get('message')
+        
+        conn.execute('''
+            INSERT INTO warnings (student_id, subject_id, type, message, created_by)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (student_id, subject_id, w_type, message, ctx['user_id']))
+        conn.commit()
+        
+        send_push_notification(student_id, f"إنذار غياب {w_type}", message or "لديك إنذار جديد بخصوص غياباتك", url='/results', tag='warning')
+        conn.close()
+        return jsonify({"success": True})
+    
+    else: # GET
+        if ctx['role'] == 'student':
+            warnings = conn.execute('''
+                SELECT w.*, s.title as subject_title 
+                FROM warnings w 
+                LEFT JOIN subjects s ON w.subject_id = s.id 
+                WHERE w.student_id = ? 
+                ORDER BY w.created_at DESC
+            ''', (ctx['user_id'],)).fetchall()
+        else:
+            student_id = request.args.get('student_id')
+            if student_id:
+                warnings = conn.execute('''
+                    SELECT w.*, s.title as subject_title 
+                    FROM warnings w 
+                    LEFT JOIN subjects s ON w.subject_id = s.id 
+                    WHERE w.student_id = ? 
+                    ORDER BY w.created_at DESC
+                ''', (student_id,)).fetchall()
+            else:
+                warnings = conn.execute('''
+                    SELECT w.*, s.title as subject_title, u.full_name as student_name 
+                    FROM warnings w 
+                    JOIN users u ON w.student_id = u.id
+                    LEFT JOIN subjects s ON w.subject_id = s.id 
+                    ORDER BY w.created_at DESC
+                ''').fetchall()
+        conn.close()
+        return jsonify([dict(w) for w in warnings])
 
 # ── Committee: absence alerts ────────────────────────────────────
 @app.route('/api/attendance/alerts', methods=['GET'])
