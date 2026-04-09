@@ -1073,27 +1073,65 @@ def login():
     return resp
 
 @app.route('/api/change-password', methods=['POST'])
-@limiter.limit("5 per hour") # Prevent automated password resets
+@limiter.limit("5 per hour")
 def change_password():
+    """Self-service password change — requires current password verification."""
     data = request.json
-    user_id = data.get('user_id')
+    ctx = get_user_context()
+    user_id = data.get('user_id') or ctx.get('user_id')
+    old_password = data.get('old_password', '')
     new_password = data.get('password', '')
 
-    if not new_password:
-        return jsonify({'error': 'كلمة المرور مطلوبة'}), 400
+    if not old_password or not new_password:
+        return jsonify({'error': 'كلمة المرور القديمة والجديدة مطلوبتان'}), 400
 
-    # 🛑 Enforcement: Password Policy
+    is_valid, msg = validate_password(new_password)
+    if not is_valid:
+        return jsonify({'error': msg}), 400
+
+    conn = get_db()
+    user_row = conn.execute('SELECT password FROM users WHERE id = ?', (user_id,)).fetchone()
+    if not user_row:
+        conn.close()
+        return jsonify({'error': 'المستخدم غير موجود'}), 404
+
+    if not check_password_hash(dict(user_row)['password'], old_password):
+        conn.close()
+        audit_log("PASSWORD_CHANGE_FAILED", {"user_id": user_id, "reason": "wrong_old_password"}, risk_score="HIGH")
+        return jsonify({'error': 'كلمة المرور القديمة غير صحيحة'}), 401
+
+    conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
+                 (generate_password_hash(new_password), user_id))
+    conn.commit()
+    conn.close()
+    audit_log("PASSWORD_CHANGED_SELF", {"user_id": user_id})
+    return jsonify({'success': True})
+
+
+@app.route('/api/admin/change-password', methods=['POST'])
+@require_role('super_admin')
+def admin_change_password():
+    """Admin force-change password — super_admin only, no old password needed."""
+    data = request.json
+    target_user_id = data.get('user_id')
+    new_password = data.get('new_password', '')
+
+    if not target_user_id or not new_password:
+        return jsonify({'error': 'user_id وكلمة المرور الجديدة مطلوبان'}), 400
+
     is_valid, msg = validate_password(new_password)
     if not is_valid:
         return jsonify({'error': msg}), 400
 
     conn = get_db()
     conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
-                 (generate_password_hash(new_password), user_id))
+                 (generate_password_hash(new_password), target_user_id))
     conn.commit()
     conn.close()
-    audit_log("PASSWORD_CHANGED", {"user_id": user_id})
+    ctx = get_user_context()
+    audit_log("ADMIN_PASSWORD_CHANGED", {"by": ctx.get('email'), "target_user_id": target_user_id})
     return jsonify({'success': True})
+
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
