@@ -16,7 +16,25 @@ const HomePage = async () => {
             fetch('/api/attendance/active-for-me').then(r => r.json()).catch(() => ({ active: false }))
         ]);
         
-        subjects = results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [];
+        const rawSubjects = results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value : [];
+        
+        // For super_admin/head_dept: deduplicate subjects by parent_subject_id
+        // so grouped multi-section subjects appear as one card
+        const user0 = auth.getUser();
+        if (user0 && ['super_admin', 'head_dept'].includes(user0.role)) {
+            const seen = new Map();
+            rawSubjects.forEach(s => {
+                const key = s.parent_subject_id || s.id;
+                if (!seen.has(key)) {
+                    seen.set(key, { ...s, _section_count: 1 });
+                } else {
+                    seen.get(key)._section_count++;
+                }
+            });
+            subjects = Array.from(seen.values());
+        } else {
+            subjects = rawSubjects;
+        }
         announcements = results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value : [];
         const attendanceData = results[2].status === 'fulfilled' ? results[2].value : { active: false };
         
@@ -217,6 +235,23 @@ const HomePage = async () => {
                             <p class="subject-desc">${subject.description || ''}</p>
                             <div class="subject-card-footer">
                                 <span><i class="ph ph-arrow-left"></i> ${i18n.t('view_lessons')}</span>
+                                ${subject._section_count > 1 ? `
+                                    <span style="
+                                        background: rgba(255,255,255,0.15);
+                                        color: white;
+                                        font-size: 0.7rem;
+                                        font-weight: 700;
+                                        padding: 3px 10px;
+                                        border-radius: 20px;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 4px;
+                                        backdrop-filter: blur(4px);
+                                    ">
+                                        <i class="ph ph-circles-four"></i>
+                                        ${subject._section_count} شعب
+                                    </span>
+                                ` : ''}
                             </div>
                         </div>
                     `;
