@@ -1111,31 +1111,6 @@ def change_password():
     return jsonify({'success': True})
 
 
-@app.route('/api/admin/change-password', methods=['POST'])
-def admin_change_password():
-    """Admin force-change: super_admin/head_dept can change any user password."""
-    ctx = get_user_context()
-    if ctx.get('role') not in ('super_admin', 'head_dept'):
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    data = request.json
-    target_user_id = data.get('user_id')
-    new_password = data.get('new_password', '')
-
-    if not target_user_id or not new_password:
-        return jsonify({'error': 'user_id وكلمة المرور الجديدة مطلوبان'}), 400
-
-    is_valid, msg = validate_password(new_password)
-    if not is_valid:
-        return jsonify({'error': msg}), 400
-
-    conn = get_db()
-    conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
-                 (generate_password_hash(new_password), target_user_id))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
-
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
