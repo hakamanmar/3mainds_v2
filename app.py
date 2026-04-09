@@ -487,6 +487,13 @@ def init_db():
         )
     ''')
 
+    # Migration: Add parent_subject_id column for multi-section subject grouping
+    try:
+        c.execute('SELECT parent_subject_id FROM subjects LIMIT 1')
+    except Exception:
+        app.logger.info("[DB] Adding parent_subject_id to subjects")
+        c.execute('ALTER TABLE subjects ADD COLUMN parent_subject_id INTEGER REFERENCES subjects(id)')
+
     # 4. Lessons Table (Linked to subject which is linked to section)
     c.execute('''
         CREATE TABLE IF NOT EXISTS lessons (
@@ -864,22 +871,31 @@ def require_role(*roles):
 
 def check_subject_ownership(conn, subject_id, ctx):
     """Securely checks if current user has management rights for a subject.
-    Supports both legacy instructor_id (single) and instructor_courses (multi) assignment.
+    Supports both legacy instructor_id (single), instructor_courses (multi),
+    and sibling subjects via parent_subject_id (multi-section subjects).
     """
     if ctx['role'] in ['super_admin', 'head_dept']: return True
     
-    res = conn.execute('SELECT section_id, instructor_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+    res = conn.execute('SELECT section_id, instructor_id, parent_subject_id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
     if not res: return False
     
     subj = dict(res)
+    parent_id = subj.get('parent_subject_id') or subject_id
     
     if ctx['role'] == 'teacher':
-        # Check new many-to-many table first (preferred)
+        # Check direct assignment first
         ic = conn.execute(
             'SELECT id FROM instructor_courses WHERE instructor_id = ? AND course_id = ?',
             (ctx['user_id'], subject_id)
         ).fetchone()
         if ic: return True
+        # Check sibling subjects (same parent group)
+        sibling = conn.execute('''
+            SELECT ic.id FROM instructor_courses ic
+            JOIN subjects s ON ic.course_id = s.id
+            WHERE ic.instructor_id = ? AND (s.parent_subject_id = ? OR s.id = ?)
+        ''', (ctx['user_id'], parent_id, parent_id)).fetchone()
+        if sibling: return True
         # Fallback: legacy single instructor_id
         return subj.get('instructor_id') == ctx['user_id']
     
@@ -1178,13 +1194,32 @@ def get_subjects():
             # Global roles see everything if no section selected
             subjects = conn.execute('SELECT * FROM subjects ORDER BY created_at DESC').fetchall()
     elif ctx['role'] == 'teacher':
-        # Teachers see subjects from instructor_courses (multi) + legacy instructor_id fallback
-        subjects = conn.execute('''
-            SELECT DISTINCT s.* FROM subjects s
+        # Teachers: show unique subjects deduplicated by parent_subject_id
+        # Each "parent group" appears as one card; teacher sees all their assigned sections
+        raw = conn.execute('''
+            SELECT s.* FROM subjects s
             LEFT JOIN instructor_courses ic ON s.id = ic.course_id AND ic.instructor_id = ?
             WHERE ic.instructor_id = ? OR s.instructor_id = ?
             ORDER BY s.created_at DESC
         ''', (ctx['user_id'], ctx['user_id'], ctx['user_id'])).fetchall()
+        # Deduplicate by parent_subject_id: keep first occurrence per group
+        seen_parents = set()
+        deduped = []
+        for s in raw:
+            sd = dict(s)
+            parent = sd.get('parent_subject_id') or sd['id']
+            if parent not in seen_parents:
+                seen_parents.add(parent)
+                # Attach list of sections teacher covers for this subject
+                sibling_sections = conn.execute('''
+                    SELECT sub.section_id FROM subjects sub
+                    JOIN instructor_courses ic2 ON sub.id = ic2.course_id
+                    WHERE (sub.parent_subject_id = ? OR sub.id = ?) AND ic2.instructor_id = ?
+                ''', (parent, parent, ctx['user_id'])).fetchall()
+                sd['covered_sections'] = [r['section_id'] for r in sibling_sections]
+                deduped.append(sd)
+        conn.close()
+        return jsonify(deduped)
     else:
         # Section Admins, and Students are restricted to their section
         sid = ctx['section_id']
@@ -1213,35 +1248,70 @@ def get_subject_details(id):
     return jsonify({'subject': dict(subject), 'lessons': [dict(l) for l in lessons]})
 
 @app.route('/api/subjects', methods=['POST'])
-@require_role('section_admin', 'head_dept')
+@require_role('section_admin', 'head_dept', 'super_admin')
 def add_subject():
     data = request.json
     ctx = get_user_context()
-    sid = ctx['section_id']
-    if ctx['role'] in ['super_admin', 'head_dept'] and data.get('section_id'):
-        sid = data['section_id']
-        
-    if not data.get('title') or not sid:
-        return jsonify({'error': 'يجب إدخال اسم المادة والشعبة'}), 400
-        
+
+    title = sanitize_input(data.get('title', '')).strip()
+    desc  = sanitize_input(data.get('description', ''))
+    code  = data.get('code', '')
+    color = data.get('color', '#4f46e5')
+    instructor_id = data.get('instructor_id')
+
+    if not title:
+        return jsonify({'error': 'يجب إدخال اسم المادة'}), 400
+
+    # ── Resolve target sections ──────────────────────────────
+    all_sections = data.get('all_sections', False)   # True → add to every section
+    section_ids  = data.get('section_ids', [])       # list of specific section IDs
+
     conn = get_db()
     try:
-        title = sanitize_input(data['title'])
-        desc = sanitize_input(data.get('description', ''))
-        conn.execute('INSERT INTO subjects (title, description, code, color, section_id, instructor_id) VALUES (?, ?, ?, ?, ?, ?)',
-                     (title, desc, data.get('code', ''), data.get('color', '#4f46e5'), sid, data.get('instructor_id')))
-        conn.commit()
-        
-        # ── PUSH NOTIFICATION ──
+        if all_sections:
+            rows = conn.execute('SELECT id FROM sections').fetchall()
+            section_ids = [r['id'] for r in rows]
+        elif not section_ids:
+            # Backward-compatible: single section
+            sid = ctx['section_id']
+            if ctx['role'] in ['super_admin', 'head_dept'] and data.get('section_id'):
+                sid = data['section_id']
+            if not sid:
+                conn.close()
+                return jsonify({'error': 'يجب تحديد شعبة واحدة على الأقل'}), 400
+            section_ids = [sid]
+
+        parent_id   = None
+        created_ids = []
+
+        for i, sid in enumerate(section_ids):
+            cur = conn.cursor()
+            cur.execute(
+                'INSERT INTO subjects (title, description, code, color, section_id, instructor_id, parent_subject_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (title, desc, code, color, sid, instructor_id, parent_id)
+            )
+            new_id = cur.lastrowid
+            created_ids.append(new_id)
+            conn.commit()
+
+            # First record becomes the "parent" of the group
+            if parent_id is None:
+                parent_id = new_id
+                conn.execute('UPDATE subjects SET parent_subject_id = ? WHERE id = ?', (new_id, new_id))
+                conn.commit()
+
+        # ── Push notifications ───────────────────────────────
         try:
-            students = conn.execute('SELECT id FROM users WHERE section_id = ?', (sid,)).fetchall()
-            for s in students:
-                send_push_notification(s['id'], "مادة دراسية جديدة", f"تم إضافة مادة {data['title']} لشعبتكم.", url='/home', tag='subject')
+            for sid in section_ids:
+                students = conn.execute('SELECT id FROM users WHERE section_id = ?', (sid,)).fetchall()
+                for s in students:
+                    send_push_notification(s['id'], "مادة دراسية جديدة",
+                        f"تم إضافة مادة {title} لشعبتكم.", url='/home', tag='subject')
         except Exception as push_err:
             print(f"[PUSH] Subject push error: {push_err}")
-            
+
         conn.close()
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'created_count': len(created_ids), 'parent_id': parent_id})
     except Exception as e:
         if 'conn' in locals(): conn.close()
         return jsonify({'error': str(e)}), 500
@@ -1429,14 +1499,49 @@ def add_lesson():
     if not subject_id or not title or not url:
         return jsonify({'error': 'جميع الحقول مطلوبة'}), 400
 
-    title = sanitize_input(title) # Sanitize title
+    title = sanitize_input(title)
 
     conn = get_db()
-    conn.execute('INSERT INTO lessons (subject_id, title, url, type) VALUES (?, ?, ?, ?)',
-                 (subject_id, title, url, lesson_type))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        # ── Multi-section distribution ───────────────────────────────────
+        # If this subject belongs to a parent group, distribute lesson to all
+        # sibling sections that the teacher is assigned to.
+        subj_row = conn.execute(
+            'SELECT parent_subject_id FROM subjects WHERE id = ?', (subject_id,)
+        ).fetchone()
+
+        parent_id = dict(subj_row).get('parent_subject_id') if subj_row else None
+
+        if parent_id:
+            if ctx['role'] in ['super_admin', 'head_dept', 'section_admin']:
+                # Admins: distribute to ALL siblings
+                siblings = conn.execute(
+                    'SELECT id FROM subjects WHERE parent_subject_id = ?', (parent_id,)
+                ).fetchall()
+            else:
+                # Teacher: only their assigned sections within this group
+                siblings = conn.execute('''
+                    SELECT s.id FROM subjects s
+                    JOIN instructor_courses ic ON s.id = ic.course_id
+                    WHERE s.parent_subject_id = ? AND ic.instructor_id = ?
+                ''', (parent_id, ctx['user_id'])).fetchall()
+                # Fallback: if no instructor_courses, use the requested subject
+                if not siblings:
+                    siblings = [{'id': subject_id}]
+            target_ids = [r['id'] for r in siblings]
+        else:
+            target_ids = [subject_id]
+
+        # Insert lesson record for each target section
+        for tid in target_ids:
+            conn.execute(
+                'INSERT INTO lessons (subject_id, title, url, type, uploaded_by) VALUES (?, ?, ?, ?, ?)',
+                (tid, title, url, lesson_type, ctx['user_id'])
+            )
+        conn.commit()
+        return jsonify({'success': True, 'distributed_to': len(target_ids)})
+    finally:
+        conn.close()
 
 @app.route('/api/lessons/<int:id>', methods=['DELETE'])
 @require_role('teacher', 'section_admin', 'super_admin')
