@@ -15,6 +15,9 @@ from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 import time
 import requests
+import base64
+import hashlib
+from cryptography.fernet import Fernet
 
 # ─── ENVIRONMENT DETECTION ──────────────────────────────────────────────
 IS_VERCEL = "VERCEL" in os.environ
@@ -77,7 +80,25 @@ with db_init_lock:
 
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 app.config['DEVICE_BINDING_SECRET'] = os.environ.get('DEVICE_BINDING_SECRET', secrets.token_hex(16)) 
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Reduced from 500MB to 50MB for better DoS protection
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  
+
+# ─── SECURE ENCRYPTION LAYER ──────────────────────────────────
+# Derive a 32-byte URL-safe base64 key from SECRET_KEY
+_key_seed = app.config['SECRET_KEY'].encode()
+_cipher_key = base64.urlsafe_b64encode(hashlib.sha256(_key_seed).digest())
+cipher_suite = Fernet(_cipher_key)
+
+def encrypt_content(text):
+    if not text: return ""
+    return cipher_suite.encrypt(text.encode()).decode()
+
+def decrypt_content(encrypted_text):
+    if not encrypted_text: return ""
+    try:
+        return cipher_suite.decrypt(encrypted_text.encode()).decode()
+    except Exception:
+        # Fallback for legacy unencrypted messages
+        return encrypted_text 
 
 # ─── GLOBAL ERROR HANDLER ──────────────────────────────────────────────
 @app.errorhandler(Exception)
@@ -553,7 +574,8 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            section_id TEXT NOT NULL,
+            section_id TEXT,    -- Optional for private chats
+            receiver_id INTEGER, -- Optional for group chats
             sender_id INTEGER NOT NULL,
             content TEXT NOT NULL,
             is_edited INTEGER DEFAULT 0,
@@ -561,9 +583,17 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
-            FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+            FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+    
+    # Migration: Add receiver_id if missing
+    try:
+        c.execute('SELECT receiver_id FROM chat_messages LIMIT 1')
+    except Exception:
+        app.logger.info("[DB] Adding receiver_id to chat_messages")
+        c.execute('ALTER TABLE chat_messages ADD COLUMN receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE')
 
     # 16. Chat Settings (User preferences like muting)
     c.execute('''
@@ -3789,35 +3819,60 @@ def get_chat_messages():
     
     # Super Admin and Head Dept can view any section
     section_id = ctx['section_id']
+    receiver_id = request.args.get('receiver_id')
+
     if ctx['role'] in ['super_admin', 'head_dept']:
         requested_sid = request.args.get('section_id')
         if requested_sid: section_id = requested_sid
 
-    if not section_id:
-        return jsonify({'error': 'Section ID required'}), 400
-
-    # 🛑 IDOR Check
-    is_admin = ctx['role'] in ['super_admin', 'head_dept']
-    if not is_admin and section_id != ctx['section_id']:
-        return jsonify({'error': 'Forbidden access to this chat'}), 403
+    if not section_id and not receiver_id:
+        return jsonify({'error': 'Section ID or Receiver ID required'}), 400
 
     conn = get_db()
     try:
         limit = int(request.args.get('limit', 50))
-        messages = conn.execute('''
-            SELECT m.id, m.section_id, m.sender_id, m.content, m.is_edited, m.is_deleted,
-                   strftime('%Y-%m-%dT%H:%M:%SZ', m.created_at) as created_at,
-                   u.full_name as sender_name, u.role as sender_role,
-                   (SELECT count(*) FROM chat_read_receipts r WHERE r.message_id = m.id) as views_count
-            FROM chat_messages m
-            JOIN users u ON m.sender_id = u.id
-            WHERE m.section_id = ?
-            ORDER BY m.created_at DESC
-            LIMIT ?
-        ''', (section_id, limit)).fetchall()
+        
+        if receiver_id:
+            # Private Chat: messages between ctx['user_id'] and receiver_id
+            messages = conn.execute('''
+                SELECT m.id, m.section_id, m.sender_id, m.receiver_id, m.content, m.is_edited, m.is_deleted,
+                       strftime('%Y-%m-%dT%H:%M:%SZ', m.created_at) as created_at,
+                       u.full_name as sender_name, u.role as sender_role,
+                       (SELECT count(*) FROM chat_read_receipts r WHERE r.message_id = m.id) as views_count
+                FROM chat_messages m
+                JOIN users u ON m.sender_id = u.id
+                WHERE (m.sender_id = ? AND m.receiver_id = ?)
+                   OR (m.sender_id = ? AND m.receiver_id = ?)
+                ORDER BY m.created_at DESC
+                LIMIT ?
+            ''', (ctx['user_id'], receiver_id, receiver_id, ctx['user_id'], limit)).fetchall()
+        else:
+            # 🛑 IDOR Check for group chat
+            is_admin = ctx['role'] in ['super_admin', 'head_dept']
+            if not is_admin and section_id != ctx['section_id']:
+                # Students can only view their own section unless they are admins
+                # Though some systems allow viewing other sections, we enforce this for privacy
+                return jsonify({'error': 'Forbidden access to this chat'}), 403
+
+            messages = conn.execute('''
+                SELECT m.id, m.section_id, m.sender_id, m.content, m.is_edited, m.is_deleted,
+                       strftime('%Y-%m-%dT%H:%M:%SZ', m.created_at) as created_at,
+                       u.full_name as sender_name, u.role as sender_role,
+                       (SELECT count(*) FROM chat_read_receipts r WHERE r.message_id = m.id) as views_count
+                FROM chat_messages m
+                JOIN users u ON m.sender_id = u.id
+                WHERE m.section_id = ? AND m.receiver_id IS NULL
+                ORDER BY m.created_at DESC
+                LIMIT ?
+            ''', (section_id, limit)).fetchall()
         
         # Sort messages by time ascending for the UI
-        res = [dict(m) for m in messages]
+        res = []
+        for m in messages:
+            d = dict(m)
+            d['content'] = decrypt_content(d['content']) # SECURE DECRYPTION
+            res.append(d)
+        
         res.reverse()
         return jsonify(res)
     finally:
@@ -3895,41 +3950,54 @@ def send_chat_message():
     
     data = request.json
     content = data.get('content')
+    receiver_id = data.get('receiver_id')
     # Default to user's section, admins can specify
     section_id = ctx['section_id']
     if ctx['role'] in ['super_admin', 'head_dept'] and data.get('section_id'):
         section_id = data.get('section_id')
 
-    if not content or not section_id:
-        return jsonify({'error': 'Missing content or section'}), 400
+    if not content or (not section_id and not receiver_id):
+        return jsonify({'error': 'Missing content, section or receiver'}), 400
 
     conn = get_db()
     try:
-        # CHECK FOR LOCK: Students cannot send if section is locked
-        if ctx['role'] not in ['super_admin', 'head_dept']:
-            section = conn.execute('SELECT is_locked FROM sections WHERE id = ?', (section_id,)).fetchone()
-            if section and section['is_locked']:
-                return jsonify({'error': 'Chat is locked by admin'}), 403
+        if not receiver_id:
+            # CHECK FOR LOCK: Students cannot send if section is locked
+            if ctx['role'] not in ['super_admin', 'head_dept']:
+                section = conn.execute('SELECT is_locked FROM sections WHERE id = ?', (section_id,)).fetchone()
+                if section and section['is_locked']:
+                    return jsonify({'error': 'Chat is locked by admin'}), 403
 
         cur = conn.cursor()
         content = sanitize_input(content) # Sanitize message
-        cur.execute('''
-            INSERT INTO chat_messages (section_id, sender_id, content)
-            VALUES (?, ?, ?)
-        ''', (section_id, ctx['user_id'], content))
+        encrypted = encrypt_content(content) # SECURE ENCRYPTION
+        
+        if receiver_id:
+             cur.execute('''
+                INSERT INTO chat_messages (sender_id, receiver_id, content)
+                VALUES (?, ?, ?)
+            ''', (ctx['user_id'], receiver_id, encrypted))
+        else:
+            cur.execute('''
+                INSERT INTO chat_messages (section_id, sender_id, content)
+                VALUES (?, ?, ?)
+            ''', (section_id, ctx['user_id'], encrypted))
         msg_id = cur.lastrowid
         conn.commit()
         
         # ─── PUSH NOTIFICATION ───
-        # Notify others in the section
         try:
-            sender_name = conn.execute('SELECT full_name FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()['full_name'] or ctx['user_email']
-            others = conn.execute('SELECT id FROM users WHERE section_id = ? AND id != ?', (section_id, ctx['user_id'])).fetchall()
-            for o in others:
-                # Check if muted
-                is_muted = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', (o['id'], section_id)).fetchone()
-                if not is_muted or not is_muted['is_muted']:
-                    send_push_notification(o['id'], f"رسالة جديدة في {section_id}", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_{section_id}")
+            sender_name = conn.execute('SELECT full_name FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()['full_name'] or "Someone"
+            
+            if receiver_id:
+                send_push_notification(receiver_id, f"رسالة خاصة جديدة", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_dm_{ctx['user_id']}")
+            else:
+                others = conn.execute('SELECT id FROM users WHERE section_id = ? AND id != ?', (section_id, ctx['user_id'])).fetchall()
+                for o in others:
+                    # Check if muted
+                    is_muted = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', (o['id'], section_id)).fetchone()
+                    if not is_muted or not is_muted['is_muted']:
+                        send_push_notification(o['id'], f"رسالة جديدة في {section_id}", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_{section_id}")
         except Exception as push_err:
             print(f"[PUSH] Chat push error: {push_err}")
             
@@ -4005,22 +4073,45 @@ def get_my_chat_groups():
     
     conn = get_db()
     try:
+        # 1. Get Section Groups
         if ctx['role'] in ['super_admin', 'head_dept']:
             groups = conn.execute('SELECT id, name, is_locked FROM sections').fetchall()
         else:
             groups = conn.execute('SELECT id, name, is_locked FROM sections WHERE id = ?', (ctx['section_id'],)).fetchall()
         
-        res = []
+        section_res = []
         for g in groups:
             mute_status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
                                      (ctx['user_id'], g['id'])).fetchone()
-            res.append({
+            section_res.append({
                 'id': g['id'],
                 'name': g['name'],
+                'type': 'group',
                 'is_locked': bool(g['is_locked']),
                 'is_muted': bool(mute_status['is_muted']) if mute_status else False
             })
-        return jsonify(res)
+
+        # 2. Get Private Conversations (DMs)
+        # Find users the current user has exchanged messages with
+        dm_users = conn.execute('''
+            SELECT DISTINCT u.id, u.full_name, u.email, u.role
+            FROM users u
+            JOIN chat_messages m ON (m.sender_id = u.id AND m.receiver_id = ?) 
+                                 OR (m.sender_id = ? AND m.receiver_id = u.id)
+            WHERE u.id != ?
+        ''', (ctx['user_id'], ctx['user_id'], ctx['user_id'])).fetchall()
+
+        dm_res = []
+        for u in dm_users:
+            dm_res.append({
+                'id': u['id'],
+                'name': u['full_name'] or u['email'],
+                'type': 'private',
+                'user_id': u['id'],
+                'role': u['role']
+            })
+
+        return jsonify({'groups': section_res, 'privates': dm_res})
     finally:
         conn.close()
 
@@ -4052,11 +4143,13 @@ def manage_chat_message(msg_id):
                 return jsonify({'error': 'Forbidden'}), 403
             content = sanitize_input(request.json.get('content'))
             if not content: return jsonify({'error': 'Empty content'}), 400
+            
+            encrypted = encrypt_content(content) # SECURE ENCRYPTION
             conn.execute('''
                 UPDATE chat_messages 
                 SET content = ?, is_edited = 1, updated_at = CURRENT_TIMESTAMP 
                 WHERE id = ?
-            ''', (content, msg_id))
+            ''', (encrypted, msg_id))
             conn.commit()
             return jsonify({'success': True})
     finally:
