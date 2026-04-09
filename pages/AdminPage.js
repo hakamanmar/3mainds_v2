@@ -378,41 +378,71 @@ AdminPage.init = () => {
         addSubBtn.addEventListener('click', async () => {
             const sections = await api.getSections();
             const result = await UI.modal(i18n.t('add_subject'), `
-                ${user.role === 'super_admin' ? `
-                    <div class="form-group">
-                        <label class="form-label">${i18n.t('select_section')}</label>
-                        <select id="s-section" class="form-input">
-                            ${sections.map(s => `<option value="${s.id}">${i18n.t(s.id)}</option>`).join('')}
-                        </select>
-                    </div>
-                ` : ''}
+                <style>
+                    .sub-section-toggle { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 1.5rem; cursor: pointer; transition: 0.2s; }
+                    .sub-section-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
+                    .sub-section-toggle.active { border-color: var(--primary); background: var(--primary-light); }
+                    .sub-section-toggle i { font-size: 1.5rem; color: var(--primary); }
+                    .sub-section-toggle .desc { font-size: 0.8rem; color: var(--text-muted); }
+                </style>
+                
+                <div class="form-group">
+                    <label class="sub-section-toggle active" id="all-sec-toggle">
+                        <input type="checkbox" id="s-all-sections" checked style="display:none;" onchange="
+                            this.parentElement.classList.toggle('active', this.checked);
+                            document.getElementById('single-sec-wrapper').style.display = this.checked ? 'none' : 'block';
+                        ">
+                        <i class="ph ph-globe"></i>
+                        <div>
+                            <div style="font-weight:700;">إضافة لكل الشُعب</div>
+                            <div class="desc">سيتم إنشاء هذه المادة تلقائياً في جميع الشُعب الأكاديمية</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="single-sec-wrapper" style="display:none;" class="form-group bounce-in">
+                    <label class="form-label">${i18n.t('select_section')}</label>
+                    <select id="s-section" class="form-input">
+                        ${sections.map(s => `<option value="${s.id}">${i18n.t(s.id)}</option>`).join('')}
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">${i18n.t('title')}</label>
-                    <input id="s-title" />
+                    <input id="s-title" class="form-input" placeholder="مثال: هياكل البيانات" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">${i18n.t('code')}</label>
-                    <input id="s-code" />
+                    <input id="s-code" class="form-input" placeholder="DS101" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">${i18n.t('description')}</label>
-                    <textarea id="s-desc"></textarea>
+                    <textarea id="s-desc" class="form-input" style="height:80px;"></textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">اللون</label>
-                    <input type="color" id="s-color" value="#4f46e5" style="height:45px;" />
+                    <label class="form-label">لون المادة</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                         <input type="color" id="s-color" value="#4f46e5" style="width:60px; height:45px; border-radius:8px; border:none; cursor:pointer;" />
+                         <span style="font-size:0.8rem; color:var(--text-muted);">هذا اللون سيظهر في جدول الطالب</span>
+                    </div>
                 </div>
             `, async () => {
                 const title = document.getElementById('s-title').value.trim();
-                if (!title) return false;
-                const secEl = document.getElementById('s-section');
+                const allSections = document.getElementById('s-all-sections').checked;
+                const section_id = document.getElementById('s-section') ? document.getElementById('s-section').value : null;
+
+                if (!title) { UI.toast('يجب إدخال اسم المادة', 'error'); return false; }
+                
                 await api.addSubject({
                     title,
                     code: document.getElementById('s-code').value.trim(),
                     description: document.getElementById('s-desc').value.trim(),
                     color: document.getElementById('s-color').value,
-                    section_id: secEl ? secEl.value : null
+                    all_sections: allSections,
+                    section_id: allSections ? null : section_id
                 });
+                
+                UI.toast(i18n.t('success'), 'success');
                 return true;
             });
             if (result) location.reload();
