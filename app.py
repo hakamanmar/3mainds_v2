@@ -1075,15 +1075,15 @@ def login():
 @app.route('/api/change-password', methods=['POST'])
 @limiter.limit("5 per hour")
 def change_password():
-    """Self-service password change — requires current password verification."""
+    """Unified password change: regular users must verify old password, super_admin can skip."""
     data = request.json
     ctx = get_user_context()
     user_id = data.get('user_id') or ctx.get('user_id')
     old_password = data.get('old_password', '')
-    new_password = data.get('password', '')
+    new_password = data.get('password', data.get('new_password', ''))
 
-    if not old_password or not new_password:
-        return jsonify({'error': 'كلمة المرور القديمة والجديدة مطلوبتان'}), 400
+    if not new_password:
+        return jsonify({'error': 'كلمة المرور الجديدة مطلوبة'}), 400
 
     is_valid, msg = validate_password(new_password)
     if not is_valid:
@@ -1095,23 +1095,29 @@ def change_password():
         conn.close()
         return jsonify({'error': 'المستخدم غير موجود'}), 404
 
-    if not check_password_hash(dict(user_row)['password'], old_password):
-        conn.close()
-        audit_log("PASSWORD_CHANGE_FAILED", {"user_id": user_id, "reason": "wrong_old_password"}, risk_score="HIGH")
-        return jsonify({'error': 'كلمة المرور القديمة غير صحيحة'}), 401
+    # Super admins can change any password without old password
+    if ctx.get('role') not in ('super_admin', 'head_dept'):
+        if not old_password:
+            conn.close()
+            return jsonify({'error': 'كلمة المرور الحالية مطلوبة'}), 400
+        if not check_password_hash(dict(user_row)['password'], old_password):
+            conn.close()
+            return jsonify({'error': 'كلمة المرور الحالية غير صحيحة'}), 401
 
     conn.execute('UPDATE users SET password = ?, must_change_pw = 0 WHERE id = ?',
                  (generate_password_hash(new_password), user_id))
     conn.commit()
     conn.close()
-    audit_log("PASSWORD_CHANGED_SELF", {"user_id": user_id})
     return jsonify({'success': True})
 
 
 @app.route('/api/admin/change-password', methods=['POST'])
-@require_role('super_admin')
 def admin_change_password():
-    """Admin force-change password — super_admin only, no old password needed."""
+    """Admin force-change: super_admin/head_dept can change any user password."""
+    ctx = get_user_context()
+    if ctx.get('role') not in ('super_admin', 'head_dept'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
     data = request.json
     target_user_id = data.get('user_id')
     new_password = data.get('new_password', '')
@@ -1128,8 +1134,6 @@ def admin_change_password():
                  (generate_password_hash(new_password), target_user_id))
     conn.commit()
     conn.close()
-    ctx = get_user_context()
-    audit_log("ADMIN_PASSWORD_CHANGED", {"by": ctx.get('email'), "target_user_id": target_user_id})
     return jsonify({'success': True})
 
 
