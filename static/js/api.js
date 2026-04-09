@@ -420,15 +420,19 @@ export const api = {
     },
 
     // ── CHAT SYSTEM ──────────────────────────────────────────────
-    async getChatMessages(sectionId = null, limit = 50) {
+    async getChatMessages(sectionId = null, receiverId = null, limit = 50) {
         let url = `${API_BASE}/chat/messages?limit=${limit}`;
         if (sectionId) url += `&section_id=${sectionId}`;
+        if (receiverId) url += `&receiver_id=${receiverId}`;
         return this._fetch(url);
     },
-    async sendChatMessage(content, sectionId = null) {
+    async sendChatMessage(content, sectionId = null, receiverId = null) {
+        const body = { content };
+        if (sectionId) body.section_id = sectionId;
+        if (receiverId) body.receiver_id = receiverId;
         return this._fetch(`${API_BASE}/chat/messages`, {
             method: 'POST',
-            body: JSON.stringify({ content, section_id: sectionId })
+            body: JSON.stringify(body)
         });
     },
     async updateChatMessage(msgId, content) {
