@@ -152,10 +152,16 @@ export const api = {
         
         return res;
     },
-    async changePassword(user_id, password) {
+    async changePassword(user_id, old_password, new_password) {
         return this._fetch(`${API_BASE}/change-password`, {
             method: 'POST',
-            body: JSON.stringify({ user_id, password })
+            body: JSON.stringify({ user_id, old_password, password: new_password })
+        });
+    },
+    async adminChangePassword(user_id, new_password) {
+        return this._fetch(`${API_BASE}/admin/change-password`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id, new_password })
         });
     },
 
