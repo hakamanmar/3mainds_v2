@@ -513,16 +513,17 @@ export default async function AttendancePage(params) {
                                     <div style="font-size: 11px; color: var(--text-muted);">${s.email} | ${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 8px;">
+                            <div style="display:flex; gap:8px; align-items:center;">
                                 ${!isPresent ? `
-                                    <button class="btn-mark-present btn-sm" data-id="${s.id}" style="background:#2563eb; color:white; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; display:flex; align-items:center; gap:4px;">
-                                        <i class="ph ph-check-circle"></i> حضور
-                                    </button>
-                                    <button class="btn-mark-excused btn-sm" data-id="${s.id}" style="background:#f59e0b; color:white; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; display:flex; align-items:center; gap:4px;">
-                                        <i class="ph ph-note"></i> مجاز
-                                    </button>
-                                ` : '<span style="color:#10b981; font-weight:700; font-size:13px;">✅ تم التسجيل</span>'}
+                                    <span class="btn-mark-present" data-id="${s.id}" style="display:inline-flex; align-items:center; gap:4px; background:#2563eb; color:#fff; padding:7px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; user-select:none; border:none;">
+                                        ✓ حضور
+                                    </span>
+                                    <span class="btn-mark-excused" data-id="${s.id}" style="display:inline-flex; align-items:center; gap:4px; background:#f59e0b; color:#fff; padding:7px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; user-select:none; border:none;">
+                                        📄 مجاز
+                                    </span>
+                                ` : '<span style="color:#10b981; font-weight:700;">✅ تم التسجيل</span>'}
                             </div>
+
                         </div>
                         `;
                     }).join('')}
