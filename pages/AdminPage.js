@@ -13,7 +13,24 @@ const AdminPage = async () => {
             api.getAnnouncements(),
             api.getStats()
         ]);
-        subjects = Array.isArray(sRes) ? sRes : [];
+        const rawSubjects = Array.isArray(sRes) ? sRes : [];
+
+        // Deduplicate by parent_subject_id when viewing all sections (no filter)
+        if (!selectedSectionId) {
+            const seen = new Map();
+            rawSubjects.forEach(s => {
+                const key = s.parent_subject_id || s.id;
+                if (!seen.has(key)) {
+                    seen.set(key, { ...s, _section_count: 1 });
+                } else {
+                    seen.get(key)._section_count++;
+                }
+            });
+            subjects = Array.from(seen.values());
+        } else {
+            subjects = rawSubjects;
+        }
+
         users = Array.isArray(uRes) ? uRes : (uRes.users || []);
         isCloud = uRes.is_cloud || false;
         announcements = Array.isArray(aRes) ? aRes : [];
@@ -32,6 +49,7 @@ const AdminPage = async () => {
     const committees = users.filter(u => u.role === 'committee');
     const sectionAdmins = users.filter(u => u.role === 'section_admin');
     const students = users.filter(u => u.role === 'student');
+
 
     return `
         <div class="admin-page">
@@ -153,7 +171,15 @@ const AdminPage = async () => {
             subjects.map(s => `
                                 <div class="list-item" style="border-right: 4px solid ${s.color || '#4f46e5'};">
                                     <div class="list-item-info">
-                                        <div style="font-weight:600;">${s.title} <span class="badge badge-outline">${i18n.t(s.section_id)}</span></div>
+                                        <div style="font-weight:600;">
+                                            ${s.title}
+                                            ${s._section_count > 1
+                                                ? `<span class="badge badge-outline" style="background:rgba(79,70,229,0.1); color:var(--primary); border-color:var(--primary);">
+                                                     <i class="ph ph-circles-four"></i> ${s._section_count} شعب
+                                                   </span>`
+                                                : `<span class="badge badge-outline">${i18n.t(s.section_id)}</span>`
+                                            }
+                                        </div>
                                         <span class="code-tag">${s.code}</span>
                                     </div>
                                     <div class="list-item-actions">
@@ -171,6 +197,7 @@ const AdminPage = async () => {
                                 </div>
                             `).join('')}
                         </div>
+
                     </div>
 
                     <!-- User Management (All Roles) -->
