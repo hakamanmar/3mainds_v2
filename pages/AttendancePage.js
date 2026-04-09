@@ -501,7 +501,7 @@ export default async function AttendancePage(params) {
                 <div class="form-group" style="margin-bottom: 15px;">
                     <input type="text" id="student-search" class="form-control" placeholder="بحث عن اسم الطالب..." style="width: 100%;">
                 </div>
-                <div id="manual-student-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px;">
+                 <div id="manual-student-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px;">
                     ${allStudents.filter(s => s.role === 'student').map(s => {
                         const isPresent = presentIds.has(s.id);
                         return `
@@ -510,19 +510,24 @@ export default async function AttendancePage(params) {
                                 <div class="avatar-sm" style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">${(s.full_name || s.email).charAt(0).toUpperCase()}</div>
                                 <div>
                                     <div style="font-weight: 600; font-size: 14px;">${s.full_name || s.email}</div>
-                                    <div style="font-size: 11px; color: var(--muted);">${s.email} | ${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">${s.email} | ${isPresent ? '✅ مسجل مسبقاً' : 'غير مسجل حالياً'}</div>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 8px;">
                                 ${!isPresent ? `
-                                    <button class="btn-mark-present btn-sm" data-id="${s.id}" style="background: var(--blue); color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;">حضور</button>
-                                    <button class="btn-mark-excused btn-sm" data-id="${s.id}" style="background: #f59e0b; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;">مجاز</button>
-                                ` : ''}
+                                    <button class="btn-mark-present btn-sm" data-id="${s.id}" style="background:#2563eb; color:white; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; display:flex; align-items:center; gap:4px;">
+                                        <i class="ph ph-check-circle"></i> حضور
+                                    </button>
+                                    <button class="btn-mark-excused btn-sm" data-id="${s.id}" style="background:#f59e0b; color:white; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; display:flex; align-items:center; gap:4px;">
+                                        <i class="ph ph-note"></i> مجاز
+                                    </button>
+                                ` : '<span style="color:#10b981; font-weight:700; font-size:13px;">✅ تم التسجيل</span>'}
                             </div>
                         </div>
                         `;
                     }).join('')}
                 </div>
+
             </div>
         `;
 
