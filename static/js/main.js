@@ -574,13 +574,18 @@ class Router {
                 <div class="nav-links-container">
                     ${links}
                 </div>
-                <div class="mobile-only-logout" style="padding: 1rem; margin-top: auto; border-top: 1px solid var(--border);">
+                <div class="mobile-only-logout" style="padding: 1rem; margin-top: auto; border-top: 1px solid var(--border); display:flex; flex-direction:column; gap:0.5rem;">
+                    <button id="nav-change-pw-btn" class="btn btn-ghost" style="width:100%; justify-content:center; border:1px solid var(--border); border-radius:12px; padding:0.75rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-muted);">
+                        <i class="ph ph-lock-key"></i>
+                        <span>تغيير كلمة السر</span>
+                    </button>
                     <button class="btn btn-danger logout-btn" data-action="logout" style="width: 100%; justify-content: center; background: #ef4444; color: white; border: none; padding: 0.85rem; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
                         <i class="ph-bold ph-sign-out"></i>
                         <span>${i18n.t('logout')}</span>
                     </button>
                 </div>
             `;
+
         } else {
             navHtml += `
                 <div class="nav-links-container">
@@ -594,6 +599,60 @@ class Router {
         navHtml += `</div>`;
         if (this.navContainer) {
             this.navContainer.innerHTML = navHtml;
+
+            // ── Change Password button handler ──────────────────────────
+            const changePwBtn = document.getElementById('nav-change-pw-btn');
+            if (changePwBtn) {
+                changePwBtn.addEventListener('click', async () => {
+                    const { UI } = await import('/static/js/ui.js');
+                    const { api } = await import('/static/js/api.js');
+                    const currentUser = auth.getUser();
+
+                    const result = await UI.modal('🔐 تغيير كلمة السر', `
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight:600;">كلمة السر الحالية</label>
+                            <input type="password" id="cp-old" class="form-input" placeholder="أدخل كلمة السر الحالية" autocomplete="current-password" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight:600;">كلمة السر الجديدة</label>
+                            <input type="password" id="cp-new" class="form-input" placeholder="8 أحرف على الأقل، حرف كبير ورقم" autocomplete="new-password" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-weight:600;">تأكيد كلمة السر الجديدة</label>
+                            <input type="password" id="cp-confirm" class="form-input" placeholder="أعد كتابة كلمة السر الجديدة" autocomplete="new-password" />
+                        </div>
+                        <div id="cp-error" style="display:none; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; border-radius:10px; padding:0.75rem; font-size:0.85rem; margin-top:0.5rem;"></div>
+                    `, async () => {
+                        const oldPw  = document.getElementById('cp-old').value;
+                        const newPw  = document.getElementById('cp-new').value;
+                        const confirm = document.getElementById('cp-confirm').value;
+                        const errBox  = document.getElementById('cp-error');
+
+                        const showErr = (msg) => {
+                            errBox.textContent = msg;
+                            errBox.style.display = 'block';
+                        };
+
+                        if (!oldPw || !newPw || !confirm) { showErr('جميع الحقول مطلوبة'); return false; }
+                        if (newPw !== confirm) { showErr('كلمة السر الجديدة وتأكيدها غير متطابقتين'); return false; }
+                        if (newPw.length < 8) { showErr('كلمة السر الجديدة يجب أن تكون 8 أحرف على الأقل'); return false; }
+
+                        try {
+                            const res = await api.changePassword(currentUser.id, oldPw, newPw);
+                            if (res && res.success) {
+                                UI.toast('✅ تم تغيير كلمة السر بنجاح', 'success');
+                                return true;
+                            } else {
+                                showErr(res?.error || 'حدث خطأ');
+                                return false;
+                            }
+                        } catch(e) {
+                            showErr(e.message || 'كلمة المرور القديمة غير صحيحة');
+                            return false;
+                        }
+                    });
+                });
+            }
         }
     }
 }
