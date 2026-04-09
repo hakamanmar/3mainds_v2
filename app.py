@@ -3889,29 +3889,14 @@ def mark_chat_read():
     conn = get_db()
     try:
         # Use executemany for efficiency
+        cursor = conn.cursor()
         data = [(mid, ctx['user_id']) for mid in msg_ids]
-        conn.executemany('''
+        cursor.executemany('''
             INSERT OR IGNORE INTO chat_read_receipts (message_id, user_id)
             VALUES (?, ?)
         ''', data)
-        msg_id = cur.lastrowid
         conn.commit()
-        
-        # ── PUSH NOTIFICATION ──
-        try:
-            target_desc = "الجميع" if not section_id else f"شعبة {section_id}"
-            # Notify ALL if no section, else just that section
-            users_to_notify = []
-            if not section_id:
-                users_to_notify = conn.execute('SELECT id FROM users').fetchall()
-            else:
-                users_to_notify = conn.execute('SELECT id FROM users WHERE section_id = ?', (section_id,)).fetchall()
-            
-            for u in users_to_notify:
-                send_push_notification(u['id'], f"تبليغ جديد للمرحلة ({target_desc})", content[:100], url='/home', tag='announcement')
-        except Exception as e: print(f"[PUSH] Announcement error: {e}")
-        
-        return jsonify({'success': True, 'id': msg_id})
+        return jsonify({'success': True})
     finally:
         conn.close()
 
@@ -3972,16 +3957,19 @@ def send_chat_message():
         content = sanitize_input(content) # Sanitize message
         encrypted = encrypt_content(content) # SECURE ENCRYPTION
         
+        # Robustly handle section_id even for DMs to satisfy NOT NULL constraints if they exist
+        target_section = section_id or ctx.get('section_id') or 'GLOBAL'
+
         if receiver_id:
              cur.execute('''
-                INSERT INTO chat_messages (sender_id, receiver_id, content)
-                VALUES (?, ?, ?)
-            ''', (ctx['user_id'], receiver_id, encrypted))
+                INSERT INTO chat_messages (sender_id, receiver_id, content, section_id)
+                VALUES (?, ?, ?, ?)
+            ''', (ctx['user_id'], receiver_id, encrypted, target_section))
         else:
             cur.execute('''
                 INSERT INTO chat_messages (section_id, sender_id, content)
                 VALUES (?, ?, ?)
-            ''', (section_id, ctx['user_id'], encrypted))
+            ''', (target_section, ctx['user_id'], encrypted))
         msg_id = cur.lastrowid
         conn.commit()
         
