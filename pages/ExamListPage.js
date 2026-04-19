@@ -10,7 +10,11 @@ export default async function ExamListPage(params) {
 
     if (!user) { window.router.navigate('/'); return container; }
 
-    const isInstructor = ['teacher', 'super_admin', 'section_admin', 'head_dept', 'committee'].includes(user.role);
+    // section_admin (ممثل شعبة) is treated as student for exams — they take exams, NOT create them
+    const isInstructor = ['teacher', 'super_admin', 'head_dept', 'committee'].includes(user.role);
+    // For exam display: section_admin sees student view (start/submit/result)
+    const isStudentView = user.role === 'student' || user.role === 'section_admin';
+
     
     container.innerHTML = `<div style="display:grid;place-items:center;height:55vh;"><div class="spinner"></div></div>`;
 
@@ -86,7 +90,7 @@ export default async function ExamListPage(params) {
                                 </div>
                             </div>
                             <div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
-                                ${user.role === 'student' ? `
+                                ${isStudentView ? `
                                     ${expired ? `
                                         <span style="background:var(--success-surface);color:var(--success);padding:6px 16px;border-radius:10px;font-weight:800;font-size:0.9rem;display:flex;align-items:center;gap:6px;">
                                             <i class="ph-bold ph-check-circle"></i> تم: ${exam.attempt.score}%
@@ -121,6 +125,7 @@ export default async function ExamListPage(params) {
                                     ` : ''}
                                 `}
                             </div>
+
                         </div>
                         `;
                     }).join('')}
