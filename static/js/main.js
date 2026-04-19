@@ -547,13 +547,14 @@ class Router {
                     <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
 
-            // === SECTION ADMIN: Manage their section ===
+            // === SECTION ADMIN (ممثل شعبة): Student features + announcements + upload lectures ===
             } else if (user.role === 'section_admin') {
                 links = `
                     <button class="btn btn-ghost" data-path="/home"><i class="ph ph-house"></i><span>${i18n.t('home')}</span></button>
-                    <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-gear"></i><span>${i18n.t('section_mgmt')}</span></button>
-                    <button class="btn btn-ghost" data-path="/attendance"><i class="ph ph-qr-code"></i><span>${i18n.t('attendance_mgmt')}</span></button>
+                    <button class="btn btn-ghost" data-path="/admin"><i class="ph ph-megaphone-simple"></i><span>التبليغات والمواد</span></button>
+                    <button class="btn btn-ghost" data-path="/results"><i class="ph ph-medal"></i><span>نتائجي</span></button>
                     <button class="btn btn-ghost" data-path="/exams"><i class="ph ph-exam"></i><span>الاختبارات</span></button>`;
+
 
             // === STUDENT: View-only ===
             } else if (user.role === 'student') {
