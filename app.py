@@ -1868,13 +1868,13 @@ def delete_user():
     # Remove user from all sections first (Integrity Link)
     conn.execute('DELETE FROM user_sections WHERE user_id = ?', (user_id,))
     
-    # Also remove related data like submissions or attendance if needed (optional but safer)
-    conn.execute('DELETE FROM assignments_submissions WHERE student_id = ?', (user_id,))
-    conn.execute('DELETE FROM attendance WHERE student_id = ?', (user_id,))
+    # 🛑 Fix: Correct table names for clean deletion
+    conn.execute('DELETE FROM submissions WHERE student_id = ?', (user_id,))
+    conn.execute('DELETE FROM attendance_records WHERE student_id = ?', (user_id,))
+    conn.execute('DELETE FROM exam_attempts WHERE student_id = ?', (user_id,))
     
     # Finally delete the primary user account
     conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-
     conn.commit()
     conn.close()
     return jsonify({'success': True})
