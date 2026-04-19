@@ -53,8 +53,14 @@ const SubjectPage = async (params) => {
 
     const user = auth.getUser();
     const isSuper = user && user.role === 'super_admin';
-    const isAdmin = user && ['super_admin', 'section_admin', 'teacher', 'admin'].includes(user.role); // keeping admin just in case of old DB entries, but teacher is now included
-    const isStudent = user && (user.role === 'student' || user.role === 'super_admin');
+    // section_admin (ممثل شعبة) can upload lectures but NOT create assignments
+    const canAddLesson = user && ['super_admin', 'section_admin', 'teacher', 'admin'].includes(user.role);
+    const canAddAssignment = user && ['super_admin', 'teacher', 'admin'].includes(user.role); // Excludes section_admin
+    const canDeleteLesson = user && ['super_admin', 'teacher'].includes(user.role); // Only teacher/super can delete
+    const isAdmin = canAddLesson; // Legacy compat — used for lesson upload button
+    // section_admin is ALSO a student: they scan QR, submit homework, take exams
+    const isStudent = user && (user.role === 'student' || user.role === 'super_admin' || user.role === 'section_admin');
+
 
     return `
         <div class="subject-page-v2">
@@ -164,7 +170,7 @@ const SubjectPage = async (params) => {
                                                 <button class="glass-action-btn download" title="${i18n.t('download')}" onclick="window.downloadFile('${item.url}', '${item.title + (item.type === 'PDF' ? '.pdf' : '')}')">
                                                     <i class="ph-bold ph-download-simple"></i>
                                                 </button>
-                                                ${isAdmin ? `
+                                                ${canDeleteLesson ? `
                                                     <button class="glass-action-btn delete delete-lesson-btn" data-id="${item.id}">
                                                         <i class="ph-bold ph-trash"></i>
                                                     </button>
@@ -187,7 +193,7 @@ const SubjectPage = async (params) => {
                                 <h2>${i18n.t('homework')}</h2>
                                 <span class="items-count-badge alt">${assignments.length}</span>
                             </div>
-                            ${isAdmin ? `
+                            ${canAddAssignment ? `
                                 <button class="mini-add-btn" id="add-assignment-btn">
                                     <i class="ph-bold ph-plus"></i>
                                 </button>
@@ -236,7 +242,7 @@ const SubjectPage = async (params) => {
                                                         ` : ''}
                                                     </div>
                                                 ` : ''}
-                                                ${isAdmin && !isStudent ? `
+                                                ${canAddAssignment && !isStudent ? `
                                                     <button class="assign-main-btn alt view-submissions-btn" data-id="${a.id}">
                                                         ${i18n.t('view_submissions')}
                                                     </button>
