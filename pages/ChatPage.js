@@ -11,6 +11,7 @@ export default function ChatPage() {
     let messages = [];
     let groups = [];
     let privates = [];
+    let representatives = []; // ممثلو الشعب
     let selectedId = null;
     let selectedType = 'group'; // 'group' or 'private'
     let pollInterval = null;
@@ -63,6 +64,35 @@ export default function ChatPage() {
                                 </div>
                             </div>
                         `).join('')}
+
+                        <!-- ممثلو الشعب — يظهر للجميع -->
+                        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07);">
+                            <div style="color: #f59e0b; font-size: 0.72rem; margin: 0 0 8px 5px; text-transform: uppercase; letter-spacing: 1px; display:flex; align-items:center; gap:5px; font-weight:700;">
+                                <i class="ph-fill ph-star" style="font-size:0.85rem;"></i> ممثلو الشُعب
+                            </div>
+                            ${representatives.length === 0 
+                                ? '<div style="color: #475569; font-size: 0.78rem; text-align: center; padding: 8px;">لا يوجد ممثلون مسجّلون</div>' 
+                                : representatives.filter(r => r.id !== user.id).map(r => `
+                                <div class="chat-item rep-item" 
+                                     onclick="window.chat_openRepresentative(${r.id}, '${(r.full_name || r.email).replace(/'/g, '\\\'')}')"
+                                     style="padding: 9px 11px; margin-bottom: 6px; border-radius: 12px; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(245,158,11,0.25); background: rgba(245,158,11,0.07);"
+                                     onmouseover="this.style.background='rgba(245,158,11,0.18)'; this.style.borderColor='rgba(245,158,11,0.5)';"
+                                     onmouseout="this.style.background='rgba(245,158,11,0.07)'; this.style.borderColor='rgba(245,158,11,0.25)';"
+                                >
+                                    <div style="position:relative; flex-shrink:0;">
+                                        <div style="width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg,#f59e0b,#d97706); display: grid; place-items: center; color: white; font-weight: 800; font-size: 0.85rem; box-shadow: 0 3px 10px rgba(245,158,11,0.35);">
+                                            ${(r.full_name || r.email)[0].toUpperCase()}
+                                        </div>
+                                        <div style="position:absolute; bottom:-2px; right:-2px; width:9px; height:9px; background:#f59e0b; border-radius:50%; border:2px solid #0f172a;"></div>
+                                    </div>
+                                    <div style="overflow: hidden; flex:1; min-width:0;">
+                                        <div style="color: #fbbf24; font-weight: 700; font-size: 0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.full_name || r.email.split('@')[0]}</div>
+                                        <div style="color: #78716c; font-size: 0.67rem; margin-top:1px;">⭐ ممثل • ${r.section_name || r.section_id || 'شعبة'}</div>
+                                    </div>
+                                    <i class="ph ph-chat-circle-dots" style="color:#f59e0b; font-size:0.85rem; flex-shrink:0; opacity:0.8;"></i>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
 
@@ -226,9 +256,13 @@ export default function ChatPage() {
 
     const init = async () => {
         try {
-            const res = await api.getMyChatGroups();
-            groups = res.groups || [];
-            privates = res.privates || [];
+            const [chatRes, repsRes] = await Promise.all([
+                api.getMyChatGroups(),
+                api.getRepresentatives()
+            ]);
+            groups = chatRes.groups || [];
+            privates = chatRes.privates || [];
+            representatives = Array.isArray(repsRes) ? repsRes : [];
             
             if (groups.length > 0 || privates.length > 0) {
                 // Determine starting group
@@ -339,6 +373,19 @@ export default function ChatPage() {
         const modal = document.querySelector('.modal-overlay');
         if (modal) modal.remove();
         
+        messages = [];
+        render();
+        await refreshMessages();
+    };
+
+    // فتح محادثة خاصة مع ممثل شعبة مباشرة من القائمة
+    window.chat_openRepresentative = async (repId, repName) => {
+        let existing = privates.find(p => p.id === repId);
+        if (!existing) {
+            privates.unshift({ id: repId, name: repName, type: 'private', user_id: repId, role: 'section_admin' });
+        }
+        selectedId = repId;
+        selectedType = 'private';
         messages = [];
         render();
         await refreshMessages();
