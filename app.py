@@ -751,6 +751,10 @@ def init_db():
         c.executemany('INSERT INTO sections (id, name) VALUES (?, ?)', sections)
         print("[DB] SECTIONS SEEDED")
 
+    # Always ensure REPRESENTATIVES special chat group exists
+    c.execute("INSERT OR IGNORE INTO sections (id, name) VALUES ('REPRESENTATIVES', 'مجموعة ممثلي الشعب')")
+    print("[DB] REPRESENTATIVES group ensured")
+
     # Seed Super Admin
     c.execute('SELECT count(*) as total FROM users WHERE email = ?', ('super@3minds.edu',))
     row = c.fetchone()
@@ -902,7 +906,7 @@ def check_subject_ownership(conn, subject_id, ctx):
     if ctx['role'] == 'section_admin':
         return subj.get('section_id') == ctx['section_id']
     
-    if ctx['role'] == 'student':
+    if ctx['role'] in ['student', 'section_admin']:
         return subj.get('section_id') == ctx['section_id']
 
     return False
@@ -1944,6 +1948,10 @@ def add_user():
         if role in ['student', 'teacher', 'section_admin'] and not primary_section:
              return jsonify({'error': 'يجب تحديد الشعبة لهذا النوع من الحسابات'}), 400
 
+        # ENFORCEMENT: A Representative (section_admin) can ONLY be assigned to ONE section.
+        if role == 'section_admin' and len(section_ids) > 1:
+             return jsonify({'error': 'لا يمكن لممثل الشعبة (الممثل) أن يكون مسؤولاً عن أكثر من شعبة واحدة.'}), 400
+
     conn = get_db()
     try:
         conn.execute('INSERT INTO users (email, password, full_name, role, section_id, must_change_pw) VALUES (?, ?, ?, ?, ?, ?)',
@@ -1959,7 +1967,12 @@ def add_user():
             for s_id in section_ids:
                 conn.execute('INSERT OR IGNORE INTO user_sections (user_id, section_id) VALUES (?, ?)', (new_uid, s_id))
             
-            # 2. Insert Instructor Courses (if teacher)
+            # 2. If role is section_admin (ممثل شعبة), auto-join the REPRESENTATIVES chat group
+            if role == 'section_admin':
+                conn.execute("INSERT OR IGNORE INTO user_sections (user_id, section_id) VALUES (?, 'REPRESENTATIVES')", (new_uid,))
+                app.logger.info(f"[REP] New representative {email} auto-joined REPRESENTATIVES group")
+            
+            # 3. Insert Instructor Courses (if teacher)
             if role == 'teacher':
                 subject_ids = data.get('subject_ids', [])
                 if not subject_ids and data.get('subject_id'):
@@ -1981,6 +1994,37 @@ def add_user():
     finally:
         conn.close()
     return jsonify({'success': True})
+
+# ─── REPRESENTATIVES (ممثلو الشعب) ──────────────────────────────────
+@app.route('/api/representatives', methods=['GET'])
+def get_representatives():
+    """Returns all section representatives (section_admin) with their section info.
+    Accessible by all logged-in users so everyone can contact their representative."""
+    ctx = get_user_context()
+    if not ctx:
+        return jsonify({'error': 'Unauthorized'}), 401
+    conn = get_db()
+    try:
+        c = conn.cursor()
+        c.execute("""
+            SELECT 
+                u.id,
+                u.full_name,
+                u.email,
+                u.section_id,
+                s.name AS section_name
+            FROM users u
+            LEFT JOIN sections s ON s.id = u.section_id
+            WHERE u.role = 'section_admin'
+            ORDER BY s.name, u.full_name
+        """)
+        reps = [dict(r) for r in c.fetchall()]
+        return jsonify(reps)
+    except Exception as e:
+        app.logger.error(f"[REP] get_representatives error: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/api/admin/reset-device', methods=['POST'])
 @require_role('section_admin', 'super_admin', 'teacher')
@@ -2220,7 +2264,7 @@ def get_assignments():
             d['description'] = None
             d['file_url'] = None
             
-        if ctx['role'] == 'student' and user_id:
+        if ctx['role'] in ['student', 'section_admin'] and user_id:
             sub = conn.execute('SELECT id, submitted_at FROM submissions WHERE assignment_id = ? AND student_id = ?', (a['id'], user_id)).fetchone()
             if sub:
                 sub_dict = dict(sub)
@@ -2237,7 +2281,7 @@ def get_assignments():
     return jsonify(res)
 
 @app.route('/api/submissions/<int:submission_id>', methods=['DELETE'])
-@require_role('student', 'super_admin')
+@require_role('student', 'section_admin', 'super_admin')
 def delete_submission(submission_id):
     ctx = get_user_context()
     conn = get_db()
@@ -2254,7 +2298,7 @@ def delete_submission(submission_id):
         conn.close()
         return jsonify({'error': 'Submission not found'}), 404
         
-    if ctx['role'] == 'student' and row['student_id'] != ctx['user_id']:
+    if ctx['role'] in ['student', 'section_admin'] and row['student_id'] != ctx['user_id']:
         conn.close()
         return jsonify({'error': 'Unauthorized'}), 403
         
@@ -2409,7 +2453,7 @@ def grade_submission(submission_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/student/grades', methods=['GET'])
-@require_role('student', 'super_admin')
+@require_role('student', 'section_admin', 'super_admin')
 def get_student_grades():
     ctx = get_user_context()
     try:
@@ -2432,7 +2476,7 @@ def get_student_grades():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/submissions', methods=['POST'])
-@require_role('student', 'super_admin')
+@require_role('student', 'section_admin', 'super_admin')
 def submit_homework():
     ctx = get_user_context()
     data = request.json
@@ -2689,7 +2733,7 @@ def attendance_qr(session_id):
 # ── Student scans QR ─────────────────────────────────────────────
 @app.route('/api/attendance/scan', methods=['POST'])
 @limiter.limit("5 per minute") # Mitigates Brute-force & Token Forgery attempts
-@require_role('student', 'super_admin')
+@require_role('student', 'section_admin', 'super_admin')
 def attendance_scan():
     ctx = get_user_context()
     data = request.json or {}
@@ -3173,7 +3217,7 @@ def manage_warnings():
         return jsonify({"success": True})
     
     else: # GET
-        if ctx['role'] == 'student':
+        if ctx['role'] in ['student', 'section_admin']:
             warnings = conn.execute('''
                 SELECT w.*, s.title as subject_title 
                 FROM warnings w 
@@ -3425,7 +3469,7 @@ def list_exams():
             rows = conn.execute(
                 'SELECT e.*, s.title as subject_title FROM exams e JOIN subjects s ON e.subject_id = s.id ORDER BY e.created_at DESC'
             ).fetchall()
-        elif ctx['role'] == 'student':
+        elif ctx['role'] in ['student', 'section_admin']:
             # Student sees exams for their section's subjects
             section_id = ctx['section_id']
             rows = conn.execute('''
@@ -3448,7 +3492,7 @@ def list_exams():
             except:
                 d['sections'] = []
             # Get attempt status for students
-            if ctx['role'] == 'student':
+            if ctx['role'] in ['student', 'section_admin']:
                 attempt = conn.execute(
                     'SELECT id, started_at, submitted_at, score, is_submitted FROM exam_attempts WHERE exam_id = ? AND student_id = ?',
                     (d['id'], ctx['user_id'])
@@ -3555,7 +3599,7 @@ def get_exam(exam_id):
 
         # 🛑 IDOR Check
         is_admin = ctx['role'] in ['super_admin', 'head_dept', 'committee', 'section_admin']
-        if not is_admin and ctx['role'] == 'student' and exam['section_id'] != ctx['section_id']:
+        if not is_admin and ctx['role'] in ['student', 'section_admin'] and exam['section_id'] != ctx['section_id']:
             conn.close()
             return jsonify({'error': 'Unauthorized access to this exam'}), 403
 
@@ -3588,7 +3632,7 @@ def get_exam(exam_id):
                 q['shuffled_options'] = options
                 
                 # Students shouldn't see correct answers
-                if ctx['role'] == 'student':
+                if ctx['role'] in ['student', 'section_admin']:
                     if 'correct_answer' in q:
                         del q['correct_answer']
 
@@ -3602,7 +3646,7 @@ def get_exam(exam_id):
 
 
 @app.route('/api/exams/<int:exam_id>/start', methods=['POST'])
-@require_role('student', 'super_admin')
+@require_role('student', 'section_admin', 'super_admin')
 def start_exam(exam_id):
     """Start or resume an exam attempt."""
     ctx = get_user_context()
@@ -3721,7 +3765,7 @@ def get_exam_results(exam_id):
             conn.close()
             return jsonify({'error': 'Exam not found'}), 404
 
-        if ctx['role'] == 'student':
+        if ctx['role'] in ['student', 'section_admin']:
             attempt = conn.execute(
                 'SELECT ea.*, e.title as exam_title, e.duration_minutes FROM exam_attempts ea JOIN exams e ON ea.exam_id = e.id WHERE ea.exam_id = ? AND ea.student_id = ?',
                 (exam_id, ctx['user_id'])
