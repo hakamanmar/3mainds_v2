@@ -162,15 +162,19 @@ const AdminPage = async () => {
                     <div class="card admin-card">
                         <div class="card-header">
                             <h3><i class="ph ph-books"></i> ${i18n.t('subjects')}</h3>
+                            ${user.role !== 'section_admin' ? `
                             <button id="add-subject-btn" class="btn btn-primary btn-sm">
                                 <i class="ph ph-plus"></i> ${i18n.t('add_subject')}
-                            </button>
+                            </button>` : `
+                            <span style="font-size:0.8rem; color:var(--text-muted); background:var(--surface-2); padding:4px 10px; border-radius:8px;">
+                                <i class="ph ph-arrow-up-right"></i> اضغط على المادة لرفع محاضرة
+                            </span>`}
                         </div>
                         <div class="list-container">
                             ${subjects.length === 0 ? `<p class="empty-msg">${i18n.t('no_subjects')}</p>` :
             subjects.map(s => `
-                                <div class="list-item" style="border-right: 4px solid ${s.color || '#4f46e5'};">
-                                    <div class="list-item-info">
+                                <div class="list-item" style="border-right: 4px solid ${s.color || '#4f46e5'}; ${user.role === 'section_admin' ? 'cursor:pointer;' : ''}">
+                                    <div class="list-item-info" ${user.role === 'section_admin' ? `data-path="/subject/${s.id}"` : ''} style="${user.role === 'section_admin' ? 'cursor:pointer; flex:1;' : ''}">
                                         <div style="font-weight:600;">
                                             ${s.title}
                                             ${s._section_count > 1
@@ -183,6 +187,11 @@ const AdminPage = async () => {
                                         <span class="code-tag">${s.code}</span>
                                     </div>
                                     <div class="list-item-actions">
+                                        ${user.role === 'section_admin' ? `
+                                            <button class="btn btn-sm btn-primary" data-path="/subject/${s.id}" style="font-size:0.78rem; padding:6px 12px;">
+                                                <i class="ph ph-upload-simple"></i> رفع محاضرة
+                                            </button>
+                                        ` : ''}
                                         ${user.role === 'super_admin' ? `
                                             <button class="icon-btn edit-sub-btn" data-id="${s.id}" 
                                                     data-title="${s.title}" data-code="${s.code || ''}" 
@@ -200,8 +209,8 @@ const AdminPage = async () => {
 
                     </div>
 
-                    <!-- User Management (All Roles) -->
-                    ${user.role !== 'teacher' ? `
+                    <!-- User Management (Only for super_admin and head_dept, NOT section_admin/representative) -->
+                    ${user.role !== 'teacher' && user.role !== 'section_admin' ? `
                     <div class="card admin-card">
                         <div class="card-header">
                             <h3><i class="ph ph-users"></i> ${i18n.t('user_management')}</h3>
@@ -249,6 +258,7 @@ const AdminPage = async () => {
                     </div>
                     ` : ''}
                 ` : ''}
+
 
             </div>
 
