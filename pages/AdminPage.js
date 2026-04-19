@@ -546,11 +546,46 @@ AdminPage.init = () => {
                     const globalRoles = ['super_admin', 'committee', 'head_dept'];
                     if (sidWrapper) sidWrapper.style.display = globalRoles.includes(r) ? 'none' : 'block';
                     if (subjectWrapper) subjectWrapper.style.display = r === 'teacher' ? 'block' : 'none';
+
+                    // 🛑 Limit Section Selection for Representative
+                    const sectionHelp = document.getElementById('section-help-text');
+                    if (sectionHelp) {
+                        sectionHelp.innerText = r === 'section_admin' 
+                            ? 'يجب اختيار شعبة واحدة فقط لهذا الممثل' 
+                            : 'اختر شعبة واحدة أو أكثر لتعيين هذا المستخدم إليها';
+                        sectionHelp.style.color = r === 'section_admin' ? 'var(--primary)' : 'var(--text-muted)';
+                        sectionHelp.style.fontWeight = r === 'section_admin' ? '700' : '400';
+                    }
+
+                    if (r === 'section_admin') {
+                        // If more than 1 checked, uncheck all but the first
+                        const checked = document.querySelectorAll('#sections-grid input[type=checkbox]:checked');
+                        if (checked.length > 1) {
+                            checked.forEach((cb, i) => { if (i > 0) { cb.checked = false; cb.parentElement.classList.remove('checked'); } });
+                        }
+                    }
                 };
 
                 if (roleSel) {
                     updateVisibility();
                     roleSel.addEventListener('change', updateVisibility);
+                }
+
+                // Attach radio-like behavior to section checkboxes if representative
+                const sectionGrid = document.getElementById('sections-grid');
+                if (sectionGrid) {
+                    sectionGrid.addEventListener('change', (e) => {
+                        if (e.target.type === 'checkbox' && roleSel && roleSel.value === 'section_admin') {
+                            if (e.target.checked) {
+                                document.querySelectorAll('#sections-grid input[type=checkbox]').forEach(cb => {
+                                    if (cb !== e.target) {
+                                        cb.checked = false;
+                                        cb.parentElement.classList.remove('checked');
+                                    }
+                                });
+                            }
+                        }
+                    });
                 }
             }, 0);
 
@@ -599,7 +634,7 @@ AdminPage.init = () => {
 
                     <div id="section-select-wrapper">
                         <div class="form-section-title"><i class="ph ph-circles-four"></i> الشُعب المخصصة</div>
-                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                        <p id="section-help-text" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
                             اختر شعبة واحدة أو أكثر لتعيين هذا المستخدم إليها
                         </p>
                         <div class="multi-select-grid" id="sections-grid">
