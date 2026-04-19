@@ -479,5 +479,10 @@ export const api = {
             method: 'PUT',
             body: JSON.stringify({ name })
         });
+    },
+    // ── Representatives (ممثلو الشعب) ──────────────────────────────
+    async getRepresentatives() {
+        return this._fetch(`${API_BASE}/representatives`);
     }
 };
+
