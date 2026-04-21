@@ -388,11 +388,41 @@ AdminPage.init = () => {
         let pinBuffer = '';
         const PIN_MAX = 4;
 
+        // ─── Auto-Lock Logic (5 Minutes) ──────────────────────
+        const AUTO_LOCK_TIME = 5 * 60 * 1000;
+
+        const lockVault = () => {
+            window._mgmtPinUnlocked = false;
+            if (pinLockScreen) pinLockScreen.style.display = 'block';
+            if (pinUnlockedContent) pinUnlockedContent.style.display = 'none';
+            if (addUserBtn) addUserBtn.style.display = 'none';
+            pinBuffer = '';
+            updateDots();
+            UI.toast('تم قفل الخزينة تلقائياً بسبب الخمول 🔒', 'info');
+        };
+
+        window._resetMgmtLockTimer = () => {
+            if (!window._mgmtPinUnlocked) return;
+            clearTimeout(window._mgmtLockTimerRef);
+            window._mgmtLockTimerRef = setTimeout(lockVault, AUTO_LOCK_TIME);
+        };
+
+        // Reset timer on any interaction within the page
+        if (!window._mgmtListenersAttached) {
+            ['mousedown', 'mousemove', 'keypress', 'touchstart'].forEach(evt => {
+                document.addEventListener(evt, () => {
+                    if (typeof window._resetMgmtLockTimer === 'function') window._resetMgmtLockTimer();
+                }, { passive: true });
+            });
+            window._mgmtListenersAttached = true;
+        }
+
         // If session already unlocked this page load, skip PIN
         if (window._mgmtPinUnlocked) {
             pinLockScreen.style.display = 'none';
             pinUnlockedContent.style.display = 'block';
             if (addUserBtn) addUserBtn.style.display = '';
+            window._resetMgmtLockTimer(); // Start timer for current session
         }
 
         const updateDots = () => {
@@ -432,6 +462,7 @@ AdminPage.init = () => {
                     pinUnlockedContent.style.display = 'block';
                     if (addUserBtn) addUserBtn.style.display = '';
                     UI.toast('تم فتح الخزينة ✅', 'success');
+                    window._resetMgmtLockTimer();
                 } else {
                     if (pinErrorMsg) pinErrorMsg.textContent = res.error || 'الرمز غير صحيح';
                     pinLockScreen.querySelector('#user-mgmt-card, div')?.animate?.([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}], {duration:300});
