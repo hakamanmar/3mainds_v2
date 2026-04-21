@@ -48,7 +48,7 @@ const AdminPage = async () => {
     const teachers = users.filter(u => u.role === 'teacher');
     const committees = users.filter(u => u.role === 'committee');
     const sectionAdmins = users.filter(u => u.role === 'section_admin');
-    const students = users.filter(u => u.role === 'student');
+    const students = users.filter(u => u.role === 'student' || u.role === 'section_admin');
 
 
     return `
