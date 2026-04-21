@@ -4092,7 +4092,7 @@ def get_chat_messages():
         else:
             # 🛑 IDOR Check for group chat
             is_admin = ctx['role'] in ['super_admin', 'head_dept']
-            is_rep_group = (section_id == 'REPRESENTATIVES' and ctx['role'] == 'section_admin')
+            is_rep_group = (section_id == 'REPRESENTATIVES' and ctx['role'] in ['section_admin', 'super_admin'])
             
             if not is_admin and not is_rep_group and section_id != ctx['section_id']:
                 # Students can only view their own section unless they are admins or it's the reps group for reps
@@ -4229,10 +4229,10 @@ def send_chat_message():
                 send_push_notification(receiver_id, f"رسالة خاصة جديدة", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_dm_{ctx['user_id']}")
             else:
                 if str(section_id).upper() == 'REPRESENTATIVES':
-                    # Special case: ALL section_admins ONLY
+                    # Special case: section_admins + super_admins ONLY
                     others = conn.execute("""
                         SELECT id FROM users 
-                        WHERE role = 'section_admin' 
+                        WHERE role IN ('section_admin', 'super_admin') 
                           AND id != ?
                     """, (ctx['user_id'],)).fetchall()
                 else:
@@ -4268,12 +4268,12 @@ def get_chat_group_members(sid):
             return jsonify({'error': 'Forbidden'}), 403
             
         if str(sid).upper() == 'REPRESENTATIVES':
-            # STRICT FILTER: ONLY Representatives
+            # STRICT FILTER: Representatives + Super Admins
             members = conn.execute('''
                 SELECT id, COALESCE(NULLIF(full_name, ''), email) as full_name, email, role, created_at 
                 FROM users 
-                WHERE role = 'section_admin'
-                ORDER BY full_name ASC
+                WHERE role IN ('section_admin', 'super_admin')
+                ORDER BY role DESC, full_name ASC
             ''').fetchall()
         else:
             # Academic section members
@@ -4350,8 +4350,8 @@ def get_my_chat_groups():
                 'is_muted': bool(mute_status['is_muted']) if mute_status else False
             })
 
-        # 2. Add Virtual "Representatives Group" for Representatives ONLY
-        if ctx['role'] == 'section_admin':
+        # 2. Add Virtual "Representatives Group" for Representatives + Super Admins
+        if ctx['role'] in ['section_admin', 'super_admin']:
             # Find mute status for this virtual section
             mute_status = conn.execute('SELECT is_muted FROM chat_settings WHERE user_id = ? AND section_id = ?', 
                                      (ctx['user_id'], 'REPRESENTATIVES')).fetchone()
