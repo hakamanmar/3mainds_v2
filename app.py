@@ -4257,22 +4257,30 @@ def get_chat_group_members(sid):
     try:
         # Everyone in the group or admin can see the member list
         is_admin = (ctx['role'] in ['super_admin', 'head_dept'])
+        is_rep_group = (sid == 'REPRESENTATIVES' and ctx['role'] in ['section_admin', 'super_admin', 'head_dept'])
         is_member = (ctx['section_id'] == sid)
         
-        if not is_member and not is_admin:
+        if not is_member and not is_admin and not is_rep_group:
             return jsonify({'error': 'Forbidden'}), 403
             
-        # HYPER-ROBUST SEARCH: Catch all variants of section IDs/Names
-        members = conn.execute('''
-            SELECT id, 
-                   COALESCE(NULLIF(full_name, ''), email) as full_name,
-                   email, role, created_at 
-            FROM users 
-            WHERE section_id = ? 
-               OR section_id = (SELECT name FROM sections WHERE id = ?)
-               OR section_id LIKE '%' || ? || '%'
-            ORDER BY role DESC, full_name ASC
-        ''', (sid, sid, sid)).fetchall()
+        if sid == 'REPRESENTATIVES':
+            # Special case: all section_admins + super_admins
+            members = conn.execute('''
+                SELECT id, COALESCE(NULLIF(full_name, ''), email) as full_name, email, role, created_at 
+                FROM users 
+                WHERE role IN ('section_admin', 'super_admin', 'head_dept')
+                ORDER BY role DESC, full_name ASC
+            ''').fetchall()
+        else:
+            # Academic section members
+            members = conn.execute('''
+                SELECT u.id, COALESCE(NULLIF(u.full_name, ''), u.email) as full_name, u.email, u.role, u.created_at 
+                FROM users u
+                LEFT JOIN user_sections us ON u.id = us.user_id
+                WHERE u.section_id = ? OR us.section_id = ?
+                GROUP BY u.id
+                ORDER BY u.role DESC, full_name ASC
+            ''', (sid, sid)).fetchall()
         
         return jsonify([dict(m) for m in members])
     except Exception as e:
@@ -4314,11 +4322,17 @@ def get_my_chat_groups():
     
     conn = get_db()
     try:
-        # 1. Get Academic Section Groups
+        # 1. Get All Groups user belongs to (via user_sections or primary section)
         if ctx['role'] in ['super_admin', 'head_dept']:
             groups = conn.execute("SELECT id, name, is_locked FROM sections WHERE id != 'REPRESENTATIVES'").fetchall()
         else:
-            groups = conn.execute('SELECT id, name, is_locked FROM sections WHERE id = ?', (ctx['section_id'],)).fetchall()
+            groups = conn.execute('''
+                SELECT s.id, s.name, s.is_locked 
+                FROM sections s
+                LEFT JOIN user_sections us ON s.id = us.section_id
+                WHERE (s.id = ? OR us.user_id = ?) AND s.id != 'REPRESENTATIVES'
+                GROUP BY s.id
+            ''', (ctx['section_id'], ctx['user_id'])).fetchall()
         
         section_res = []
         for g in groups:
