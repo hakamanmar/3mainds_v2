@@ -209,51 +209,91 @@ const AdminPage = async () => {
 
                     </div>
 
-                    <!-- User Management (Only for super_admin and head_dept, NOT section_admin/representative) -->
+                    <!-- User Management — PIN GATE PROTECTED -->
                     ${user.role !== 'teacher' && user.role !== 'section_admin' ? `
-                    <div class="card admin-card">
+                    <div class="card admin-card" id="user-mgmt-card">
                         <div class="card-header">
                             <h3><i class="ph ph-users"></i> ${i18n.t('user_management')}</h3>
-                            <button id="add-any-user-btn" class="btn btn-primary btn-sm">
-                                <i class="ph ph-plus"></i> ${i18n.t('create_account')}
-                            </button>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button id="change-mgmt-pin-btn" class="btn btn-ghost btn-sm" title="تغيير رمز الخزينة" style="font-size:0.8rem;">
+                                    <i class="ph ph-lock-key"></i> رمز الخزينة
+                                </button>
+                                <button id="add-any-user-btn" class="btn btn-primary btn-sm" style="display:none;">
+                                    <i class="ph ph-plus"></i> ${i18n.t('create_account')}
+                                </button>
+                            </div>
                         </div>
-                        <div class="list-container">
-                            ${users.length === 0 ? `<p class="empty-msg">${i18n.t('no_users')}</p>` :
-            users.map(u => `
-                                <div class="list-item">
-                                    <div class="list-item-info">
-                                        <div style="display:flex; align-items:center; gap: 0.75rem;">
-                                            <i class="ph ph-circle-wavy-check" style="font-size:1.5rem; color: var(--primary);"></i>
-                                            <div>
-                                                <div style="font-weight:700; font-size:1rem;">${u.full_name || u.email}</div>
-                                                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">${u.email}</div>
-                                                <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
-                                                    <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
-                                                    <span class="badge badge-primary">${i18n.t(u.primary_section)}</span>
-                                                    ${(u.sections && u.sections.length > 1) ? `<span class="badge badge-outline">+${u.sections.length - 1}</span>` : ''}
-                                                    <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
-                                                        <i class="ph ph-devices"></i> ${u.device_count || 0}/3
-                                                    </span>
+
+                        <!-- LOCKED STATE -->
+                        <div id="pin-lock-screen" style="padding:2.5rem 1rem; text-align:center;">
+                            <div style="display:inline-flex;flex-direction:column;align-items:center;gap:1rem;max-width:320px;margin:auto;">
+                                <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:grid;place-items:center;box-shadow:0 8px 24px rgba(79,70,229,0.4);">
+                                    <i class="ph ph-vault" style="font-size:2rem;color:white;"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px;">خزينة البيانات</div>
+                                    <div style="font-size:0.82rem;color:var(--text-muted);">أدخل رمز الدخول للوصول إلى بيانات الحسابات</div>
+                                </div>
+                                <div style="display:flex;gap:10px;justify-content:center;margin:4px 0;" id="pin-dots">
+                                    <span class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:0.2s;"></span>
+                                    <span class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:0.2s;"></span>
+                                    <span class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:0.2s;"></span>
+                                    <span class="pin-dot" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:0.2s;"></span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:220px;">
+                                    ${[1,2,3,4,5,6,7,8,9,'','0','⌫'].map(k => `
+                                        <button class="pin-key" data-key="${k}" style="
+                                            padding:14px;font-size:1.1rem;font-weight:700;
+                                            border:1.5px solid var(--border);border-radius:12px;
+                                            background:var(--surface);color:var(--text);cursor:pointer;
+                                            transition:all 0.15s;
+                                            ${k === '' ? 'visibility:hidden;' : ''}
+                                        ">${k}</button>
+                                    `).join('')}
+                                </div>
+                                <div id="pin-error-msg" style="color:#ef4444;font-size:0.82rem;min-height:18px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- UNLOCKED STATE (hidden until PIN correct) -->
+                        <div id="pin-unlocked-content" style="display:none;">
+                            <div class="list-container">
+                                ${users.length === 0 ? `<p class="empty-msg">${i18n.t('no_users')}</p>` :
+                    users.map(u => `
+                                    <div class="list-item">
+                                        <div class="list-item-info">
+                                            <div style="display:flex; align-items:center; gap: 0.75rem;">
+                                                <i class="ph ph-circle-wavy-check" style="font-size:1.5rem; color: var(--primary);"></i>
+                                                <div>
+                                                    <div style="font-weight:700; font-size:1rem;">${u.full_name || u.email}</div>
+                                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">${u.email}</div>
+                                                    <div style="display:flex; gap:0.4rem; margin-top:2px; flex-wrap:wrap;">
+                                                        <span class="role-pill role-${u.role}">${i18n.t(u.role)}</span>
+                                                        <span class="badge badge-primary">${i18n.t(u.primary_section)}</span>
+                                                        ${(u.sections && u.sections.length > 1) ? `<span class="badge badge-outline">+${u.sections.length - 1}</span>` : ''}
+                                                        <span class="badge ${u.device_count > 0 ? 'badge-primary' : 'badge-light'}" title="${i18n.t('linked_devices')}">
+                                                            <i class="ph ph-devices"></i> ${u.device_count || 0}/3
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="list-item-actions">
-                                        ${user.role === 'super_admin' ? `
-                                            <button class="icon-btn change-pw-btn" data-id="${u.id}" data-email="${u.email}" title="تغيير كلمة السر">
-                                                <i class="ph ph-key"></i>
+                                        <div class="list-item-actions">
+                                            ${user.role === 'super_admin' ? `
+                                                <button class="icon-btn change-pw-btn" data-id="${u.id}" data-email="${u.email}" title="تغيير كلمة السر">
+                                                    <i class="ph ph-key"></i>
+                                                </button>
+                                            ` : ''}
+                                            <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
+                                                <i class="ph ph-arrows-counter-clockwise"></i>
                                             </button>
-                                        ` : ''}
-                                        <button class="icon-btn reset-device-btn" data-id="${u.id}" title="${i18n.t('reset_device')}">
-                                            <i class="ph ph-arrows-counter-clockwise"></i>
-                                        </button>
-                                        <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.full_name || u.email}">
-                                            <i class="ph ph-trash"></i>
-                                        </button>
+                                            <button class="icon-btn icon-btn-red del-student-btn" data-id="${u.id}" data-email="${u.full_name || u.email}">
+                                                <i class="ph ph-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                     ` : ''}
@@ -335,6 +375,126 @@ const AdminPage = async () => {
 
 AdminPage.init = () => {
     const user = auth.getUser();
+
+    // ─── PIN GATE LOGIC ───────────────────────────────────────
+    const pinLockScreen = document.getElementById('pin-lock-screen');
+    const pinUnlockedContent = document.getElementById('pin-unlocked-content');
+    const addUserBtn = document.getElementById('add-any-user-btn');
+    const pinErrorMsg = document.getElementById('pin-error-msg');
+    const pinDots = document.querySelectorAll('.pin-dot');
+    const pinKeys = document.querySelectorAll('.pin-key');
+
+    if (pinLockScreen && pinUnlockedContent) {
+        let pinBuffer = '';
+        const PIN_MAX = 4;
+
+        // If session already unlocked this page load, skip PIN
+        if (window._mgmtPinUnlocked) {
+            pinLockScreen.style.display = 'none';
+            pinUnlockedContent.style.display = 'block';
+            if (addUserBtn) addUserBtn.style.display = '';
+        }
+
+        const updateDots = () => {
+            pinDots.forEach((dot, i) => {
+                dot.style.background = i < pinBuffer.length ? 'var(--primary)' : 'transparent';
+            });
+        };
+
+        const submitPin = async () => {
+            if (pinErrorMsg) pinErrorMsg.textContent = '';
+            try {
+                const res = await api.verifyManagementPin(pinBuffer);
+                if (res.no_pin) {
+                    // No PIN set yet — prompt to create one
+                    pinBuffer = '';
+                    updateDots();
+                    const newPin = await UI.modal('إنشاء رمز الخزينة', `
+                        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+                            لم يتم ضبط رمز للخزينة بعد.<br>أدخل رمزاً من 4 أرقام أو أكثر لحماية بيانات الحسابات.
+                        </p>
+                        <div class="form-group">
+                            <label>الرمز الجديد</label>
+                            <input type="number" id="new-pin-input" class="form-input" placeholder="مثال: 1234" min="1000" max="999999" style="letter-spacing:8px;font-size:1.3rem;text-align:center;" />
+                        </div>
+                    `, async () => {
+                        const val = document.getElementById('new-pin-input').value.trim();
+                        if (!val || val.length < 4) { UI.toast('الرمز يجب أن يكون 4 أرقام على الأقل', 'error'); return false; }
+                        await api.setManagementPin(val);
+                        UI.toast('تم ضبط رمز الخزينة بنجاح ✅', 'success');
+                        return true;
+                    });
+                    return;
+                }
+                if (res.success) {
+                    window._mgmtPinUnlocked = true;
+                    pinLockScreen.style.display = 'none';
+                    pinUnlockedContent.style.display = 'block';
+                    if (addUserBtn) addUserBtn.style.display = '';
+                    UI.toast('تم فتح الخزينة ✅', 'success');
+                } else {
+                    if (pinErrorMsg) pinErrorMsg.textContent = res.error || 'الرمز غير صحيح';
+                    pinLockScreen.querySelector('#user-mgmt-card, div')?.animate?.([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}], {duration:300});
+                    pinBuffer = '';
+                    updateDots();
+                }
+            } catch (e) {
+                if (pinErrorMsg) pinErrorMsg.textContent = 'خطأ في الاتصال، حاول مجدداً';
+                pinBuffer = '';
+                updateDots();
+            }
+        };
+
+        pinKeys.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const key = btn.dataset.key;
+                if (key === '⌫') {
+                    pinBuffer = pinBuffer.slice(0, -1);
+                    updateDots();
+                } else if (key !== '') {
+                    if (pinBuffer.length < PIN_MAX) {
+                        pinBuffer += key;
+                        updateDots();
+                        if (pinBuffer.length === PIN_MAX) {
+                            await submitPin();
+                        }
+                    }
+                }
+            });
+        });
+
+        // Support physical keyboard too
+        document.addEventListener('keydown', async (e) => {
+            if (!pinLockScreen || pinLockScreen.style.display === 'none') return;
+            if (e.key >= '0' && e.key <= '9' && pinBuffer.length < PIN_MAX) {
+                pinBuffer += e.key;
+                updateDots();
+                if (pinBuffer.length === PIN_MAX) await submitPin();
+            } else if (e.key === 'Backspace') {
+                pinBuffer = pinBuffer.slice(0, -1);
+                updateDots();
+            }
+        });
+    }
+
+    // ─── Change PIN button ────────────────────────────────────
+    const changePinBtn = document.getElementById('change-mgmt-pin-btn');
+    if (changePinBtn) {
+        changePinBtn.addEventListener('click', async () => {
+            await UI.modal('تغيير رمز الخزينة', `
+                <div class="form-group">
+                    <label>الرمز الجديد (4 أرقام أو أكثر)</label>
+                    <input type="number" id="new-pin-val" class="form-input" placeholder="مثال: 5678" style="letter-spacing:6px;font-size:1.2rem;text-align:center;" />
+                </div>
+            `, async () => {
+                const val = document.getElementById('new-pin-val').value.trim();
+                if (!val || val.length < 4) { UI.toast('يجب أن يكون الرمز 4 أرقام على الأقل', 'error'); return false; }
+                await api.setManagementPin(val);
+                UI.toast('تم تحديث رمز الخزينة ✅', 'success');
+                return true;
+            });
+        });
+    }
 
     // ─── Super Admin Section Switch ──────────────────────────
     const superSwitch = document.getElementById('super-section-switch');
