@@ -488,10 +488,10 @@ export const api = {
     async hasManagementPin() {
         return this._fetch(`${API_BASE}/admin/has-pin`);
     },
-    async setManagementPin(pin) {
+    async setManagementPin(pin, old_pin = null) {
         return this._fetch(`${API_BASE}/admin/set-pin`, {
             method: 'POST',
-            body: JSON.stringify({ pin })
+            body: JSON.stringify({ pin, old_pin })
         });
     },
     async verifyManagementPin(pin) {
