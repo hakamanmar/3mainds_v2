@@ -11,7 +11,7 @@ export default async function ExamResultsPage(params) {
     if (!user) { window.router.navigate('/'); return container; }
 
     const examId = params.id;
-    const isStudent = user.role === 'student';
+    const isStudent = user.role === 'student' || user.role === 'section_admin';
     // If params.mode is 'result', show student their result;
     // otherwise show instructor the full list
     const studentView = params.mode === 'result' || isStudent;
