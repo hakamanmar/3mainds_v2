@@ -483,15 +483,28 @@ AdminPage.init = () => {
         changePinBtn.addEventListener('click', async () => {
             await UI.modal('تغيير رمز الخزينة', `
                 <div class="form-group">
+                    <label>الرمز القديم</label>
+                    <input type="password" id="old-pin-val" class="form-input" placeholder="أدخل الرمز الحالي" style="letter-spacing:6px;font-size:1.1rem;text-align:center;" />
+                </div>
+                <div class="form-group" style="margin-top:1rem;">
                     <label>الرمز الجديد (4 أرقام أو أكثر)</label>
-                    <input type="number" id="new-pin-val" class="form-input" placeholder="مثال: 5678" style="letter-spacing:6px;font-size:1.2rem;text-align:center;" />
+                    <input type="number" id="new-pin-val" class="form-input" placeholder="أدخل الرمز الجديد" style="letter-spacing:6px;font-size:1.1rem;text-align:center;" />
                 </div>
             `, async () => {
-                const val = document.getElementById('new-pin-val').value.trim();
-                if (!val || val.length < 4) { UI.toast('يجب أن يكون الرمز 4 أرقام على الأقل', 'error'); return false; }
-                await api.setManagementPin(val);
-                UI.toast('تم تحديث رمز الخزينة ✅', 'success');
-                return true;
+                const oldVal = document.getElementById('old-pin-val').value.trim();
+                const newVal = document.getElementById('new-pin-val').value.trim();
+                
+                if (!oldVal) { UI.toast('يجب إدخال الرمز القديم', 'error'); return false; }
+                if (!newVal || newVal.length < 4) { UI.toast('يجب أن يكون الرمز الجديد 4 أرقام على الأقل', 'error'); return false; }
+                
+                const res = await api.setManagementPin(newVal, oldVal);
+                if (res.success) {
+                    UI.toast('تم تحديث رمز الخزينة ✅', 'success');
+                    return true;
+                } else {
+                    UI.toast(res.error || 'حدث خطأ أثناء التحديث', 'error');
+                    return false;
+                }
             });
         });
     }
