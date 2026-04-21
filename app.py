@@ -4228,9 +4228,14 @@ def send_chat_message():
             if receiver_id:
                 send_push_notification(receiver_id, f"رسالة خاصة جديدة", f"{sender_name}: {content[:50]}...", url='/chat', tag=f"chat_dm_{ctx['user_id']}")
             else:
-                if section_id == 'REPRESENTATIVES':
-                    # Special case: all section_admins + super_admins
-                    others = conn.execute("SELECT id FROM users WHERE (role = 'section_admin' OR role = 'super_admin') AND id != ?", (ctx['user_id'],)).fetchall()
+                if str(section_id).upper() == 'REPRESENTATIVES':
+                    # Special case: all section_admins + super_admins ONLY
+                    others = conn.execute("""
+                        SELECT id FROM users 
+                        WHERE role IN ('section_admin', 'super_admin', 'head_dept') 
+                          AND role NOT IN ('student', 'teacher', 'guest')
+                          AND id != ?
+                    """, (ctx['user_id'],)).fetchall()
                 else:
                     others = conn.execute('SELECT id FROM users WHERE section_id = ? AND id != ?', (section_id, ctx['user_id'])).fetchall()
                 
@@ -4263,12 +4268,13 @@ def get_chat_group_members(sid):
         if not is_member and not is_admin and not is_rep_group:
             return jsonify({'error': 'Forbidden'}), 403
             
-        if sid == 'REPRESENTATIVES':
-            # Special case: all section_admins + super_admins
+        if str(sid).upper() == 'REPRESENTATIVES':
+            # STRICT FILTER: Only actual admins and representatives
             members = conn.execute('''
                 SELECT id, COALESCE(NULLIF(full_name, ''), email) as full_name, email, role, created_at 
                 FROM users 
                 WHERE role IN ('section_admin', 'super_admin', 'head_dept')
+                  AND role NOT IN ('student', 'teacher', 'guest')
                 ORDER BY role DESC, full_name ASC
             ''').fetchall()
         else:
@@ -4330,7 +4336,7 @@ def get_my_chat_groups():
                 SELECT s.id, s.name, s.is_locked 
                 FROM sections s
                 LEFT JOIN user_sections us ON s.id = us.section_id
-                WHERE (s.id = ? OR us.user_id = ?) AND s.id != 'REPRESENTATIVES'
+                WHERE (s.id = ? OR us.user_id = ?) AND UPPER(s.id) != 'REPRESENTATIVES'
                 GROUP BY s.id
             ''', (ctx['section_id'], ctx['user_id'])).fetchall()
         
