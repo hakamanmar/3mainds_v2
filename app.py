@@ -552,6 +552,12 @@ def init_db():
     except Exception:
         c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
 
+    # Add management_pin column (hashed PIN for protecting user management access)
+    try:
+        c.execute('SELECT management_pin FROM users LIMIT 1')
+    except Exception:
+        c.execute("ALTER TABLE users ADD COLUMN management_pin TEXT DEFAULT NULL")
+
     # 13. User-Sections Junction Table (For multi-section support)
     c.execute('''
         CREATE TABLE IF NOT EXISTS user_sections (
@@ -2022,6 +2028,64 @@ def get_representatives():
         return jsonify(reps)
     except Exception as e:
         app.logger.error(f"[REP] get_representatives error: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+# ─── MANAGEMENT PIN GATE ─────────────────────────────────────────────
+@app.route('/api/admin/has-pin', methods=['GET'])
+@require_role('super_admin', 'head_dept', 'section_admin', 'teacher')
+def has_management_pin():
+    """Check if the current user has set a management PIN."""
+    ctx = get_user_context()
+    conn = get_db()
+    try:
+        row = conn.execute('SELECT management_pin FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()
+        has_pin = bool(row and row['management_pin'])
+        return jsonify({'has_pin': has_pin})
+    finally:
+        conn.close()
+
+@app.route('/api/admin/set-pin', methods=['POST'])
+@require_role('super_admin', 'head_dept', 'section_admin', 'teacher')
+def set_management_pin():
+    """Set or update the management PIN for the current user."""
+    ctx = get_user_context()
+    data = request.json or {}
+    pin = data.get('pin', '').strip()
+    if not pin or len(pin) < 4 or not pin.isdigit():
+        return jsonify({'error': 'يجب أن يكون الرمز مكوناً من 4 أرقام على الأقل'}), 400
+    hashed = generate_password_hash(pin)
+    conn = get_db()
+    try:
+        conn.execute('UPDATE users SET management_pin = ? WHERE id = ?', (hashed, ctx['user_id']))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/admin/verify-pin', methods=['POST'])
+@require_role('super_admin', 'head_dept', 'section_admin', 'teacher')
+def verify_management_pin():
+    """Verify the management PIN. Returns no_pin:True if not set yet."""
+    ctx = get_user_context()
+    data = request.json or {}
+    pin = data.get('pin', '').strip()
+    conn = get_db()
+    try:
+        row = conn.execute('SELECT management_pin FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        stored_hash = row['management_pin']
+        if not stored_hash:
+            return jsonify({'no_pin': True}), 200
+        if check_password_hash(stored_hash, pin):
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'الرمز غير صحيح، حاول مجدداً'}), 401
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         conn.close()
