@@ -60,7 +60,7 @@ export default function ChatPage() {
                                 </div>
                                 <div style="overflow: hidden;">
                                     <div style="color: white; font-weight: 500; font-size: 0.9rem; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
-                                    <div style="color: #94a3b8; font-size: 0.7rem;">${p.role === 'student' ? 'طالب' : 'مسؤول'}</div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem;">${(p.role === 'student' || p.role === 'section_admin') ? 'طالب' : 'مسؤول'}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -459,7 +459,7 @@ export default function ChatPage() {
                             </div>
                         </div>
                         <span style="font-size: 0.7rem; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 10px;">
-                            ${m.role === 'student' ? 'طالب' : 'مسؤول'}
+                            ${(m.role === 'student' || m.role === 'section_admin') ? 'طالب' : 'مسؤول'}
                         </span>
                     </div>
                 `).join('')
