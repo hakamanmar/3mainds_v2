@@ -502,7 +502,7 @@ export default async function AttendancePage(params) {
                     <input type="text" id="student-search" class="form-control" placeholder="بحث عن اسم الطالب..." style="width: 100%;">
                 </div>
                  <div id="manual-student-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px;">
-                    ${allStudents.filter(s => s.role === 'student').map(s => {
+                    ${allStudents.filter(s => s.role === 'student' || s.role === 'section_admin').map(s => {
                         const isPresent = presentIds.has(s.id);
                         return `
                         <div class="student-item" data-email="${s.email}" data-name="${s.full_name || ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); ${isPresent ? 'background: #f8fafc; opacity: 0.7;' : ''}">
