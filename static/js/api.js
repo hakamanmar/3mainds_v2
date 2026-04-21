@@ -483,6 +483,22 @@ export const api = {
     // ── Representatives (ممثلو الشعب) ──────────────────────────────
     async getRepresentatives() {
         return this._fetch(`${API_BASE}/representatives`);
+    },
+    // ── Management PIN Gate ────────────────────────────────────────
+    async hasManagementPin() {
+        return this._fetch(`${API_BASE}/admin/has-pin`);
+    },
+    async setManagementPin(pin) {
+        return this._fetch(`${API_BASE}/admin/set-pin`, {
+            method: 'POST',
+            body: JSON.stringify({ pin })
+        });
+    },
+    async verifyManagementPin(pin) {
+        return this._fetch(`${API_BASE}/admin/verify-pin`, {
+            method: 'POST',
+            body: JSON.stringify({ pin })
+        });
     }
 };
 
