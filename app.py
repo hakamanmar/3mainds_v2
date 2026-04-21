@@ -2084,7 +2084,7 @@ def section_mgmt_init():
         # Get counts per section (optimized)
         counts = conn.execute(
             "SELECT section_id, COUNT(*) as cnt FROM users "
-            "WHERE role = 'student' AND section_id IS NOT NULL "
+            "WHERE role IN ('student', 'section_admin') AND section_id IS NOT NULL "
             "GROUP BY section_id"
         ).fetchall()
         counts_map = {r['section_id']: r['cnt'] for r in counts}
@@ -2111,7 +2111,7 @@ def get_section_students():
     students = conn.execute('''
         SELECT id, email, full_name, role, section_id
         FROM users
-        WHERE role = 'student' AND (section_id = ? OR id IN (SELECT user_id FROM user_sections WHERE section_id = ?))
+        WHERE role IN ('student', 'section_admin') AND (section_id = ? OR id IN (SELECT user_id FROM user_sections WHERE section_id = ?))
         ORDER BY full_name ASC
     ''', (section_id, section_id)).fetchall()
     conn.close()
@@ -2131,7 +2131,7 @@ def transfer_student():
     conn = get_db()
     try:
         # Check if student exists
-        student = conn.execute("SELECT id, full_name FROM users WHERE id = ? AND role = 'student'", (student_id,)).fetchone()
+        student = conn.execute("SELECT id, full_name FROM users WHERE id = ? AND role IN ('student', 'section_admin')", (student_id,)).fetchone()
         if not student:
              return jsonify({'error': 'الطالب غير موجود'}), 404
 
@@ -2536,7 +2536,7 @@ def get_assignment_submissions_v2(id):
             SELECT DISTINCT u.id, u.email, u.full_name 
             FROM users u 
             LEFT JOIN user_sections us ON u.id = us.user_id 
-            WHERE u.role = 'student' AND (u.section_id = ? OR us.section_id = ?)
+            WHERE u.role IN ('student', 'section_admin') AND (u.section_id = ? OR us.section_id = ?)
         '''
         students = conn.execute(query_students, (section_id, section_id)).fetchall()
         
@@ -2592,7 +2592,7 @@ def get_stats():
     if is_global and not sid:
         # Global stats
         subjects_count = conn.execute('SELECT count(*) FROM subjects').fetchone()[0]
-        students_count = conn.execute("SELECT count(*) FROM users WHERE role = 'student'").fetchone()[0]
+        students_count = conn.execute("SELECT count(*) FROM users WHERE role IN ('student', 'section_admin')").fetchone()[0]
         lessons_count = conn.execute('SELECT count(*) FROM lessons').fetchone()[0]
         announcements_count = conn.execute('SELECT count(*) FROM announcements').fetchone()[0]
     else:
@@ -2600,7 +2600,7 @@ def get_stats():
         # If sid is still None (unlikely for student/teacher but possible), default to 0
         s_val = sid or 'NONE'
         subjects_count = conn.execute('SELECT count(*) FROM subjects WHERE section_id=?', (s_val,)).fetchone()[0]
-        students_count = conn.execute("SELECT count(*) FROM users WHERE role = 'student' AND section_id=?", (s_val,)).fetchone()[0]
+        students_count = conn.execute("SELECT count(*) FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (s_val,)).fetchone()[0]
         # Lessons count is harder because it's linked via subject
         lessons_count = conn.execute('SELECT count(*) FROM lessons l JOIN subjects s ON l.subject_id=s.id WHERE s.section_id=?', (sid,)).fetchone()[0]
         announcements_count = conn.execute('SELECT count(*) FROM announcements WHERE section_id=?', (sid,)).fetchone()[0]
@@ -2632,7 +2632,7 @@ def attendance_section_students():
         SELECT DISTINCT u.id, u.email, u.full_name, u.role 
         FROM users u
         LEFT JOIN user_sections us ON u.id = us.user_id
-        WHERE u.role='student' AND (u.section_id=? OR us.section_id=?)
+        WHERE u.role IN ('student', 'section_admin') AND (u.section_id=? OR us.section_id=?)
         ORDER BY u.full_name ASC, u.email ASC
     ''', (section_id, section_id)).fetchall()
     conn.close()
@@ -2823,7 +2823,7 @@ def attendance_live(session_id):
         SELECT count(DISTINCT u.id) as total 
         FROM users u
         LEFT JOIN user_sections us ON u.id = us.user_id
-        WHERE u.role='student' AND (u.section_id=? OR us.section_id=?)
+        WHERE u.role IN ('student', 'section_admin') AND (u.section_id=? OR us.section_id=?)
     ''', (sid, sid)).fetchone()
     total = int(list(row_count.values())[0]) if isinstance(row_count, dict) else row_count[0]
     
@@ -2947,7 +2947,7 @@ def attendance_sessions():
         SELECT s.*, subj.title as subject_title, subj.code as subject_code,
                u.email as professor_email,
                (SELECT count(*) FROM attendance_records WHERE session_id=s.id) as attended,
-               (SELECT count(*) FROM users WHERE role='student' AND section_id=subj.section_id) as total_in_section
+               (SELECT count(*) FROM users WHERE role IN ('student', 'section_admin') AND section_id=subj.section_id) as total_in_section
         FROM attendance_sessions s
         JOIN subjects subj ON subj.id = s.subject_id
         JOIN users u ON u.id = s.professor_id
@@ -3077,11 +3077,11 @@ def attendance_report():
     # Filter students by section if not super_admin (or if super_admin specifies sid)
     if ctx['role'] == 'super_admin':
         if sid:
-            students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+            students = conn.execute("SELECT id, email, full_name FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (sid,)).fetchall()
         else:
-            students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student'").fetchall()
+            students = conn.execute("SELECT id, email, full_name FROM users WHERE role IN ('student', 'section_admin')").fetchall()
     else:
-        students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+        students = conn.execute("SELECT id, email, full_name FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (sid,)).fetchall()
 
     result = []
     for stu in students:
@@ -3123,7 +3123,7 @@ def attendance_section_report():
         return jsonify({"error": "section_id is required"}), 400
     
     conn = get_db()
-    students = conn.execute("SELECT id, email, full_name FROM users WHERE role='student' AND section_id=?", (section_id,)).fetchall()
+    students = conn.execute("SELECT id, email, full_name FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (section_id,)).fetchall()
     subjects = conn.execute("SELECT id, title, code FROM subjects WHERE section_id=?", (section_id,)).fetchall()
     
     report = []
@@ -3256,9 +3256,9 @@ def attendance_alerts():
     conn = get_db()
     
     if ctx['role'] == 'super_admin' and not sid:
-        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role='student'").fetchall()
+        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role IN ('student', 'section_admin')").fetchall()
     else:
-        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role='student' AND section_id=?", (sid,)).fetchall()
+        students = conn.execute("SELECT id, email, full_name, section_id FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (sid,)).fetchall()
         
     alerts = []
     for stu in students:
@@ -3303,12 +3303,12 @@ def attendance_overview():
     today = datetime.utcnow().strftime('%Y-%m-%d')
     
     if ctx['role'] == 'super_admin' and not sid:
-        total_students = conn.execute("SELECT count(*) FROM users WHERE role='student'").fetchone()[0]
+        total_students = conn.execute("SELECT count(*) FROM users WHERE role IN ('student', 'section_admin')").fetchone()[0]
         total_sessions  = conn.execute("SELECT count(*) FROM attendance_sessions WHERE status='ended'").fetchone()[0]
         total_records   = conn.execute("SELECT count(*) FROM attendance_records").fetchone()[0]
         today_sessions = conn.execute("SELECT count(*) FROM attendance_sessions WHERE date(started_at)=?", (today,)).fetchone()[0]
     else:
-        total_students = conn.execute("SELECT count(*) FROM users WHERE role='student' AND section_id=?", (sid,)).fetchone()[0]
+        total_students = conn.execute("SELECT count(*) FROM users WHERE role IN ('student', 'section_admin') AND section_id=?", (sid,)).fetchone()[0]
         total_sessions  = conn.execute("SELECT count(*) FROM attendance_sessions s JOIN subjects sub ON s.subject_id=sub.id WHERE s.status='ended' AND sub.section_id=?", (sid,)).fetchone()[0]
         total_records   = conn.execute("SELECT count(*) FROM attendance_records ar JOIN attendance_sessions s ON ar.session_id=s.id JOIN subjects sub ON s.subject_id=sub.id WHERE sub.section_id=?", (sid,)).fetchone()[0]
         today_sessions = conn.execute("SELECT count(*) FROM attendance_sessions s JOIN subjects sub ON s.subject_id=sub.id WHERE date(s.started_at)=? AND sub.section_id=?", (today, sid)).fetchone()[0]
@@ -3865,7 +3865,7 @@ def get_student_profile():
         # 1. Basic Info & Sections
         user_row = conn.execute('''
             SELECT u.id, u.full_name, u.email, u.role, u.section_id as primary_section
-            FROM users u WHERE u.id = ? AND u.role = 'student'
+            FROM users u WHERE u.id = ? AND u.role IN ('student', 'section_admin')
         ''', (student_id,)).fetchone()
         
         if not user_row:
