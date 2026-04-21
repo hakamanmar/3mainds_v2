@@ -2049,15 +2049,28 @@ def has_management_pin():
 @app.route('/api/admin/set-pin', methods=['POST'])
 @require_role('super_admin', 'head_dept', 'section_admin', 'teacher')
 def set_management_pin():
-    """Set or update the management PIN for the current user."""
+    """Set or update the management PIN. Requires old_pin if already set."""
     ctx = get_user_context()
     data = request.json or {}
-    pin = data.get('pin', '').strip()
-    if not pin or len(pin) < 4 or not pin.isdigit():
-        return jsonify({'error': 'يجب أن يكون الرمز مكوناً من 4 أرقام على الأقل'}), 400
-    hashed = generate_password_hash(pin)
+    new_pin = data.get('pin', '').strip()
+    old_pin = data.get('old_pin', '').strip()
+
+    if not new_pin or len(new_pin) < 4 or not new_pin.isdigit():
+        return jsonify({'error': 'يجب أن يكون الرمز الجديد مكوناً من 4 أرقام على الأقل'}), 400
+
     conn = get_db()
     try:
+        row = conn.execute('SELECT management_pin FROM users WHERE id = ?', (ctx['user_id'],)).fetchone()
+        stored_hash = row['management_pin'] if row else None
+
+        # If a PIN is already set, verify the old one
+        if stored_hash:
+            if not old_pin:
+                return jsonify({'error': 'يجب إدخال الرمز القديم لتتمكن من التغيير'}), 400
+            if not check_password_hash(stored_hash, old_pin):
+                return jsonify({'error': 'الرمز القديم غير صحيح'}), 401
+
+        hashed = generate_password_hash(new_pin)
         conn.execute('UPDATE users SET management_pin = ? WHERE id = ?', (hashed, ctx['user_id']))
         conn.commit()
         return jsonify({'success': True})
