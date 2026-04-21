@@ -688,7 +688,6 @@ AdminPage.init = () => {
     });
 
     // ─── Unified User Management ──────────────────────────────
-    const addUserBtn = document.getElementById('add-any-user-btn');
     if (addUserBtn) {
         addUserBtn.addEventListener('click', async () => {
             const sections = await api.getSections();
