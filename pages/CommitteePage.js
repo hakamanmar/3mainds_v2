@@ -12,39 +12,96 @@ export default async function CommitteePage(params) {
     const container = document.createElement('div');
     container.className = 'fade-in';
 
-    let stats = null;
+    let stats = { total_students: 0, avg_rate: 0, today_sessions: 0 };
     let alerts = [];
     let subjects = [];
     let sections = [];
     let selectedSectionId = localStorage.getItem('committee_selected_section') || '';
     let reportData = null;
-    let systemStatus = { database: 'Checking...', is_cloud: false };
+    let systemStatus = { database: '...', is_cloud: false, storage: '...' };
+
+    // ─── عرض الهيكل فوراً بدون انتظار ─────────────────────────
+    function renderSkeleton() {
+        container.innerHTML = `
+            <div class="system-status-banner status-local" style="opacity:0.5;">
+                <i class="ph-fill ph-warning-octagon"></i>
+                <div class="status-info">
+                    <span class="status-label">جاري التحقق من النظام...</span>
+                    <span class="status-desc">قاعدة البيانات: يُحمَّل...</span>
+                </div>
+            </div>
+            <div class="page-header">
+                <div>
+                    <h1>📊 ${i18n.t('exam_committee_dashboard') || 'لوحة لجنة الغيابات'}</h1>
+                    <p>${i18n.t('committee_subtitle') || 'متابعة تقارير الغياب والحضور'}</p>
+                </div>
+                <div class="header-actions">
+                    <button id="export-btn" class="btn btn-outline" disabled>
+                        <i class="ph ph-file-pdf"></i> ${i18n.t('export_ministry_report') || 'تقرير الوزارة الشهري'}
+                    </button>
+                </div>
+            </div>
+            <div class="stats-grid">
+                ${['stat-indigo','stat-green','stat-amber','stat-red'].map(c => `
+                <div class="stat-card ${c}" style="opacity:0.4;">
+                    <i class="ph ph-spinner" style="animation:spin 1s linear infinite;"></i>
+                    <div><span class="stat-num">--</span><span class="stat-label">يُحمَّل...</span></div>
+                </div>`).join('')}
+            </div>
+            <div style="text-align:center; padding: 3rem; color: var(--muted);">
+                <i class="ph ph-circle-notch" style="font-size:2rem; animation:spin 1s linear infinite;"></i>
+                <p style="margin-top:1rem;">جاري تحميل بيانات اللجنة...</p>
+            </div>
+            <style>@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }</style>
+        `;
+    }
 
     async function init() {
-        try {
-            const results = await Promise.allSettled([
-                api.getAttendanceOverview(),
-                api.getAttendanceAlerts(),
-                api.getSubjects(),
-                api.getSections(),
-                fetch('/api/system/status').then(r => r.json())
-            ]);
+        // 1) عرض الهيكل فوراً
+        renderSkeleton();
 
-            stats = results[0].status === 'fulfilled' ? results[0].value : { total_students: 0, avg_rate: 0, today_sessions: 0 };
-            alerts = results[1].status === 'fulfilled' ? results[1].value : [];
-            subjects = results[2].status === 'fulfilled' ? results[2].value : [];
-            sections = results[3].status === 'fulfilled' ? results[3].value : [];
-            systemStatus = results[4].status === 'fulfilled' ? results[4].value : { database: 'Unknown' };
+        // 2) تحميل البيانات الأساسية بالتوازي (بدون system/status البطيء)
+        const [statsRes, alertsRes, subjectsRes, sectionsRes] = await Promise.allSettled([
+            api.getAttendanceOverview(),
+            api.getAttendanceAlerts(),
+            api.getSubjects(),
+            api.getSections(),
+        ]);
 
-            if (selectedSectionId) {
-                reportData = await api.getSectionReport(selectedSectionId);
-            }
+        stats    = statsRes.status    === 'fulfilled' ? statsRes.value    : { total_students: 0, avg_rate: 0, today_sessions: 0 };
+        alerts   = alertsRes.status   === 'fulfilled' ? alertsRes.value   : [];
+        subjects = subjectsRes.status === 'fulfilled' ? subjectsRes.value : [];
+        sections = sectionsRes.status === 'fulfilled' ? sectionsRes.value : [];
 
-            render();
-            initCharts();
-        } catch (e) {
-            UI.toast(e.message, 'error');
+        // 3) تحميل تقرير الشعبة المحفوظة (إن وجدت)
+        if (selectedSectionId) {
+            try { reportData = await api.getSectionReport(selectedSectionId); } catch (_) {}
         }
+
+        // 4) عرض الصفحة الكاملة
+        render();
+        initCharts();
+
+        // 5) system/status في الخلفية بعد العرض (لا يعيق الصفحة)
+        fetch('/api/system/status', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                systemStatus = { ...data, storage: data.storage || 'Cloud' };
+                const banner = container.querySelector('.system-status-banner');
+                if (banner) {
+                    banner.className = `system-status-banner ${systemStatus.is_cloud ? 'status-cloud' : 'status-local'}`;
+                    banner.querySelector('.status-label').textContent = systemStatus.is_cloud ? 'نظام التخزين السحابي نشط' : 'تنبيـــه: نظام التخزين محلي (مؤقت)';
+                    banner.querySelector('.status-desc').textContent  = `قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage || '---'}`;
+                    banner.style.opacity = '1';
+                    if (!systemStatus.is_cloud) {
+                        banner.insertAdjacentHTML('beforeend', `<button class="btn btn-sm btn-white" id="help-cloud-btn">كيف أفعل السحاب؟</button>`);
+                    }
+                }
+            })
+            .catch(() => {
+                const banner = container.querySelector('.system-status-banner');
+                if (banner) banner.style.opacity = '1';
+            });
     }
 
     function render() {
@@ -53,7 +110,7 @@ export default async function CommitteePage(params) {
                 <i class="ph-fill ${systemStatus.is_cloud ? 'ph-cloud-check' : 'ph-warning-octagon'}"></i>
                 <div class="status-info">
                     <span class="status-label">${systemStatus.is_cloud ? 'نظام التخزين السحابي نشط' : 'تنبيـــه: نظام التخزين محلي (مؤقت)'}</span>
-                    <span class="status-desc">قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage}</span>
+                    <span class="status-desc">قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage || '---'}</span>
                 </div>
                 ${!systemStatus.is_cloud ? `<button class="btn btn-sm btn-white" id="help-cloud-btn">كيف أفعل السحاب؟</button>` : ''}
             </div>
