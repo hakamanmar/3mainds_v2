@@ -472,14 +472,56 @@ class Router {
         this.showSpinner();
         try {
             const module = await loader();
-            const content = await module.default(params);
-            if (content == null) {
-                // page returned undefined - likely redirected, do nothing
-                return;
+            const pagePromise = module.default(params);
+
+            // إذا الصفحة ترجع Node مباشرة (async pages with skeleton)
+            // نعرضها فوراً بدون انتظار
+            if (pagePromise && typeof pagePromise.then === 'function') {
+                // هي promise — نشوف هل ترجع Node أو string
+                pagePromise.then(content => {
+                    if (content == null) return;
+                    if (typeof content === 'string') {
+                        this.baseContainer.innerHTML = content;
+                        if (module.default.init) module.default.init(params);
+                        this.updateNav();
+                    }
+                    // إذا Node — تم عرضها مسبقاً أدناه
+                }).catch(err => {
+                    console.error('Page load error:', err);
+                });
+
+                // نحاول نحصل على الـ Node بسرعة (خلال 50ms)
+                // إذا الصفحة تعرض container فوراً قبل أي await داخلي
+                const content = await Promise.race([
+                    pagePromise,
+                    new Promise(resolve => setTimeout(() => resolve('__timeout__'), 50))
+                ]);
+
+                if (content === '__timeout__') {
+                    // الصفحة بطيئة — خلينا ننتظرها
+                    const finalContent = await pagePromise;
+                    if (finalContent == null) return;
+                    if (typeof finalContent === 'string') this.baseContainer.innerHTML = finalContent;
+                    else if (finalContent instanceof Node) {
+                        this.baseContainer.innerHTML = '';
+                        this.baseContainer.appendChild(finalContent);
+                    }
+                } else if (content instanceof Node) {
+                    this.baseContainer.innerHTML = '';
+                    this.baseContainer.appendChild(content);
+                } else if (typeof content === 'string') {
+                    this.baseContainer.innerHTML = content;
+                }
+            } else {
+                const content = pagePromise;
+                if (content == null) return;
+                if (typeof content === 'string') this.baseContainer.innerHTML = content;
+                else if (content instanceof Node) {
+                    this.baseContainer.innerHTML = '';
+                    this.baseContainer.appendChild(content);
+                }
             }
-            if (typeof content === 'string') this.baseContainer.innerHTML = content;
-            else if (content instanceof Node) { this.baseContainer.innerHTML = ''; this.baseContainer.appendChild(content); }
-            else { this.baseContainer.innerHTML = String(content); }
+
             if (module.default.init) module.default.init(params);
             this.updateNav();
         } catch (err) {
