@@ -20,47 +20,55 @@ export default async function CommitteePage(params) {
     let reportData = null;
     let systemStatus = { database: '...', is_cloud: false, storage: '...' };
 
-    // ─── عرض الهيكل فوراً بدون انتظار ─────────────────────────
-    function renderSkeleton() {
-        container.innerHTML = `
-            <div class="system-status-banner status-local" style="opacity:0.5;">
-                <i class="ph-fill ph-warning-octagon"></i>
-                <div class="status-info">
-                    <span class="status-label">جاري التحقق من النظام...</span>
-                    <span class="status-desc">قاعدة البيانات: يُحمَّل...</span>
-                </div>
-            </div>
-            <div class="page-header">
-                <div>
-                    <h1>📊 ${i18n.t('exam_committee_dashboard') || 'لوحة لجنة الغيابات'}</h1>
-                    <p>${i18n.t('committee_subtitle') || 'متابعة تقارير الغياب والحضور'}</p>
-                </div>
-                <div class="header-actions">
-                    <button id="export-btn" class="btn btn-outline" disabled>
-                        <i class="ph ph-file-pdf"></i> ${i18n.t('export_ministry_report') || 'تقرير الوزارة الشهري'}
-                    </button>
-                </div>
-            </div>
-            <div class="stats-grid">
-                ${['stat-indigo','stat-green','stat-amber','stat-red'].map(c => `
-                <div class="stat-card ${c}" style="opacity:0.4;">
-                    <i class="ph ph-spinner" style="animation:spin 1s linear infinite;"></i>
-                    <div><span class="stat-num">--</span><span class="stat-label">يُحمَّل...</span></div>
-                </div>`).join('')}
-            </div>
-            <div style="text-align:center; padding: 3rem; color: var(--muted);">
-                <i class="ph ph-circle-notch" style="font-size:2rem; animation:spin 1s linear infinite;"></i>
-                <p style="margin-top:1rem;">جاري تحميل بيانات اللجنة...</p>
-            </div>
-            <style>@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }</style>
-        `;
+    // ─── قراءة الكاش من localStorage فوراً ─────────────────────
+    function getCached(url) {
+        try {
+            const raw = localStorage.getItem(`cache_${url}`);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) { return null; }
     }
 
     async function init() {
-        // 1) عرض الهيكل فوراً
-        renderSkeleton();
+        // 1) عرض البيانات المحفوظة فوراً إن وجدت
+        const cachedStats    = getCached('/api/attendance/overview');
+        const cachedAlerts   = getCached('/api/attendance/alerts');
+        const cachedSubjects = getCached('/api/subjects');
+        const cachedSections = getCached('/api/sections');
 
-        // 2) تحميل البيانات الأساسية بالتوازي (بدون system/status البطيء)
+        const hasCachedData = cachedStats || cachedAlerts || cachedSections;
+
+        if (hasCachedData) {
+            // عرض الكاش فوراً بدون أي انتظار
+            stats    = cachedStats    || stats;
+            alerts   = Array.isArray(cachedAlerts)   ? cachedAlerts   : [];
+            subjects = Array.isArray(cachedSubjects) ? cachedSubjects : [];
+            sections = Array.isArray(cachedSections) ? cachedSections : [];
+            render();
+            initCharts();
+        } else {
+            // أول مرة: عرض skeleton
+            container.innerHTML = `
+                <div class="page-header">
+                    <div><h1>📊 لوحة لجنة الغيابات</h1></div>
+                </div>
+                <div class="stats-grid">
+                    ${['stat-indigo','stat-green','stat-amber','stat-red'].map(c => `
+                    <div class="stat-card ${c}" style="opacity:0.3; animation: pulse 1.5s infinite;">
+                        <div><span class="stat-num">--</span><span class="stat-label">...</span></div>
+                    </div>`).join('')}
+                </div>
+                <div style="text-align:center; padding:3rem; color:var(--muted);">
+                    <i class="ph ph-circle-notch" style="font-size:2rem; animation:spin 1s linear infinite;"></i>
+                    <p style="margin-top:1rem;">جاري التحميل لأول مرة...</p>
+                </div>
+                <style>
+                    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+                    @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.5} }
+                </style>
+            `;
+        }
+
+        // 2) تحديث البيانات من الخادم في الخلفية
         const [statsRes, alertsRes, subjectsRes, sectionsRes] = await Promise.allSettled([
             api.getAttendanceOverview(),
             api.getAttendanceAlerts(),
@@ -68,40 +76,48 @@ export default async function CommitteePage(params) {
             api.getSections(),
         ]);
 
-        stats    = statsRes.status    === 'fulfilled' ? statsRes.value    : { total_students: 0, avg_rate: 0, today_sessions: 0 };
-        alerts   = alertsRes.status   === 'fulfilled' ? alertsRes.value   : [];
-        subjects = subjectsRes.status === 'fulfilled' ? subjectsRes.value : [];
-        sections = sectionsRes.status === 'fulfilled' ? sectionsRes.value : [];
+        const freshStats    = statsRes.status    === 'fulfilled' ? statsRes.value    : null;
+        const freshAlerts   = alertsRes.status   === 'fulfilled' ? alertsRes.value   : null;
+        const freshSubjects = subjectsRes.status === 'fulfilled' ? subjectsRes.value : null;
+        const freshSections = sectionsRes.status === 'fulfilled' ? sectionsRes.value : null;
 
-        // 3) تحميل تقرير الشعبة المحفوظة (إن وجدت)
-        if (selectedSectionId) {
+        // فقط نُعيد الرسم إذا تغيّرت البيانات
+        const changed =
+            JSON.stringify(freshStats)    !== JSON.stringify(stats)    ||
+            JSON.stringify(freshAlerts)   !== JSON.stringify(alerts)   ||
+            JSON.stringify(freshSections) !== JSON.stringify(sections);
+
+        if (freshStats)    stats    = freshStats;
+        if (freshAlerts)   alerts   = freshAlerts;
+        if (freshSubjects) subjects = freshSubjects;
+        if (freshSections) sections = freshSections;
+
+        if (selectedSectionId && !reportData) {
             try { reportData = await api.getSectionReport(selectedSectionId); } catch (_) {}
         }
 
-        // 4) عرض الصفحة الكاملة
-        render();
-        initCharts();
+        if (!hasCachedData || changed) {
+            render();
+            initCharts();
+        }
 
-        // 5) system/status في الخلفية بعد العرض (لا يعيق الصفحة)
+        // 3) system/status في الخلفية (لا يعيق شيئاً)
         fetch('/api/system/status', { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
-                systemStatus = { ...data, storage: data.storage || 'Cloud' };
+                systemStatus = { ...data, storage: data.storage || '---' };
                 const banner = container.querySelector('.system-status-banner');
                 if (banner) {
                     banner.className = `system-status-banner ${systemStatus.is_cloud ? 'status-cloud' : 'status-local'}`;
                     banner.querySelector('.status-label').textContent = systemStatus.is_cloud ? 'نظام التخزين السحابي نشط' : 'تنبيـــه: نظام التخزين محلي (مؤقت)';
-                    banner.querySelector('.status-desc').textContent  = `قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage || '---'}`;
+                    banner.querySelector('.status-desc').textContent  = `قاعدة البيانات: ${systemStatus.database} | الملفات: ${systemStatus.storage}`;
                     banner.style.opacity = '1';
                     if (!systemStatus.is_cloud) {
-                        banner.insertAdjacentHTML('beforeend', `<button class="btn btn-sm btn-white" id="help-cloud-btn">كيف أفعل السحاب؟</button>`);
+                        if (!banner.querySelector('#help-cloud-btn'))
+                            banner.insertAdjacentHTML('beforeend', `<button class="btn btn-sm btn-white" id="help-cloud-btn">كيف أفعل السحاب؟</button>`);
                     }
                 }
-            })
-            .catch(() => {
-                const banner = container.querySelector('.system-status-banner');
-                if (banner) banner.style.opacity = '1';
-            });
+            }).catch(() => {});
     }
 
     function render() {
